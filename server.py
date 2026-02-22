@@ -3,7 +3,10 @@
 import socket
 import threading
 import json
+import os
 from shared import BUILDINGS, BUILDING_ORDER, CARS, CAR_ORDER, BUILDING_POPULATION, UNLOCK_REQUIREMENTS, generate_problem, PORT, MAX_PLAYERS
+
+SAVE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "save.json")
 
 
 class Player:
@@ -20,15 +23,59 @@ class Player:
 class GameServer:
     def __init__(self):
         self.players = {}  # addr -> Player
+        self.saved_data = {}  # name -> {coins, buildings, cars}
         self.lock = threading.Lock()
         self.running = True
+        self._load_save()
+
+    def _load_save(self):
+        """Load saved player data from disk."""
+        if os.path.exists(SAVE_FILE):
+            try:
+                with open(SAVE_FILE, 'r') as f:
+                    self.saved_data = json.load(f)
+                print(f"Loaded {len(self.saved_data)} saved players from {SAVE_FILE}")
+            except (json.JSONDecodeError, IOError) as e:
+                print(f"Warning: could not load save file: {e}")
+                self.saved_data = {}
+
+    def _save(self):
+        """Persist all player data to disk. Call with lock held."""
+        # Update saved_data from active players
+        for p in self.players.values():
+            self.saved_data[p.name] = {
+                "coins": p.coins,
+                "buildings": p.buildings[:],
+                "cars": p.cars[:],
+            }
+        try:
+            tmp = SAVE_FILE + ".tmp"
+            with open(tmp, 'w') as f:
+                json.dump(self.saved_data, f, indent=2)
+            os.replace(tmp, SAVE_FILE)
+        except IOError as e:
+            print(f"Warning: could not save: {e}")
+
+    def _restore_player(self, player):
+        """Restore a player's saved state if it exists."""
+        if player.name in self.saved_data:
+            data = self.saved_data[player.name]
+            player.coins = data.get("coins", 0)
+            player.buildings = data.get("buildings", [])
+            player.cars = data.get("cars", [])
+            print(f"  Restored {player.name}: {player.coins} coins, {len(player.buildings)} buildings, {len(player.cars)} cars")
 
     def get_leaderboard(self):
-        entries = []
+        entries = {}
+        # Include saved (offline) players
+        for name, data in self.saved_data.items():
+            entries[name] = {"name": name, "coins": data.get("coins", 0)}
+        # Override with live player data
         for p in self.players.values():
-            entries.append({"name": p.name, "coins": p.coins})
-        entries.sort(key=lambda e: e["coins"], reverse=True)
-        return entries
+            entries[p.name] = {"name": p.name, "coins": p.coins}
+        result = list(entries.values())
+        result.sort(key=lambda e: e["coins"], reverse=True)
+        return result
 
     def get_population(self, player):
         pop = 0
@@ -96,6 +143,7 @@ class GameServer:
                                 conn.close()
                                 return
                             player = Player(conn, addr, msg["name"])
+                            self._restore_player(player)
                             self.players[addr] = player
                             print(f"{msg['name']} joined from {addr}")
                         self.broadcast_states()
@@ -122,6 +170,7 @@ class GameServer:
                                 "result": result,
                                 "reward": reward,
                             })
+                            self._save()
                         self.broadcast_states()
 
                     elif msg["type"] == "buy" and player:
@@ -147,6 +196,7 @@ class GameServer:
                                     self.send_to(player, {"type": "bought", "building": item_name})
                                 else:
                                     self.send_to(player, {"type": "error", "message": "Not enough coins"})
+                            self._save()
                         self.broadcast_states()
 
         except (ConnectionResetError, BrokenPipeError, json.JSONDecodeError):
@@ -155,6 +205,7 @@ class GameServer:
             with self.lock:
                 if addr in self.players:
                     print(f"{self.players[addr].name} disconnected")
+                    self._save()
                     del self.players[addr]
             conn.close()
             self.broadcast_states()
