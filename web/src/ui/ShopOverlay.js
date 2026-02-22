@@ -55,7 +55,7 @@ export class ShopOverlay {
     // Shop modal
     const modal = document.createElement('div');
     modal.style.cssText = `
-      width: 560px; max-height: 85vh; background: #f0f2fa; border-radius: 12px;
+      width: min(560px, calc(100vw - 24px)); max-height: 85vh; background: #f0f2fa; border-radius: 12px;
       padding: 20px; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
     `;
     modal.addEventListener('click', (e) => e.stopPropagation());

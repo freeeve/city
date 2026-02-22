@@ -8,6 +8,8 @@ import { Leaderboard } from '../ui/Leaderboard.js';
 import { ScratchPad } from '../ui/ScratchPad.js';
 import { TownRenderer } from '../town/TownRenderer.js';
 import { PlayerCharacter } from '../town/PlayerCharacter.js';
+import { BuildingInterior } from '../town/BuildingInterior.js';
+import { VirtualJoystick } from '../ui/VirtualJoystick.js';
 import { MusicPlayer } from '../audio/MusicPlayer.js';
 
 export class GameScene extends Phaser.Scene {
@@ -46,6 +48,9 @@ export class GameScene extends Phaser.Scene {
     // Player character
     this.player = new PlayerCharacter(this, this.playerName);
 
+    // Building interior system
+    this.buildingInterior = new BuildingInterior(this);
+
     // Frame overlay — covers areas outside the town viewport so town
     // objects only show through the viewport window. Depth 750 = above
     // all town objects but below all UI elements.
@@ -69,6 +74,10 @@ export class GameScene extends Phaser.Scene {
     this.scratchPad = new ScratchPad(this);
     this.shopOverlay = new ShopOverlay(this);
 
+    // Virtual joystick (mobile only)
+    const container = this.game.canvas.parentElement;
+    this.joystick = new VirtualJoystick(container);
+
     // Music player (starts on first user click due to browser autoplay policy)
     this.music = new MusicPlayer();
     this.input.once('pointerdown', () => {
@@ -79,13 +88,18 @@ export class GameScene extends Phaser.Scene {
     this.game.canvas.setAttribute('tabindex', '0');
     this.game.canvas.style.outline = 'none';
 
-    // Click on game area → blur any focused DOM input so movement keys work
+    // Click on game area -> blur any focused DOM input so movement keys work
     this.input.on('pointerdown', () => {
       const el = document.activeElement;
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) {
         el.blur();
       }
     });
+
+    // Prevent iOS rubber-banding
+    const canvas = this.game.canvas;
+    canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+    canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
 
     // Key bindings (default capture so Phaser reliably tracks key state;
     // DOM inputs use stopPropagation so Phaser won't interfere with typing)
@@ -96,6 +110,10 @@ export class GameScene extends Phaser.Scene {
       S: this.input.keyboard.addKey('S'),
       D: this.input.keyboard.addKey('D'),
     };
+
+    // E key for entering/exiting buildings
+    this.enterKey = this.input.keyboard.addKey('E');
+    this.enterKeyJustPressed = false;
   }
 
   // Town objects scroll with the camera (default behavior)
@@ -202,9 +220,39 @@ export class GameScene extends Phaser.Scene {
   }
 
   update() {
-    // Don't process movement when shop is open or typing
-    if (!this.shopOverlay.visible) {
-      this.player.handleMovement(this.cursors, this.wasd);
+    // Handle E key for building entry/exit
+    if (Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+      const active = document.activeElement;
+      const typing = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT');
+      if (!typing) {
+        if (this.buildingInterior.visible) {
+          this.buildingInterior.exit();
+        } else {
+          const idx = this.player.getNearbyBuildingIndex();
+          if (idx >= 0 && idx < this.gameState.buildings.length) {
+            this.buildingInterior.enter(this.gameState.buildings[idx], idx);
+          }
+        }
+      }
+    }
+
+    // Movement handling
+    if (this.buildingInterior.visible) {
+      // Inside a building — use interior movement
+      this.buildingInterior.handleMovement(this.cursors, this.wasd, this.joystick);
+    } else if (!this.shopOverlay.visible) {
+      // Normal town movement
+      this.player.handleMovement(this.cursors, this.wasd, this.joystick);
+      this.buildingInterior.updatePrompt();
+    }
+
+    // Hide/show joystick when shop is open
+    if (this.joystick && this.joystick.visible) {
+      if (this.shopOverlay.visible) {
+        this.joystick.hide();
+      } else {
+        this.joystick.show();
+      }
     }
 
     // Camera follow player — center player in the town viewport area

@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>City</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
+    html, body {
       background: #1a1a2e;
       overflow: hidden;
       display: flex;
@@ -17,9 +17,13 @@
       align-items: center;
       width: 100vw;
       height: 100vh;
+      overscroll-behavior: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
     }
-    #game-container { position: relative; }
-    canvas { display: block; position: relative; z-index: 1; image-rendering: pixelated; image-rendering: crisp-edges; }
+    #game-container { position: relative; touch-action: none; }
+    canvas { display: block; position: relative; z-index: 1; image-rendering: pixelated; image-rendering: crisp-edges; touch-action: none; }
     /* Ensure Phaser DOM container sits above the canvas */
     #game-container > div {
       z-index: 2 !important;

@@ -1,4 +1,4 @@
-import { TOWN_WORLD_W, ROW_HEIGHT, PX_FONT } from '../constants.js';
+import { TOWN_WORLD_W, ROW_HEIGHT, PLOT_COLS, PLOT_W, PLOT_H, PX_FONT } from '../constants.js';
 
 // Pixel-art pedestrian character matching the Python client's draw_pedestrian
 export class PlayerCharacter {
@@ -11,6 +11,7 @@ export class PlayerCharacter {
     this.dir = 'right';
     this.moving = false;
     this.tick = 0;
+    this.insideBuilding = false;
 
     // Deterministic colors from seed (matching Python's color_seed=12345)
     this.skin = 0xf0d2b4;   // (240, 210, 180)
@@ -118,7 +119,29 @@ export class PlayerCharacter {
     this.nameLabel.setDepth(depth + 1);
   }
 
-  handleMovement(cursors, wasd) {
+  /**
+   * Returns the index of the building plot the player is standing on, or -1.
+   */
+  getNearbyBuildingIndex() {
+    const totalPlots = 72;
+    for (let i = 0; i < totalPlots; i++) {
+      const col = i % 6;
+      const row = Math.floor(i / 6);
+      const px = PLOT_COLS[col];
+      const py = row * ROW_HEIGHT + 35;
+
+      // Check if player is within the plot bounds (with a small margin)
+      if (this.x >= px - 5 && this.x <= px + PLOT_W + 5 &&
+          this.y >= py - 5 && this.y <= py + PLOT_H + 5) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  handleMovement(cursors, wasd, joystick) {
+    if (this.insideBuilding) return;
+
     const active = document.activeElement;
     if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) {
       return;
@@ -127,13 +150,19 @@ export class PlayerCharacter {
     let dx = 0;
     let dy = 0;
 
-    if (cursors.left.isDown || wasd.A.isDown) dx -= this.speed;
-    if (cursors.right.isDown || wasd.D.isDown) dx += this.speed;
-    if (cursors.up.isDown || wasd.W.isDown) dy -= this.speed;
-    if (cursors.down.isDown || wasd.S.isDown) dy += this.speed;
+    // Joystick input takes priority
+    if (joystick && joystick.active) {
+      dx = joystick.dx * this.speed;
+      dy = joystick.dy * this.speed;
+    } else {
+      if (cursors.left.isDown || wasd.A.isDown) dx -= this.speed;
+      if (cursors.right.isDown || wasd.D.isDown) dx += this.speed;
+      if (cursors.up.isDown || wasd.W.isDown) dy -= this.speed;
+      if (cursors.down.isDown || wasd.S.isDown) dy += this.speed;
+    }
 
     const wasMoving = this.moving;
-    this.moving = dx !== 0 || dy !== 0;
+    this.moving = Math.abs(dx) > 0.3 || Math.abs(dy) > 0.3;
 
     if (this.moving) {
       this.tick++;
@@ -145,8 +174,8 @@ export class PlayerCharacter {
       this.x = Math.max(0, Math.min(TOWN_WORLD_W, this.x));
       this.y = Math.max(0, Math.min(worldH, this.y));
 
-      if (dx < 0) this.dir = 'left';
-      else if (dx > 0) this.dir = 'right';
+      if (dx < -0.3) this.dir = 'left';
+      else if (dx > 0.3) this.dir = 'right';
 
       this.draw();
 

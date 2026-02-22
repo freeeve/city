@@ -86,7 +86,7 @@ export class ConnectScene extends Phaser.Scene {
     const formPanel = document.createElement('div');
     formPanel.style.cssText = `
       pointer-events: auto;
-      width: 340px; padding: 24px;
+      width: min(340px, calc(100vw - 32px)); padding: 24px;
       background: rgba(32, 32, 64, 0.9);
       border: 2px solid rgba(55, 120, 200, 0.6);
       border-radius: 12px;
