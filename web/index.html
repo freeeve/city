@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>City</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a2e;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100vw;
+      height: 100vh;
+    }
+    #game-container { position: relative; }
+    canvas { display: block; }
+    /* DOM input styling for Phaser DOM elements */
+    .game-input {
+      font-family: Arial, sans-serif;
+      font-size: 18px;
+      padding: 6px 10px;
+      border: 2px solid #b4bee2;
+      border-radius: 6px;
+      outline: none;
+      background: #fafaff;
+      color: #333;
+    }
+    .game-input:focus {
+      border-color: #3778c8;
+    }
+    .game-btn {
+      font-family: Arial, sans-serif;
+      font-size: 16px;
+      font-weight: bold;
+      padding: 8px 18px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      color: white;
+    }
+    .game-btn-green {
+      background: #3cbe5a;
+    }
+    .game-btn-green:hover {
+      background: #2da048;
+    }
+    .game-btn-red {
+      background: #dc4646;
+    }
+    .game-btn-red:hover {
+      background: #be3232;
+    }
+    .game-select {
+      font-family: Arial, sans-serif;
+      font-size: 16px;
+      padding: 6px 10px;
+      border: 2px solid #b4bee2;
+      border-radius: 6px;
+      outline: none;
+      background: #fafaff;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
