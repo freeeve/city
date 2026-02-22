@@ -884,18 +884,46 @@ class Client:
                 positions.append((x, base_y + ROW_HEIGHT))
         return positions
 
+    def _overlaps_road(self, x, y, w, h):
+        """Check if a rectangle overlaps any vertical or horizontal road."""
+        road_pad = 12  # sidewalk + curb buffer
+        for rvx in ROAD_V_POSITIONS:
+            if x + w > rvx - road_pad and x < rvx + ROAD_THICK + road_pad:
+                return True
+        # Only check horizontal roads in commercial zone (below residential is grass)
+        section_h = ROW_HEIGHT * 2 + ROAD_THICK + 16
+        for section in range(8):
+            road_y = section * section_h + ROW_HEIGHT * 2 - 15
+            if road_y > RESIDENTIAL_Y_START - 50:
+                break  # no horizontal roads in residential area
+            if y + h > road_y - road_pad and y < road_y + ROAD_THICK + road_pad:
+                return True
+        return False
+
     def get_house_positions(self):
-        """Generate house positions in the residential neighbourhood below commercial sections."""
-        num_houses = min(max(1, self.population // 3), 30)
+        """Generate house positions in the residential neighbourhood — one per person."""
+        num_houses = max(1, self.population) if self.population > 0 else 0
         positions = []
-        cols = 15  # max columns across town width
+        cols = 15  # columns across town width
         col_spacing = TOWN_WORLD_W // cols
-        for i in range(num_houses):
-            col = i % cols
-            row = i // cols
-            x = col * col_spacing + 10
-            y = RESIDENTIAL_Y_START + row * (HOUSE_H + 25) + 30
-            positions.append((x, y, i))  # x, y, color_seed
+        row_spacing = HOUSE_H + 30
+        # Pre-compute all valid grid slots (skip road overlaps)
+        seed_idx = 0
+        placed = 0
+        row = 0
+        while placed < num_houses:
+            for col in range(cols):
+                if placed >= num_houses:
+                    break
+                x = col * col_spacing + 10
+                y = RESIDENTIAL_Y_START + row * row_spacing + 30
+                if not self._overlaps_road(x, y, HOUSE_W + 10, HOUSE_H):
+                    positions.append((x, y, seed_idx))
+                    placed += 1
+                seed_idx += 1
+            row += 1
+            if row > 200:  # safety limit
+                break
         return positions
 
     def draw_house(self, x, y, color_seed=0):
@@ -1201,16 +1229,18 @@ class Client:
         # Each entry: (sort_y, draw_func)
         drawables = []
 
-        # Horizontal roads
+        # Horizontal roads (only in commercial zone, not residential)
         section_h = ROW_HEIGHT * 2 + ROAD_THICK + 16
         for section in range(8):
             road_local_y = section * section_h + ROW_HEIGHT * 2 - 15
+            if road_local_y > RESIDENTIAL_Y_START - 50:
+                break
             hy = town_y + road_local_y - sy
             if hy > town_y + view_h + 15 or hy + ROAD_THICK < town_y - 15:
                 continue
             drawables.append((road_local_y, 'hroad', section, hy))
 
-        # Bushes along roads
+        # Bushes along roads (only on grass)
         bush_templates = [(280, 60, 0.7), (620, 90, 0.8), (280, 200, 0.6), (620, 250, 0.75),
                           (280, 340, 0.65), (620, 380, 0.7)]
         for btx, bty, bs in bush_templates:
@@ -1222,10 +1252,11 @@ class Client:
             while dy < town_y + view_h + 20:
                 if dy > town_y - 20:
                     world_y = dy - town_y + sy
-                    drawables.append((world_y, 'bush', draw_x, dy, bs))
+                    if not self._overlaps_road(btx, world_y - 10, 20, 12):
+                        drawables.append((world_y, 'bush', draw_x, dy, bs))
                 dy += 450
 
-        # Trees
+        # Trees (only on grass)
         tree_templates = [(130, 50, 0.9), (260, 120, 1.15), (40, 300, 1.0),
                           (520, 280, 0.9), (750, 200, 1.1), (900, 100, 0.75),
                           (450, 50, 1.0), (180, 350, 0.85), (370, 200, 0.95),
@@ -1238,10 +1269,11 @@ class Client:
             while dy < town_y + view_h + 40:
                 if dy > town_y - 40:
                     world_y = dy - town_y + sy
-                    drawables.append((world_y, 'tree', draw_x, dy, ts))
+                    if not self._overlaps_road(ttx, world_y - 30, 30, 30):
+                        drawables.append((world_y, 'tree', draw_x, dy, ts))
                 dy += 500
 
-        # Flowers
+        # Flowers (only on grass)
         flower_templates = [(30, 130, (255, 100, 120)), (500, 80, (180, 120, 255)),
                             (545, 300, (255, 130, 80)), (100, 140, (120, 200, 255)),
                             (700, 180, (255, 200, 100)), (850, 260, (200, 100, 255)),
@@ -1255,7 +1287,8 @@ class Client:
             while dy < town_y + view_h + 10:
                 if dy > town_y - 10:
                     world_y = dy - town_y + sy
-                    drawables.append((world_y, 'flower', draw_x, dy, fc))
+                    if not self._overlaps_road(ffx, world_y - 5, 10, 10):
+                        drawables.append((world_y, 'flower', draw_x, dy, fc))
                 dy += 400
 
         # Street lamps along vertical roads
@@ -1379,14 +1412,15 @@ class Client:
                     hsy < town_y - HOUSE_H - 20 or hsy > town_y + view_h + 10):
                 continue
             drawables.append((hy + HOUSE_H, 'house', hsx, hsy, hseed))
-            # Small decorative trees between some houses
+            # Small decorative trees between some houses (only on grass)
             if house_tree_rng.random() < 0.35:
                 tree_off_x = hx + HOUSE_W + 8
                 tree_off_y = hy + HOUSE_H - 2
-                tsx = town_x + tree_off_x - sx
-                tsy = town_y + tree_off_y - sy
-                if town_x - 20 < tsx < town_x + view_w + 20:
-                    drawables.append((tree_off_y, 'tree', tsx, tsy, 0.5))
+                if not self._overlaps_road(tree_off_x, tree_off_y - 30, 20, 30):
+                    tsx = town_x + tree_off_x - sx
+                    tsy = town_y + tree_off_y - sy
+                    if town_x - 20 < tsx < town_x + view_w + 20:
+                        drawables.append((tree_off_y, 'tree', tsx, tsy, 0.5))
 
         # Sort by y-position (back to front)
         drawables.sort(key=lambda d: d[0])
