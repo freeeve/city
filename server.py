@@ -3,7 +3,7 @@
 import socket
 import threading
 import json
-from shared import BUILDINGS, BUILDING_ORDER, generate_problem, PORT, MAX_PLAYERS
+from shared import BUILDINGS, BUILDING_ORDER, CARS, CAR_ORDER, BUILDING_POPULATION, UNLOCK_REQUIREMENTS, generate_problem, PORT, MAX_PLAYERS
 
 
 class Player:
@@ -13,6 +13,7 @@ class Player:
         self.name = name
         self.coins = 0
         self.buildings = []  # list of building names owned
+        self.cars = []  # list of car names owned
         self.problem = generate_problem()
 
 
@@ -29,6 +30,18 @@ class GameServer:
         entries.sort(key=lambda e: e["coins"], reverse=True)
         return entries
 
+    def get_population(self, player):
+        pop = 0
+        for b in player.buildings:
+            pop += BUILDING_POPULATION.get(b, 0)
+        for c in player.cars:
+            pop += CARS[c][1]
+        return pop
+
+    def get_pop_multiplier(self, player):
+        pop = self.get_population(player)
+        return 1.0 + (pop // 100) * 0.1
+
     def get_income(self, player):
         total = 0
         for b in player.buildings:
@@ -36,12 +49,17 @@ class GameServer:
         return total
 
     def build_state_for(self, player):
+        pop = self.get_population(player)
+        pop_mult = self.get_pop_multiplier(player)
         return {
             "type": "state",
             "coins": player.coins,
             "buildings": player.buildings,
+            "cars": player.cars,
             "problem": {"text": player.problem["text"]},
             "income": self.get_income(player),
+            "population": pop,
+            "pop_bonus": pop_mult,
             "leaderboard": self.get_leaderboard(),
         }
 
@@ -90,7 +108,9 @@ class GameServer:
                                 continue
                             if answer == player.problem["answer"]:
                                 bonus = self.get_income(player)
-                                reward = player.problem["reward"] + bonus
+                                base_reward = player.problem["reward"] + bonus
+                                pop_mult = self.get_pop_multiplier(player)
+                                reward = int(base_reward * pop_mult)
                                 player.coins += reward
                                 result = "correct"
                             else:
@@ -106,13 +126,25 @@ class GameServer:
 
                     elif msg["type"] == "buy" and player:
                         with self.lock:
-                            building = msg["building"]
-                            if building in BUILDINGS:
-                                cost = BUILDINGS[building][0]
+                            item_name = msg.get("building") or msg.get("name", "")
+                            pop = self.get_population(player)
+                            req = UNLOCK_REQUIREMENTS.get(item_name, 0)
+                            if req > 0 and pop < req:
+                                self.send_to(player, {"type": "error", "message": f"Needs {req} population"})
+                            elif item_name in BUILDINGS:
+                                cost = BUILDINGS[item_name][0]
                                 if player.coins >= cost:
                                     player.coins -= cost
-                                    player.buildings.append(building)
-                                    self.send_to(player, {"type": "bought", "building": building})
+                                    player.buildings.append(item_name)
+                                    self.send_to(player, {"type": "bought", "building": item_name})
+                                else:
+                                    self.send_to(player, {"type": "error", "message": "Not enough coins"})
+                            elif item_name in CARS:
+                                cost = CARS[item_name][0]
+                                if player.coins >= cost:
+                                    player.coins -= cost
+                                    player.cars.append(item_name)
+                                    self.send_to(player, {"type": "bought", "building": item_name})
                                 else:
                                     self.send_to(player, {"type": "error", "message": "Not enough coins"})
                         self.broadcast_states()
