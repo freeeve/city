@@ -5,39 +5,61 @@ import socket
 import threading
 import json
 import os
+import math
 from shared import BUILDINGS, BUILDING_ORDER, BUILDING_COLORS, PORT
 
 # --- Constants ---
 WIDTH, HEIGHT = 1000, 750
 FPS = 30
 
-# Colors
+# Color palette
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-BG_COLOR = (230, 245, 255)
-HEADER_COLOR = (60, 130, 200)
-COIN_COLOR = (255, 200, 50)
-GREEN = (50, 200, 80)
-RED = (220, 60, 60)
-LIGHT_GRAY = (220, 220, 220)
-DARK_GRAY = (100, 100, 100)
-SHOP_BG = (240, 240, 255, 230)
-INPUT_BG = (255, 255, 255)
-BUTTON_COLOR = (80, 160, 240)
-BUTTON_HOVER = (60, 130, 200)
-GRASS_COLOR = (120, 190, 80)
-GRASS_DARK = (100, 170, 60)
-ROAD_COLOR = (160, 155, 145)
-ROAD_LINE = (220, 210, 190)
-DIRT_COLOR = (180, 160, 120)
+BG_TOP = (200, 225, 255)
+BG_BOT = (235, 245, 255)
+HEADER_TOP = (45, 100, 180)
+HEADER_BOT = (65, 140, 220)
+ACCENT = (55, 120, 200)
+COIN_GOLD = (255, 210, 60)
+COIN_DARK = (200, 160, 30)
+GREEN = (60, 190, 90)
+GREEN_HOVER = (45, 160, 70)
+RED = (220, 70, 70)
+RED_HOVER = (190, 50, 50)
+LIGHT_GRAY = (225, 225, 230)
+MID_GRAY = (160, 160, 170)
+DARK_GRAY = (90, 90, 100)
+INPUT_BG = (250, 250, 255)
+INPUT_BORDER = (180, 190, 210)
+INPUT_ACTIVE = (55, 120, 200)
+PURPLE = (140, 80, 220)
+PURPLE_HOVER = (120, 60, 190)
 
-# Town layout: fixed plot positions for each building (x, y) within the town area
+# Town colors
+GRASS_1 = (105, 185, 75)
+GRASS_2 = (115, 195, 85)
+GRASS_3 = (95, 175, 65)
+ROAD_FILL = (140, 138, 132)
+ROAD_EDGE = (115, 112, 108)
+ROAD_DASH = (200, 195, 180)
+SIDEWALK = (195, 190, 180)
+TREE_TRUNK = (120, 85, 50)
+TREE_GREEN = (60, 150, 55)
+TREE_LIGHT = (80, 175, 70)
+FENCE_COLOR = (165, 140, 100)
+
+# Leaderboard medal colors
+GOLD = (255, 200, 50)
+SILVER = (190, 195, 205)
+BRONZE = (205, 150, 90)
+
+# Town plot positions (x, y) within the town area
 TOWN_PLOTS = {
-    "Lemonade Stand": (30, 30),
-    "Cookie Shop": (175, 30),
-    "Toy Store": (320, 30),
-    "Arcade": (100, 190),
-    "Theme Park": (270, 190),
+    "Lemonade Stand": (20, 25),
+    "Cookie Shop": (170, 25),
+    "Toy Store": (360, 25),
+    "Arcade": (70, 230),
+    "Theme Park": (280, 230),
 }
 
 
@@ -47,15 +69,19 @@ class Client:
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("Math Tycoon")
         self.clock = pygame.time.Clock()
+        self.tick = 0
 
-        self.font_big = pygame.font.SysFont("Arial", 40, bold=True)
-        self.font_med = pygame.font.SysFont("Arial", 28, bold=True)
-        self.font_sm = pygame.font.SysFont("Arial", 22)
-        self.font_xs = pygame.font.SysFont("Arial", 18)
+        # Fonts
+        self.font_title = pygame.font.SysFont("Arial", 48, bold=True)
+        self.font_big = pygame.font.SysFont("Arial", 38, bold=True)
+        self.font_med = pygame.font.SysFont("Arial", 26, bold=True)
+        self.font_sm = pygame.font.SysFont("Arial", 20)
+        self.font_xs = pygame.font.SysFont("Arial", 16)
+        self.font_tiny = pygame.font.SysFont("Arial", 13)
 
         # Load building images
         self.building_images = {}
-        self.building_images_small = {}
+        self.building_images_shop = {}
         assets_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
         name_to_file = {
             "Lemonade Stand": "lemonade_stand.png",
@@ -68,8 +94,8 @@ class Client:
             path = os.path.join(assets_dir, filename)
             if os.path.exists(path):
                 img = pygame.image.load(path).convert_alpha()
-                self.building_images[name] = pygame.transform.smoothscale(img, (80, 80))
-                self.building_images_small[name] = pygame.transform.smoothscale(img, (55, 55))
+                self.building_images[name] = pygame.transform.smoothscale(img, (90, 90))
+                self.building_images_shop[name] = pygame.transform.smoothscale(img, (52, 52))
 
         # Network
         self.sock = None
@@ -82,17 +108,17 @@ class Client:
         self.problem_text = ""
         self.income = 0
         self.leaderboard = []
-        self.last_result = ""  # "correct" or "wrong"
+        self.last_result = ""
         self.result_timer = 0
 
         # Screens
-        self.screen_state = "connect"  # "connect", "game"
+        self.screen_state = "connect"
         self.shop_open = False
 
         # Connect screen fields
         self.ip_text = "localhost"
         self.name_text = ""
-        self.active_field = "name"  # "ip" or "name"
+        self.active_field = "name"
         self.connect_error = ""
 
         # Game screen input
@@ -144,7 +170,7 @@ class Client:
             self.leaderboard = msg["leaderboard"]
         elif msg["type"] == "result":
             self.last_result = msg["result"]
-            self.result_timer = FPS * 2  # show for 2 seconds
+            self.result_timer = FPS * 2
         elif msg["type"] == "error":
             self.connect_error = msg.get("message", "Error")
 
@@ -157,7 +183,35 @@ class Client:
                 pass
 
     # --- Drawing helpers ---
-    def draw_text(self, text, font, color, x, y, center=False):
+    def draw_gradient_rect(self, x, y, w, h, color_top, color_bot, radius=0):
+        surf = pygame.Surface((w, h), pygame.SRCALPHA)
+        for row in range(h):
+            t = row / max(h - 1, 1)
+            r = int(color_top[0] + (color_bot[0] - color_top[0]) * t)
+            g = int(color_top[1] + (color_bot[1] - color_top[1]) * t)
+            b = int(color_top[2] + (color_bot[2] - color_top[2]) * t)
+            pygame.draw.line(surf, (r, g, b), (0, row), (w, row))
+        if radius > 0:
+            mask = pygame.Surface((w, h), pygame.SRCALPHA)
+            pygame.draw.rect(mask, (255, 255, 255), (0, 0, w, h), border_radius=radius)
+            surf.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
+        self.screen.blit(surf, (x, y))
+
+    def draw_shadow(self, x, y, w, h, radius=8, offset=3, alpha=30):
+        shadow = pygame.Surface((w + offset * 2, h + offset * 2), pygame.SRCALPHA)
+        pygame.draw.rect(shadow, (0, 0, 0, alpha), (0, 0, w + offset * 2, h + offset * 2), border_radius=radius)
+        self.screen.blit(shadow, (x - offset + 3, y - offset + 3))
+
+    def draw_text(self, text, font, color, x, y, center=False, shadow=False):
+        if shadow:
+            s = font.render(text, True, (0, 0, 0, 60))
+            sr = s.get_rect()
+            if center:
+                sr.center = (x + 1, y + 2)
+            else:
+                sr.topleft = (x + 1, y + 2)
+            s.set_alpha(50)
+            self.screen.blit(s, sr)
         surf = font.render(text, True, color)
         rect = surf.get_rect()
         if center:
@@ -167,41 +221,75 @@ class Client:
         self.screen.blit(surf, rect)
         return rect
 
-    def draw_button(self, text, x, y, w, h, color=BUTTON_COLOR):
+    def draw_button(self, text, x, y, w, h, color, hover_color=None, font=None):
+        if font is None:
+            font = self.font_sm
+        if hover_color is None:
+            hover_color = tuple(max(0, c - 25) for c in color)
         mx, my = pygame.mouse.get_pos()
         hovered = x <= mx <= x + w and y <= my <= y + h
-        c = BUTTON_HOVER if hovered else color
-        pygame.draw.rect(self.screen, c, (x, y, w, h), border_radius=8)
-        self.draw_text(text, self.font_sm, WHITE, x + w // 2, y + h // 2, center=True)
+        c = hover_color if hovered else color
+        self.draw_shadow(x, y, w, h, radius=10, alpha=25)
+        pygame.draw.rect(self.screen, c, (x, y, w, h), border_radius=10)
+        # Subtle highlight on top half
+        highlight = pygame.Surface((w, h // 2), pygame.SRCALPHA)
+        pygame.draw.rect(highlight, (255, 255, 255, 30), (0, 0, w, h // 2), border_radius=10)
+        self.screen.blit(highlight, (x, y))
+        self.draw_text(text, font, WHITE, x + w // 2, y + h // 2, center=True)
         return pygame.Rect(x, y, w, h)
 
     def draw_input(self, text, x, y, w, h, active=False):
-        color = HEADER_COLOR if active else DARK_GRAY
-        pygame.draw.rect(self.screen, INPUT_BG, (x, y, w, h), border_radius=6)
-        pygame.draw.rect(self.screen, color, (x, y, w, h), 3, border_radius=6)
-        self.draw_text(text + ("|" if active else ""), self.font_sm, BLACK, x + 10, y + h // 2 - 11)
+        self.draw_shadow(x, y, w, h, radius=8, alpha=15)
+        pygame.draw.rect(self.screen, INPUT_BG, (x, y, w, h), border_radius=8)
+        border_color = INPUT_ACTIVE if active else INPUT_BORDER
+        pygame.draw.rect(self.screen, border_color, (x, y, w, h), 2, border_radius=8)
+        cursor = "|" if active and (self.tick // 15) % 2 == 0 else ""
+        self.draw_text(text + cursor, self.font_sm, BLACK, x + 12, y + h // 2 - 10)
         return pygame.Rect(x, y, w, h)
+
+    def draw_coin_icon(self, x, y, size=12):
+        pygame.draw.circle(self.screen, COIN_DARK, (x, y), size)
+        pygame.draw.circle(self.screen, COIN_GOLD, (x, y), size - 2)
+        self.draw_text("$", self.font_tiny, COIN_DARK, x, y, center=True)
 
     # --- Connect Screen ---
     def draw_connect_screen(self):
-        self.screen.fill(BG_COLOR)
-        self.draw_text("Math Tycoon", self.font_big, HEADER_COLOR, WIDTH // 2, 80, center=True)
-        self.draw_text("Solve math, earn coins, build your empire!", self.font_sm, DARK_GRAY, WIDTH // 2, 130, center=True)
+        # Gradient background
+        self.draw_gradient_rect(0, 0, WIDTH, HEIGHT, BG_TOP, BG_BOT)
 
-        # Name field
-        self.draw_text("Your Name:", self.font_sm, BLACK, 250, 200)
-        self.name_rect = self.draw_input(self.name_text, 250, 230, 400, 40, self.active_field == "name")
+        # Decorative circles
+        for i, (cx, cy, r, a) in enumerate([(80, 650, 120, 15), (920, 100, 80, 12),
+                                             (150, 120, 40, 18), (850, 600, 60, 14)]):
+            s = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
+            pygame.draw.circle(s, (ACCENT[0], ACCENT[1], ACCENT[2], a), (r, r), r)
+            self.screen.blit(s, (cx - r, cy - r))
 
-        # IP field
-        self.draw_text("Server IP:", self.font_sm, BLACK, 250, 290)
-        self.ip_rect = self.draw_input(self.ip_text, 250, 320, 400, 40, self.active_field == "ip")
+        # Center card
+        card_w, card_h = 460, 380
+        card_x = (WIDTH - card_w) // 2
+        card_y = (HEIGHT - card_h) // 2 + 30
+        self.draw_shadow(card_x, card_y, card_w, card_h, radius=16, offset=6, alpha=35)
+        pygame.draw.rect(self.screen, WHITE, (card_x, card_y, card_w, card_h), border_radius=16)
 
-        # Connect button
-        self.connect_btn = self.draw_button("Connect!", 350, 400, 200, 50, GREEN)
+        # Title above card
+        self.draw_text("Math Tycoon", self.font_title, ACCENT, WIDTH // 2, card_y - 60, center=True, shadow=True)
+        self.draw_text("Solve math, earn coins, build your town!", self.font_sm, MID_GRAY, WIDTH // 2, card_y - 15, center=True)
 
-        # Error
+        # Form inside card
+        fx = card_x + 40
+        fw = card_w - 80
+
+        self.draw_text("Your Name", self.font_xs, DARK_GRAY, fx, card_y + 30)
+        self.name_rect = self.draw_input(self.name_text, fx, card_y + 52, fw, 42, self.active_field == "name")
+
+        self.draw_text("Server IP", self.font_xs, DARK_GRAY, fx, card_y + 115)
+        self.ip_rect = self.draw_input(self.ip_text, fx, card_y + 137, fw, 42, self.active_field == "ip")
+
+        self.connect_btn = self.draw_button("Connect", fx + 40, card_y + 220, fw - 80, 50, GREEN, GREEN_HOVER, self.font_med)
+
         if self.connect_error:
-            self.draw_text(self.connect_error, self.font_xs, RED, WIDTH // 2, 475, center=True)
+            color = MID_GRAY if self.connect_error == "Connecting..." else RED
+            self.draw_text(self.connect_error, self.font_xs, color, WIDTH // 2, card_y + 300, center=True)
 
     def handle_connect_events(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -211,7 +299,6 @@ class Client:
                 self.active_field = "ip"
             elif self.connect_btn.collidepoint(event.pos):
                 self.try_connect()
-
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_TAB:
                 self.active_field = "ip" if self.active_field == "name" else "name"
@@ -249,45 +336,57 @@ class Client:
 
     # --- Main Game Screen ---
     def draw_game_screen(self):
-        self.screen.fill(BG_COLOR)
+        self.draw_gradient_rect(0, 0, WIDTH, HEIGHT, BG_TOP, BG_BOT)
 
         # Header bar
-        pygame.draw.rect(self.screen, HEADER_COLOR, (0, 0, WIDTH, 60))
-        self.draw_text("Math Tycoon", self.font_med, WHITE, 15, 15)
+        self.draw_gradient_rect(0, 0, WIDTH, 60, HEADER_TOP, HEADER_BOT)
+        # Subtle bottom border
+        pygame.draw.line(self.screen, (35, 80, 150), (0, 60), (WIDTH, 60), 2)
+
+        self.draw_text("Math Tycoon", self.font_med, WHITE, 18, 16, shadow=True)
 
         # Coin display
-        pygame.draw.circle(self.screen, COIN_COLOR, (WIDTH - 250, 30), 15)
-        self.draw_text(f"{self.coins} coins", self.font_med, WHITE, WIDTH - 230, 15)
+        self.draw_coin_icon(WIDTH - 260, 22, 14)
+        self.draw_text(f"{self.coins:,}", self.font_med, WHITE, WIDTH - 240, 12, shadow=True)
+        self.draw_text("coins", self.font_tiny, (180, 210, 255), WIDTH - 240, 40)
 
-        # Bonus display
         if self.income > 0:
-            self.draw_text(f"+{self.income} bonus/solve", self.font_xs, (200, 255, 200), WIDTH - 250, 48)
+            self.draw_text(f"+{self.income} bonus/solve", self.font_tiny, (170, 230, 170), WIDTH - 175, 40)
 
-        # --- Math problem area ---
-        pygame.draw.rect(self.screen, WHITE, (20, 75, 600, 120), border_radius=10)
-        pygame.draw.rect(self.screen, HEADER_COLOR, (20, 75, 600, 120), 3, border_radius=10)
-        self.draw_text("Solve:", self.font_sm, DARK_GRAY, 40, 85)
-        self.draw_text(self.problem_text, self.font_big, BLACK, 310, 105, center=True)
+        # --- Math problem card ---
+        prob_x, prob_y, prob_w, prob_h = 18, 72, 600, 120
+        self.draw_shadow(prob_x, prob_y, prob_w, prob_h, radius=12, alpha=20)
+        pygame.draw.rect(self.screen, WHITE, (prob_x, prob_y, prob_w, prob_h), border_radius=12)
 
-        # Answer input
-        self.answer_rect = self.draw_input(self.answer_text, 40, 145, 300, 36, True)
+        # "Solve" label with accent strip
+        pygame.draw.rect(self.screen, ACCENT, (prob_x, prob_y, 6, prob_h), border_radius=3)
+        self.draw_text("Solve:", self.font_xs, MID_GRAY, prob_x + 20, prob_y + 8)
 
-        # Submit button
-        self.submit_btn = self.draw_button("Submit", 360, 145, 100, 36, GREEN)
+        # Problem text
+        self.draw_text(self.problem_text, self.font_big, BLACK, prob_x + prob_w // 2, prob_y + 28, center=True, shadow=True)
+
+        # Answer input and submit
+        self.answer_rect = self.draw_input(self.answer_text, prob_x + 20, prob_y + 72, 320, 38, True)
+        self.submit_btn = self.draw_button("Submit", prob_x + 355, prob_y + 72, 110, 38, GREEN, GREEN_HOVER)
 
         # Result feedback
         if self.result_timer > 0:
+            fade = min(255, self.result_timer * 12)
             if self.last_result == "correct":
-                self.draw_text("Correct!", self.font_sm, GREEN, 480, 152)
+                s = self.font_med.render("Correct!", True, GREEN)
             else:
-                self.draw_text("Wrong!", self.font_sm, RED, 480, 152)
+                s = self.font_med.render("Try again!", True, RED)
+            s.set_alpha(fade)
+            r = s.get_rect()
+            r.midleft = (prob_x + 480, prob_y + 91)
+            self.screen.blit(s, r)
             self.result_timer -= 1
 
         # --- Town area ---
         self.draw_town()
 
         # --- Shop button ---
-        self.shop_btn = self.draw_button("Shop", WIDTH - 130, 75, 110, 40, (200, 100, 255))
+        self.shop_btn = self.draw_button("Shop", prob_x + prob_w - 105, prob_y + 8, 95, 36, PURPLE, PURPLE_HOVER)
 
         # --- Leaderboard ---
         self.draw_leaderboard()
@@ -296,171 +395,270 @@ class Client:
         if self.shop_open:
             self.draw_shop()
 
+    # --- Town ---
+    def draw_tree(self, x, y, size=1.0):
+        s = size
+        # Trunk
+        tw = int(6 * s)
+        th = int(14 * s)
+        pygame.draw.rect(self.screen, TREE_TRUNK, (x - tw // 2, y - th, tw, th), border_radius=2)
+        # Foliage layers
+        r1 = int(16 * s)
+        r2 = int(12 * s)
+        pygame.draw.circle(self.screen, TREE_GREEN, (x, y - th - r1 // 2), r1)
+        pygame.draw.circle(self.screen, TREE_LIGHT, (x - int(4 * s), y - th - r1 // 2 - int(4 * s)), r2)
+        pygame.draw.circle(self.screen, TREE_GREEN, (x + int(5 * s), y - th - r1 // 2 - int(2 * s)), int(10 * s))
+
+    def draw_flower(self, x, y, color):
+        pygame.draw.circle(self.screen, color, (x, y), 4)
+        pygame.draw.circle(self.screen, (255, 255, 200), (x, y), 2)
+
     def draw_town(self):
-        town_x, town_y = 15, 205
-        town_w, town_h = 600, 530
-        plot_w, plot_h = 130, 150
+        town_x, town_y = 15, 200
+        town_w, town_h = 605, 535
+        plot_w, plot_h = 135, 160
 
-        # Grass background
-        pygame.draw.rect(self.screen, GRASS_COLOR, (town_x, town_y, town_w, town_h), border_radius=12)
-        # Grass texture stripes
-        for gy in range(town_y + 10, town_y + town_h - 5, 18):
-            pygame.draw.line(self.screen, GRASS_DARK, (town_x + 8, gy), (town_x + town_w - 8, gy), 1)
+        # Grass background with varied patches
+        pygame.draw.rect(self.screen, GRASS_1, (town_x, town_y, town_w, town_h), border_radius=14)
+        # Grass patches for texture
+        patches = [(40, 80, 60, 40), (200, 50, 50, 30), (400, 90, 70, 35),
+                   (80, 300, 55, 30), (350, 320, 65, 35), (500, 250, 45, 25),
+                   (150, 420, 60, 30), (420, 430, 50, 28)]
+        for px, py, pw, ph in patches:
+            s = pygame.Surface((pw, ph), pygame.SRCALPHA)
+            pygame.draw.ellipse(s, (*GRASS_2, 90), (0, 0, pw, ph))
+            self.screen.blit(s, (town_x + px, town_y + py))
 
+        # --- Roads ---
+        road_thick = 36
         # Horizontal road
-        road_y = town_y + 160
-        pygame.draw.rect(self.screen, ROAD_COLOR, (town_x, road_y, town_w, 30))
-        # Road dashes
-        for rx in range(town_x + 15, town_x + town_w - 15, 40):
-            pygame.draw.rect(self.screen, ROAD_LINE, (rx, road_y + 13, 20, 4))
+        hy = town_y + 185
+        # Road shadow
+        rs = pygame.Surface((town_w, road_thick + 4), pygame.SRCALPHA)
+        rs.fill((0, 0, 0, 20))
+        self.screen.blit(rs, (town_x, hy - 2))
+        # Sidewalks
+        pygame.draw.rect(self.screen, SIDEWALK, (town_x, hy - 4, town_w, road_thick + 8))
+        # Road fill
+        pygame.draw.rect(self.screen, ROAD_FILL, (town_x, hy, town_w, road_thick))
+        # Edge lines
+        pygame.draw.line(self.screen, ROAD_EDGE, (town_x, hy), (town_x + town_w, hy), 2)
+        pygame.draw.line(self.screen, ROAD_EDGE, (town_x, hy + road_thick), (town_x + town_w, hy + road_thick), 2)
+        # Center dashes
+        for rx in range(town_x + 20, town_x + town_w - 20, 44):
+            pygame.draw.rect(self.screen, ROAD_DASH, (rx, hy + road_thick // 2 - 2, 24, 4), border_radius=2)
 
         # Vertical road
-        road_x = town_x + 150
-        pygame.draw.rect(self.screen, ROAD_COLOR, (road_x, town_y, 30, town_h))
-        for ry in range(town_y + 15, town_y + town_h - 15, 40):
-            pygame.draw.rect(self.screen, ROAD_LINE, (road_x + 13, ry, 4, 20))
+        vx = town_x + 155
+        pygame.draw.rect(self.screen, SIDEWALK, (vx - 4, town_y, road_thick + 8, town_h))
+        pygame.draw.rect(self.screen, ROAD_FILL, (vx, town_y, road_thick, town_h))
+        pygame.draw.line(self.screen, ROAD_EDGE, (vx, town_y), (vx, town_y + town_h), 2)
+        pygame.draw.line(self.screen, ROAD_EDGE, (vx + road_thick, town_y), (vx + road_thick, town_y + town_h), 2)
+        for ry in range(town_y + 20, town_y + town_h - 20, 44):
+            pygame.draw.rect(self.screen, ROAD_DASH, (vx + road_thick // 2 - 2, ry, 4, 24), border_radius=2)
 
-        # Intersection patch
-        pygame.draw.rect(self.screen, ROAD_COLOR, (road_x, road_y, 30, 30))
+        # Intersection
+        pygame.draw.rect(self.screen, ROAD_FILL, (vx, hy, road_thick, road_thick))
 
-        # Count buildings
+        # --- Trees ---
+        tree_spots = [(town_x + 510, town_y + 160, 0.9), (town_x + 550, town_y + 100, 1.1),
+                      (town_x + 40, town_y + 470, 1.0), (town_x + 520, town_y + 450, 0.85),
+                      (town_x + 480, town_y + 380, 1.05), (town_x + 130, town_y + 500, 0.7),
+                      (town_x + 560, town_y + 290, 0.75)]
+        for tx, ty, ts in tree_spots:
+            self.draw_tree(tx, ty, ts)
+
+        # --- Flowers ---
+        flower_spots = [(30, 170, (255, 100, 120)), (60, 480, (255, 200, 80)), (500, 160, (180, 120, 255)),
+                        (540, 470, (255, 130, 80)), (100, 175, (120, 200, 255)), (450, 500, (255, 160, 200))]
+        for fx, fy, fc in flower_spots:
+            self.draw_flower(town_x + fx, town_y + fy, fc)
+
+        # --- Building plots ---
         counts = {}
         for b in self.buildings:
             counts[b] = counts.get(b, 0) + 1
 
-        # Draw each plot
         for name in BUILDING_ORDER:
             px, py = TOWN_PLOTS[name]
             abs_x = town_x + px
             abs_y = town_y + py
 
-            owned = name in counts
-
-            if owned:
+            if name in counts:
                 count = counts[name]
                 inc = BUILDINGS[name][1]
 
-                # Building image
+                # Building image with shadow
                 if name in self.building_images:
                     img = self.building_images[name]
-                    img_x = abs_x + (plot_w - 80) // 2
+                    img_x = abs_x + (plot_w - 90) // 2
                     img_y = abs_y + 5
-                    # Shadow
-                    shadow = pygame.Surface((84, 20), pygame.SRCALPHA)
-                    pygame.draw.ellipse(shadow, (0, 0, 0, 40), (0, 0, 84, 20))
-                    self.screen.blit(shadow, (img_x - 2, img_y + 68))
+                    # Ground shadow ellipse
+                    shadow = pygame.Surface((94, 18), pygame.SRCALPHA)
+                    pygame.draw.ellipse(shadow, (0, 0, 0, 35), (0, 0, 94, 18))
+                    self.screen.blit(shadow, (img_x - 2, img_y + 78))
                     self.screen.blit(img, (img_x, img_y))
 
                 # Count badge
-                badge_x = abs_x + plot_w - 18
-                badge_y = abs_y + 10
-                pygame.draw.circle(self.screen, HEADER_COLOR, (badge_x, badge_y), 15)
-                pygame.draw.circle(self.screen, WHITE, (badge_x, badge_y), 15, 2)
-                self.draw_text(f"x{count}", self.font_xs, WHITE, badge_x, badge_y, center=True)
+                bx, by = abs_x + plot_w - 16, abs_y + 8
+                pygame.draw.circle(self.screen, (0, 0, 0, 30), (bx + 1, by + 1), 14)
+                pygame.draw.circle(self.screen, ACCENT, (bx, by), 14)
+                pygame.draw.circle(self.screen, WHITE, (bx, by), 14, 2)
+                self.draw_text(f"x{count}", self.font_xs, WHITE, bx, by, center=True)
 
                 # Name plate
-                plate_w = len(name) * 8 + 16
-                plate_x = abs_x + plot_w // 2
-                plate_y = abs_y + 95
-                plate_surf = pygame.Surface((plate_w, 22), pygame.SRCALPHA)
-                pygame.draw.rect(plate_surf, (255, 255, 255, 200), (0, 0, plate_w, 22), border_radius=6)
-                self.screen.blit(plate_surf, (plate_x - plate_w // 2, plate_y - 2))
-                self.draw_text(name, self.font_xs, BLACK, plate_x, plate_y + 8, center=True)
+                plate_cx = abs_x + plot_w // 2
+                plate_y = abs_y + 100
+                tw = self.font_xs.size(name)[0] + 14
+                plate_s = pygame.Surface((tw, 20), pygame.SRCALPHA)
+                pygame.draw.rect(plate_s, (255, 255, 255, 210), (0, 0, tw, 20), border_radius=5)
+                self.screen.blit(plate_s, (plate_cx - tw // 2, plate_y))
+                self.draw_text(name, self.font_xs, DARK_GRAY, plate_cx, plate_y + 10, center=True)
 
                 # Income label
-                self.draw_text(f"+{inc * count}/solve", self.font_xs, (255, 255, 255), plate_x, plate_y + 26, center=True)
+                inc_text = f"+{inc * count}/solve"
+                inc_w = self.font_tiny.size(inc_text)[0] + 10
+                inc_s = pygame.Surface((inc_w, 16), pygame.SRCALPHA)
+                pygame.draw.rect(inc_s, (60, 150, 60, 160), (0, 0, inc_w, 16), border_radius=4)
+                self.screen.blit(inc_s, (plate_cx - inc_w // 2, plate_y + 22))
+                self.draw_text(inc_text, self.font_tiny, WHITE, plate_cx, plate_y + 30, center=True)
             else:
-                # Empty plot - fenced area
-                plot_surf = pygame.Surface((plot_w, plot_h - 30), pygame.SRCALPHA)
-                pygame.draw.rect(plot_surf, (0, 0, 0, 25), (0, 0, plot_w, plot_h - 30), border_radius=8)
-                self.screen.blit(plot_surf, (abs_x, abs_y))
-                # Fence posts
-                for fx in range(abs_x + 5, abs_x + plot_w - 5, 20):
-                    pygame.draw.rect(self.screen, DIRT_COLOR, (fx, abs_y + plot_h - 50, 4, 18))
-                # Fence rail
-                pygame.draw.line(self.screen, DIRT_COLOR, (abs_x + 5, abs_y + plot_h - 42), (abs_x + plot_w - 5, abs_y + plot_h - 42), 2)
-                # "For Sale" sign
-                self.draw_text("FOR SALE", self.font_xs, (180, 160, 120), abs_x + plot_w // 2, abs_y + plot_h // 2 - 20, center=True)
+                # Empty plot
+                ps = pygame.Surface((plot_w, plot_h - 40), pygame.SRCALPHA)
+                pygame.draw.rect(ps, (0, 0, 0, 18), (0, 0, plot_w, plot_h - 40), border_radius=10)
+                # Dashed border
+                for side_x in range(0, plot_w, 12):
+                    pygame.draw.rect(ps, (255, 255, 255, 50), (side_x, 0, 6, 2))
+                    pygame.draw.rect(ps, (255, 255, 255, 50), (side_x, plot_h - 42, 6, 2))
+                for side_y in range(0, plot_h - 40, 12):
+                    pygame.draw.rect(ps, (255, 255, 255, 50), (0, side_y, 2, 6))
+                    pygame.draw.rect(ps, (255, 255, 255, 50), (plot_w - 2, side_y, 2, 6))
+                self.screen.blit(ps, (abs_x, abs_y))
+
+                # Sign post
+                sign_cx = abs_x + plot_w // 2
+                sign_y = abs_y + plot_h // 2 - 25
+                pygame.draw.rect(self.screen, FENCE_COLOR, (sign_cx - 2, sign_y + 15, 4, 25))
+                sign_s = pygame.Surface((70, 24), pygame.SRCALPHA)
+                pygame.draw.rect(sign_s, (255, 255, 255, 180), (0, 0, 70, 24), border_radius=4)
+                pygame.draw.rect(sign_s, (*FENCE_COLOR, 200), (0, 0, 70, 24), 1, border_radius=4)
+                self.screen.blit(sign_s, (sign_cx - 35, sign_y - 6))
+                self.draw_text("FOR SALE", self.font_tiny, FENCE_COLOR, sign_cx, sign_y + 5, center=True)
 
         # Town label
-        label_surf = pygame.Surface((120, 26), pygame.SRCALPHA)
-        pygame.draw.rect(label_surf, (255, 255, 255, 180), (0, 0, 120, 26), border_radius=6)
-        self.screen.blit(label_surf, (town_x + 5, town_y + 5))
-        self.draw_text("Your Town", self.font_sm, (60, 100, 40), town_x + 65, town_y + 18, center=True)
+        ls = pygame.Surface((130, 28), pygame.SRCALPHA)
+        pygame.draw.rect(ls, (255, 255, 255, 190), (0, 0, 130, 28), border_radius=8)
+        self.screen.blit(ls, (town_x + 6, town_y + 6))
+        self.draw_text("Your Town", self.font_sm, GRASS_3, town_x + 71, town_y + 20, center=True)
 
+    # --- Leaderboard ---
     def draw_leaderboard(self):
         lx = 635
         lb_w = WIDTH - lx - 15
-        pygame.draw.rect(self.screen, WHITE, (lx, 130, lb_w, HEIGHT - 145), border_radius=10)
-        pygame.draw.rect(self.screen, HEADER_COLOR, (lx, 130, lb_w, 40))
-        pygame.draw.rect(self.screen, WHITE, (lx, 155, lb_w, 20))
-        pygame.draw.rect(self.screen, HEADER_COLOR, (lx, 130, lb_w, 40), border_radius=10)
-        self.draw_text("Leaderboard", self.font_sm, WHITE, lx + lb_w // 2, 140, center=True)
+        lb_h = HEIGHT - 215
 
-        y = 180
+        # Card
+        self.draw_shadow(lx, 200, lb_w, lb_h, radius=14, alpha=20)
+        pygame.draw.rect(self.screen, WHITE, (lx, 200, lb_w, lb_h), border_radius=14)
+
+        # Header
+        self.draw_gradient_rect(lx, 200, lb_w, 42, HEADER_TOP, HEADER_BOT, radius=14)
+        # Fix bottom corners of header (overlap with card body)
+        pygame.draw.rect(self.screen, HEADER_BOT, (lx, 228, lb_w, 14))
+        pygame.draw.rect(self.screen, WHITE, (lx, 236, lb_w, 10))
+        self.draw_text("Leaderboard", self.font_sm, WHITE, lx + lb_w // 2, 214, center=True)
+
+        medal_colors = [GOLD, SILVER, BRONZE]
+        y = 255
         for i, entry in enumerate(self.leaderboard[:6]):
-            medal = ""
-            if i == 0:
-                medal = "1."
-            elif i == 1:
-                medal = "2."
-            elif i == 2:
-                medal = "3."
-            else:
-                medal = f"{i+1}."
-            color = BLACK
             name = entry["name"]
-            if len(name) > 12:
-                name = name[:11] + ".."
-            self.draw_text(f"{medal} {name}", self.font_xs, color, lx + 15, y)
-            self.draw_text(f"{entry['coins']}c", self.font_xs, COIN_COLOR, lx + lb_w - 60, y)
-            y += 30
+            if len(name) > 10:
+                name = name[:9] + ".."
 
+            # Row highlight for top 3
+            if i < 3:
+                row_s = pygame.Surface((lb_w - 20, 28), pygame.SRCALPHA)
+                pygame.draw.rect(row_s, (*medal_colors[i], 25), (0, 0, lb_w - 20, 28), border_radius=6)
+                self.screen.blit(row_s, (lx + 10, y - 4))
+
+            # Medal or number
+            if i < 3:
+                pygame.draw.circle(self.screen, medal_colors[i], (lx + 24, y + 9), 10)
+                self.draw_text(str(i + 1), self.font_tiny, WHITE, lx + 24, y + 9, center=True)
+            else:
+                self.draw_text(f"{i + 1}.", self.font_xs, MID_GRAY, lx + 16, y)
+
+            self.draw_text(name, self.font_xs, DARK_GRAY, lx + 42, y)
+
+            # Coin amount
+            coins_text = f"{entry['coins']:,}"
+            self.draw_coin_icon(lx + lb_w - 55, y + 9, 7)
+            self.draw_text(coins_text, self.font_xs, COIN_DARK, lx + lb_w - 44, y)
+
+            y += 34
+
+    # --- Shop ---
     def draw_shop(self):
-        # Semi-transparent overlay
+        # Overlay
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 120))
+        overlay.fill((0, 0, 0, 140))
         self.screen.blit(overlay, (0, 0))
 
         # Shop panel
-        sx, sy = 100, 60
-        sw, sh = 700, 520
-        pygame.draw.rect(self.screen, (240, 240, 255), (sx, sy, sw, sh), border_radius=12)
-        pygame.draw.rect(self.screen, HEADER_COLOR, (sx, sy, sw, sh), 3, border_radius=12)
+        sw, sh = 720, 560
+        sx = (WIDTH - sw) // 2
+        sy = (HEIGHT - sh) // 2
+        self.draw_shadow(sx, sy, sw, sh, radius=16, offset=8, alpha=40)
+        pygame.draw.rect(self.screen, WHITE, (sx, sy, sw, sh), border_radius=16)
 
-        self.draw_text("Shop", self.font_big, HEADER_COLOR, sx + sw // 2, sy + 30, center=True)
-        self.draw_text(f"Your coins: {self.coins}", self.font_sm, COIN_COLOR, sx + sw // 2, sy + 70, center=True)
+        # Header area
+        self.draw_gradient_rect(sx, sy, sw, 55, HEADER_TOP, HEADER_BOT, radius=16)
+        pygame.draw.rect(self.screen, HEADER_BOT, (sx, sy + 40, sw, 15))
+        pygame.draw.rect(self.screen, WHITE, (sx, sy + 50, sw, 10))
+        self.draw_text("Shop", self.font_med, WHITE, sx + sw // 2, sy + 22, center=True, shadow=True)
 
         # Close button
-        self.shop_close_btn = self.draw_button("X", sx + sw - 50, sy + 10, 35, 35, RED)
+        self.shop_close_btn = self.draw_button("X", sx + sw - 48, sy + 8, 36, 36, RED, RED_HOVER, self.font_sm)
 
-        # Building list
+        # Coin balance
+        self.draw_coin_icon(sx + sw // 2 - 60, sy + 73, 10)
+        self.draw_text(f"{self.coins:,} coins", self.font_sm, COIN_DARK, sx + sw // 2 - 45, sy + 64)
+
+        # Building rows
         self.buy_buttons = []
         y = sy + 100
         for name in BUILDING_ORDER:
             cost, inc = BUILDINGS[name]
             color = BUILDING_COLORS[name]
-
-            # Row background
-            row_surf = pygame.Surface((sw - 40, 70), pygame.SRCALPHA)
-            row_surf.fill((*color, 80))
-            self.screen.blit(row_surf, (sx + 20, y))
-            pygame.draw.rect(self.screen, color, (sx + 20, y, sw - 40, 70), 2, border_radius=8)
-
-            # Building image in shop row
-            if name in self.building_images_small:
-                self.screen.blit(self.building_images_small[name], (sx + 28, y + 8))
-
-            text_x = sx + 95
-            self.draw_text(name, self.font_med, BLACK, text_x, y + 8)
-            self.draw_text(f"Cost: {cost} coins  |  Bonus: +{inc}/solve", self.font_xs, DARK_GRAY, text_x, y + 42)
-
             can_afford = self.coins >= cost
+
+            # Row card
+            row_w = sw - 40
+            row_h = 78
+            row_s = pygame.Surface((row_w, row_h), pygame.SRCALPHA)
+            pygame.draw.rect(row_s, (*color, 35), (0, 0, row_w, row_h), border_radius=10)
+            pygame.draw.rect(row_s, (*color, 120), (0, 0, row_w, row_h), 2, border_radius=10)
+            self.screen.blit(row_s, (sx + 20, y))
+
+            # Building image
+            if name in self.building_images_shop:
+                self.screen.blit(self.building_images_shop[name], (sx + 30, y + 13))
+
+            # Text
+            text_x = sx + 92
+            self.draw_text(name, self.font_med, BLACK, text_x, y + 10)
+            self.draw_coin_icon(text_x, y + 50, 7)
+            self.draw_text(f"{cost}", self.font_xs, COIN_DARK, text_x + 12, y + 42)
+            self.draw_text(f"  +{inc}/solve", self.font_xs, (60, 140, 60), text_x + 12 + len(str(cost)) * 9, y + 42)
+
+            # Buy button
             btn_color = GREEN if can_afford else LIGHT_GRAY
-            btn = self.draw_button("Buy" if can_afford else "---", sx + sw - 130, y + 15, 90, 40, btn_color)
+            btn_hover = GREEN_HOVER if can_afford else LIGHT_GRAY
+            btn_text = "Buy" if can_afford else "---"
+            btn = self.draw_button(btn_text, sx + sw - 130, y + 19, 95, 40, btn_color, btn_hover)
             self.buy_buttons.append((btn, name, can_afford))
 
-            y += 80
+            y += 86
 
     def handle_game_events(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -476,7 +674,6 @@ class Client:
                     self.buy_buttons = []
                 elif self.submit_btn.collidepoint(event.pos):
                     self.submit_answer()
-
         elif event.type == pygame.KEYDOWN and not self.shop_open:
             if event.key == pygame.K_RETURN:
                 self.submit_answer()
@@ -490,7 +687,6 @@ class Client:
                 if char and (char.isdigit() or char == "-"):
                     if len(self.answer_text) < 10:
                         self.answer_text += char
-
         elif event.type == pygame.KEYDOWN and self.shop_open:
             if event.key == pygame.K_ESCAPE:
                 self.shop_open = False
@@ -506,7 +702,6 @@ class Client:
 
     # --- Main loop ---
     def run(self):
-        # Pre-initialize rects to avoid AttributeError before first draw
         self.name_rect = pygame.Rect(0, 0, 0, 0)
         self.ip_rect = pygame.Rect(0, 0, 0, 0)
         self.connect_btn = pygame.Rect(0, 0, 0, 0)
@@ -536,6 +731,7 @@ class Client:
 
             pygame.display.flip()
             self.clock.tick(FPS)
+            self.tick += 1
 
         if self.sock:
             self.sock.close()
