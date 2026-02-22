@@ -8,7 +8,7 @@ export class MathPanel {
 
     const panelX = 15;
     const panelY = 55;
-    const panelW = WIDTH - 30;
+    const panelW = 605;  // stop before scratch pad at x=635
     const panelH = 135;
 
     // Panel background

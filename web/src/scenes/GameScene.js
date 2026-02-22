@@ -5,6 +5,7 @@ import { HUD } from '../ui/HUD.js';
 import { MathPanel } from '../ui/MathPanel.js';
 import { ShopOverlay } from '../ui/ShopOverlay.js';
 import { Leaderboard } from '../ui/Leaderboard.js';
+import { ScratchPad } from '../ui/ScratchPad.js';
 import { TownRenderer } from '../town/TownRenderer.js';
 import { PlayerCharacter } from '../town/PlayerCharacter.js';
 
@@ -62,6 +63,7 @@ export class GameScene extends Phaser.Scene {
     this.hud = new HUD(this);
     this.mathPanel = new MathPanel(this);
     this.leaderboard = new Leaderboard(this);
+    this.scratchPad = new ScratchPad(this);
     this.shopOverlay = new ShopOverlay(this);
 
     // Main camera stays fixed at origin for UI
