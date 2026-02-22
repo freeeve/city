@@ -256,6 +256,12 @@ class Client:
         self.player_moving = False
         self.player_speed = 3
 
+        # Viewer player state (when viewing another player's city)
+        self.view_player_x = 80.0
+        self.view_player_y = 140.0
+        self.view_player_dir = 'right'
+        self.view_player_moving = False
+
         self.running = True
 
     # --- Networking ---
@@ -318,6 +324,10 @@ class Client:
             }
             self.view_scroll_x = 0
             self.view_scroll_y = 0
+            self.view_player_x = 80.0
+            self.view_player_y = 140.0
+            self.view_player_dir = 'right'
+            self.view_player_moving = False
         elif msg["type"] == "error":
             self.connect_error = msg.get("message", "Error")
 
@@ -1373,7 +1383,7 @@ class Client:
             self._update_pedestrian_anims()
 
         # --- Player movement (continuous key polling) ---
-        if not self.shop_open and not self.viewing_city and not self.scratch_focused:
+        if not self.shop_open and not self.scratch_focused:
             keys = pygame.key.get_pressed()
             dx = dy = 0
             if keys[pygame.K_LEFT] or keys[pygame.K_a]:
@@ -2973,6 +2983,10 @@ class Client:
         save_car_count = self.car_anim_count
         save_ped_anims = self.pedestrian_anims
         save_ped_count = self.pedestrian_count
+        save_player_x = self.player_x
+        save_player_y = self.player_y
+        save_player_dir = self.player_dir
+        save_player_moving = self.player_moving
 
         self.buildings = self.viewing_city["buildings"]
         self.cars = self.viewing_city["cars"]
@@ -2984,12 +2998,20 @@ class Client:
         self.car_anim_count = len(self.cars)
         self.pedestrian_anims = []
         self.pedestrian_count = min(self.population, 50)
+        self.player_x = self.view_player_x
+        self.player_y = self.view_player_y
+        self.player_dir = self.view_player_dir
+        self.player_moving = self.view_player_moving
 
         self.draw_town()
 
-        # Capture clamped scroll values back
+        # Capture updated values back
         self.view_scroll_x = self.town_scroll_x
         self.view_scroll_y = self.town_scroll_y
+        self.view_player_x = self.player_x
+        self.view_player_y = self.player_y
+        self.view_player_dir = self.player_dir
+        self.view_player_moving = self.player_moving
 
         # Restore
         self.buildings = save_buildings
@@ -3001,6 +3023,10 @@ class Client:
         self.car_anim_count = save_car_count
         self.pedestrian_anims = save_ped_anims
         self.pedestrian_count = save_ped_count
+        self.player_x = save_player_x
+        self.player_y = save_player_y
+        self.player_dir = save_player_dir
+        self.player_moving = save_player_moving
 
         # "View only" label
         self.draw_text("View Only", self.font_xs, (180, 210, 255), WIDTH // 2, 45, center=True)
