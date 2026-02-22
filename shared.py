@@ -34,6 +34,20 @@ BUILDINGS = {
     "Moon Colony": (50000, 3500),
     "Galactic Hub": (75000, 5000),
     "Dyson Sphere": (100000, 7500),
+    "Quantum Computer": (250000, 15000),
+    "Terraformer": (500000, 25000),
+    "Star Forge": (1000000, 50000),
+    "Antimatter Plant": (2500000, 100000),
+    "Warp Gate": (5000000, 200000),
+    "Planet Engine": (10000000, 400000),
+    "Galaxy Brain": (25000000, 800000),
+    "Universe Simulator": (50000000, 1500000),
+    "Multiverse Portal": (100000000, 3000000),
+    "Reality Engine": (250000000, 6000000),
+    "Cosmic Citadel": (500000000, 10000000),
+    "Infinity Tower": (1000000000, 20000000),
+    "Omega Station": (2500000000, 50000000),
+    "Big Bang Lab": (5000000000, 100000000),
 }
 
 BUILDING_ORDER = [
@@ -45,6 +59,10 @@ BUILDING_ORDER = [
     "Underwater Base", "Sky Castle", "Robot Factory", "Volcano Lair",
     "Crystal Palace", "Time Machine", "Dragon Tower", "Moon Colony",
     "Galactic Hub", "Dyson Sphere",
+    "Quantum Computer", "Terraformer", "Star Forge", "Antimatter Plant",
+    "Warp Gate", "Planet Engine", "Galaxy Brain", "Universe Simulator",
+    "Multiverse Portal", "Reality Engine", "Cosmic Citadel", "Infinity Tower",
+    "Omega Station", "Big Bang Lab",
 ]
 
 # Colors for each building (R, G, B)
@@ -79,6 +97,20 @@ BUILDING_COLORS = {
     "Moon Colony": (210, 210, 200),
     "Galactic Hub": (80, 60, 140),
     "Dyson Sphere": (255, 200, 50),
+    "Quantum Computer": (0, 200, 220),
+    "Terraformer": (60, 180, 100),
+    "Star Forge": (255, 120, 30),
+    "Antimatter Plant": (180, 0, 200),
+    "Warp Gate": (100, 80, 255),
+    "Planet Engine": (200, 100, 60),
+    "Galaxy Brain": (255, 100, 200),
+    "Universe Simulator": (30, 30, 80),
+    "Multiverse Portal": (200, 50, 255),
+    "Reality Engine": (255, 255, 200),
+    "Cosmic Citadel": (80, 50, 120),
+    "Infinity Tower": (255, 220, 100),
+    "Omega Station": (150, 220, 255),
+    "Big Bang Lab": (255, 60, 60),
 }
 
 # Car definitions: name -> (cost, population_boost, color)
@@ -91,9 +123,18 @@ CARS = {
     "Sports Car": (600, 15, (220, 40, 40)),
     "Fire Truck": (1000, 25, (200, 30, 30)),
     "Ice Cream Van": (1500, 30, (255, 200, 220)),
+    "Helicopter": (5000, 50, (40, 120, 180)),
+    "Yacht": (15000, 80, (240, 240, 255)),
+    "Jet": (50000, 150, (200, 200, 210)),
+    "Submarine": (150000, 250, (60, 100, 140)),
+    "Rocket": (500000, 500, (220, 80, 60)),
+    "UFO": (2000000, 1000, (140, 255, 140)),
+    "Teleporter": (10000000, 2500, (180, 100, 255)),
+    "Time Ship": (50000000, 5000, (100, 200, 255)),
 }
 
-CAR_ORDER = ["Bicycle", "Scooter", "Sedan", "Taxi", "Bus", "Sports Car", "Fire Truck", "Ice Cream Van"]
+CAR_ORDER = ["Bicycle", "Scooter", "Sedan", "Taxi", "Bus", "Sports Car", "Fire Truck", "Ice Cream Van",
+             "Helicopter", "Yacht", "Jet", "Submarine", "Rocket", "UFO", "Teleporter", "Time Ship"]
 
 # Population contributed by each building type
 BUILDING_POPULATION = {
@@ -127,6 +168,20 @@ BUILDING_POPULATION = {
     "Moon Colony": 2500,
     "Galactic Hub": 3500,
     "Dyson Sphere": 5000,
+    "Quantum Computer": 8000,
+    "Terraformer": 12000,
+    "Star Forge": 20000,
+    "Antimatter Plant": 35000,
+    "Warp Gate": 50000,
+    "Planet Engine": 80000,
+    "Galaxy Brain": 120000,
+    "Universe Simulator": 200000,
+    "Multiverse Portal": 350000,
+    "Reality Engine": 500000,
+    "Cosmic Citadel": 750000,
+    "Infinity Tower": 1000000,
+    "Omega Station": 2000000,
+    "Big Bang Lab": 5000000,
 }
 
 # Minimum population required to unlock certain buildings/cars
@@ -155,10 +210,32 @@ UNLOCK_REQUIREMENTS = {
     "Moon Colony": 6000,
     "Galactic Hub": 8000,
     "Dyson Sphere": 10000,
+    "Quantum Computer": 12000,
+    "Terraformer": 18000,
+    "Star Forge": 25000,
+    "Antimatter Plant": 40000,
+    "Warp Gate": 60000,
+    "Planet Engine": 100000,
+    "Galaxy Brain": 150000,
+    "Universe Simulator": 250000,
+    "Multiverse Portal": 400000,
+    "Reality Engine": 600000,
+    "Cosmic Citadel": 900000,
+    "Infinity Tower": 1500000,
+    "Omega Station": 3000000,
+    "Big Bang Lab": 5000000,
     "Bus": 50,
     "Sports Car": 100,
     "Fire Truck": 250,
     "Ice Cream Van": 400,
+    "Helicopter": 800,
+    "Yacht": 2000,
+    "Jet": 5000,
+    "Submarine": 10000,
+    "Rocket": 25000,
+    "UFO": 60000,
+    "Teleporter": 200000,
+    "Time Ship": 500000,
 }
 
 PORT = 5555

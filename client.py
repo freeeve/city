@@ -34,6 +34,8 @@ INPUT_BORDER = (180, 190, 210)
 INPUT_ACTIVE = (55, 120, 200)
 PURPLE = (140, 80, 220)
 PURPLE_HOVER = (120, 60, 190)
+GOLD_BTN = (220, 180, 40)
+GOLD_BTN_HOVER = (190, 155, 30)
 
 # Town colors
 GRASS_1 = (105, 185, 75)
@@ -187,6 +189,8 @@ class Client:
         self.leaderboard = []
         self.last_result = ""
         self.result_timer = 0
+        self.rebirths = 0
+        self.rebirth_btn = pygame.Rect(0, 0, 0, 0)
 
         # Car animation state
         self.car_anims = []
@@ -199,6 +203,13 @@ class Client:
         # Screens
         self.screen_state = "connect"
         self.shop_open = False
+
+        # City viewing
+        self.viewing_city = None  # dict with player_name, buildings, cars, etc.
+        self.leaderboard_name_rects = []  # (rect, player_name) pairs
+        self.view_scroll_x = 0
+        self.view_scroll_y = 0
+        self.view_close_btn = pygame.Rect(0, 0, 0, 0)
 
         # Connect screen fields
         self.ip_text = "localhost"
@@ -278,9 +289,21 @@ class Client:
             self.problem_text = msg["problem"]["text"]
             self.income = msg["income"]
             self.leaderboard = msg["leaderboard"]
+            self.rebirths = msg.get("rebirths", 0)
         elif msg["type"] == "result":
             self.last_result = msg["result"]
             self.result_timer = FPS * 2
+        elif msg["type"] == "city_view":
+            self.viewing_city = {
+                "player_name": msg["player_name"],
+                "coins": msg["coins"],
+                "buildings": msg["buildings"],
+                "cars": msg.get("cars", []),
+                "population": msg.get("population", 0),
+                "pop_bonus": msg.get("pop_bonus", 1.0),
+            }
+            self.view_scroll_x = 0
+            self.view_scroll_y = 0
         elif msg["type"] == "error":
             self.connect_error = msg.get("message", "Error")
 
@@ -773,6 +796,10 @@ class Client:
         self.draw_text(f"{self.coins:,}", self.font_med, WHITE, WIDTH - 240, 12, shadow=True)
         self.draw_text("coins", self.font_tiny, (180, 210, 255), WIDTH - 240, 40)
 
+        if self.rebirths > 0:
+            star_x = WIDTH - 265 - 60
+            self.draw_text(f"\u2605 {self.rebirths}", self.font_sm, COIN_GOLD, star_x, 18, shadow=True)
+
         if self.income > 0:
             bonus_text = f"+{self.income} bonus/solve"
             if self.pop_bonus > 1.0:
@@ -794,6 +821,12 @@ class Client:
         # Answer input and submit
         self.answer_rect = self.draw_input(self.answer_text, prob_x + 20, prob_y + 72, 320, 38, True)
         self.submit_btn = self.draw_button("Submit", prob_x + 355, prob_y + 72, 110, 38, GREEN, GREEN_HOVER)
+
+        # Rebirth button (only when >= 1M coins)
+        if self.coins >= 1_000_000:
+            self.rebirth_btn = self.draw_button("Rebirth \u2605", prob_x + 475, prob_y + 72, 120, 38, GOLD_BTN, GOLD_BTN_HOVER)
+        else:
+            self.rebirth_btn = pygame.Rect(0, 0, 0, 0)
 
         # Result feedback
         if self.result_timer > 0:
@@ -823,6 +856,10 @@ class Client:
         # --- Shop overlay ---
         if self.shop_open:
             self.draw_shop()
+
+        # --- City view overlay ---
+        if self.viewing_city:
+            self.draw_city_view()
 
     # --- Town ---
     def draw_street_lamp(self, x, y):
@@ -2097,9 +2134,11 @@ class Client:
         self.draw_text("Leaderboard", self.font_sm, WHITE, lx + lb_w // 2, lb_top + 14, center=True)
 
         medal_colors = [GOLD, SILVER, BRONZE]
+        self.leaderboard_name_rects = []
         y = lb_top + 55
         for i, entry in enumerate(self.leaderboard[:6]):
             name = entry["name"]
+            full_name = entry["name"]
             if len(name) > 10:
                 name = name[:9] + ".."
 
@@ -2116,7 +2155,18 @@ class Client:
             else:
                 self.draw_text(f"{i + 1}.", self.font_xs, MID_GRAY, lx + 16, y)
 
-            self.draw_text(name, self.font_xs, DARK_GRAY, lx + 42, y)
+            # Clickable row - full row is the click target for other players
+            row_rect = pygame.Rect(lx + 10, y - 4, lb_w - 20, 28)
+            mx, my = pygame.mouse.get_pos()
+            if row_rect.collidepoint(mx, my) and full_name != self.name_text:
+                self.draw_text(name, self.font_xs, ACCENT, lx + 42, y)
+                # Underline the name
+                name_w = self.font_xs.size(name)[0]
+                pygame.draw.line(self.screen, ACCENT, (lx + 42, y + 18), (lx + 42 + name_w, y + 18), 1)
+            else:
+                self.draw_text(name, self.font_xs, DARK_GRAY, lx + 42, y)
+            if full_name != self.name_text:
+                self.leaderboard_name_rects.append((row_rect, full_name))
 
             # Coin amount
             coins_text = f"{entry['coins']:,}"
@@ -2124,6 +2174,82 @@ class Client:
             self.draw_text(coins_text, self.font_xs, COIN_DARK, lx + lb_w - 44, y)
 
             y += 34
+
+    # --- City View ---
+    def draw_city_view(self):
+        if not self.viewing_city:
+            return
+
+        # Dark overlay
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 140))
+        self.screen.blit(overlay, (0, 0))
+
+        # Header bar
+        self.draw_gradient_rect(0, 0, WIDTH, 60, HEADER_TOP, HEADER_BOT)
+        pygame.draw.line(self.screen, (35, 80, 150), (0, 60), (WIDTH, 60), 2)
+
+        pname = self.viewing_city["player_name"]
+        self.draw_text(f"{pname}'s City", self.font_med, WHITE, WIDTH // 2, 18, center=True, shadow=True)
+
+        # Population display
+        view_pop = self.viewing_city["population"]
+        view_bonus = self.viewing_city["pop_bonus"]
+        self.draw_person_icon(18, 22, 10)
+        self.draw_text(f"{view_pop}", self.font_sm, WHITE, 33, 15)
+        self.draw_text("pop", self.font_tiny, (180, 210, 255), 33, 36)
+        if view_bonus > 1.0:
+            self.draw_text(f"x{view_bonus:.1f}", self.font_tiny, (170, 255, 170), 73, 36)
+
+        # Coin display
+        self.draw_coin_icon(WIDTH - 200, 22, 14)
+        self.draw_text(f"{self.viewing_city['coins']:,}", self.font_med, WHITE, WIDTH - 180, 12, shadow=True)
+        self.draw_text("coins", self.font_tiny, (180, 210, 255), WIDTH - 180, 40)
+
+        # Close button — prominent "Back" button
+        self.view_close_btn = self.draw_button("Back", WIDTH - 110, 12, 95, 36, RED, RED_HOVER, self.font_sm)
+
+        # Swap state to render viewed city's town
+        save_buildings = self.buildings
+        save_cars = self.cars
+        save_population = self.population
+        save_scroll_x = self.town_scroll_x
+        save_scroll_y = self.town_scroll_y
+        save_car_anims = self.car_anims
+        save_car_count = self.car_anim_count
+        save_ped_anims = self.pedestrian_anims
+        save_ped_count = self.pedestrian_count
+
+        self.buildings = self.viewing_city["buildings"]
+        self.cars = self.viewing_city["cars"]
+        self.population = self.viewing_city["population"]
+        self.town_scroll_x = self.view_scroll_x
+        self.town_scroll_y = self.view_scroll_y
+        # Use empty anims to avoid reinit thrash — set count to match so no reinit
+        self.car_anims = []
+        self.car_anim_count = len(self.cars)
+        self.pedestrian_anims = []
+        self.pedestrian_count = min(self.population, 50)
+
+        self.draw_town()
+
+        # Capture clamped scroll values back
+        self.view_scroll_x = self.town_scroll_x
+        self.view_scroll_y = self.town_scroll_y
+
+        # Restore
+        self.buildings = save_buildings
+        self.cars = save_cars
+        self.population = save_population
+        self.town_scroll_x = save_scroll_x
+        self.town_scroll_y = save_scroll_y
+        self.car_anims = save_car_anims
+        self.car_anim_count = save_car_count
+        self.pedestrian_anims = save_ped_anims
+        self.pedestrian_count = save_ped_count
+
+        # "View only" label
+        self.draw_text("View Only", self.font_xs, (180, 210, 255), WIDTH // 2, 45, center=True)
 
     # --- Shop ---
     def draw_shop(self):
@@ -2309,7 +2435,15 @@ class Client:
 
     def handle_game_events(self, event):
         if event.type == pygame.MOUSEWHEEL:
-            if self.shop_open:
+            if self.viewing_city:
+                mods = pygame.key.get_mods()
+                if mods & pygame.KMOD_SHIFT:
+                    self.view_scroll_x -= event.y * 30
+                else:
+                    self.view_scroll_y -= event.y * 30
+                    if event.x != 0:
+                        self.view_scroll_x -= event.x * 30
+            elif self.shop_open:
                 self.shop_scroll -= event.y * 30
             elif self.scratch_rect.w > 0 and self.scratch_rect.collidepoint(pygame.mouse.get_pos()):
                 scroll_amt = event.x * 30 if event.x != 0 else -event.y * 30
@@ -2322,41 +2456,84 @@ class Client:
                     self.town_scroll_y -= event.y * 30
                     if event.x != 0:
                         self.town_scroll_x -= event.x * 30
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            if self.shop_open:
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button in (4, 5):
+            # Legacy scroll events from trackpad — treat as scroll, not click
+            scroll_dir = 1 if event.button == 4 else -1
+            if self.viewing_city:
+                self.view_scroll_y -= scroll_dir * 30
+            elif self.shop_open:
+                self.shop_scroll -= scroll_dir * 30
+            elif self.scratch_rect.w > 0 and self.scratch_rect.collidepoint(event.pos):
+                self.scratch_scroll_x -= scroll_dir * 30
+            else:
+                self.town_scroll_y -= scroll_dir * 30
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.viewing_city:
+                town_rect = pygame.Rect(15, 200, 605, HEIGHT - 215)
+                if self.view_close_btn.collidepoint(event.pos):
+                    self.viewing_city = None
+                elif town_rect.collidepoint(event.pos):
+                    # Drag panning in viewed city
+                    self.town_dragging = True
+                    self.drag_start = event.pos
+                    self.drag_scroll_start = (self.view_scroll_x, self.view_scroll_y)
+                else:
+                    # Click outside town area closes the view
+                    self.viewing_city = None
+            elif self.shop_open:
                 if self.shop_close_btn.collidepoint(event.pos):
                     self.shop_open = False
+                    return
                 for btn, name, can_afford in self.buy_buttons:
                     if btn.collidepoint(event.pos) and can_afford:
                         self.send({"type": "buy", "building": name, "name": name})
+                        break
             else:
-                if self.shop_btn.collidepoint(event.pos):
-                    self.shop_open = True
-                    self.shop_scroll = 0
-                    self.buy_buttons = []
-                elif self.scratch_clear_btn.collidepoint(event.pos):
-                    if self.scratch_surface:
-                        self.scratch_surface.fill((245, 245, 240))
-                        self.scratch_scroll_x = 0
-                elif self.submit_btn.collidepoint(event.pos):
-                    self.submit_answer()
-                elif event.button == 1 and self.scratch_rect.collidepoint(event.pos):
-                    self.scratch_drawing = True
-                    self.scratch_last_pos = (event.pos[0] - self.scratch_rect.x + self.scratch_scroll_x,
-                                             event.pos[1] - self.scratch_rect.y)
-                elif event.button == 1:
-                    # Start drag panning in town area
-                    town_rect = pygame.Rect(15, 200, 605, HEIGHT - 215)
-                    if town_rect.collidepoint(event.pos):
-                        self.town_dragging = True
-                        self.drag_start = event.pos
-                        self.drag_scroll_start = (self.town_scroll_x, self.town_scroll_y)
+                # Check leaderboard name clicks
+                clicked_lb = False
+                for rect, pname in self.leaderboard_name_rects:
+                    if rect.collidepoint(event.pos):
+                        self.send({"type": "view_city", "player_name": pname})
+                        clicked_lb = True
+                        break
+                if not clicked_lb:
+                    if self.shop_btn.collidepoint(event.pos):
+                        self.shop_open = True
+                        self.shop_scroll = 0
+                        self.buy_buttons = []
+                    elif self.scratch_clear_btn.collidepoint(event.pos):
+                        if self.scratch_surface:
+                            self.scratch_surface.fill((245, 245, 240))
+                            self.scratch_scroll_x = 0
+                    elif self.rebirth_btn.collidepoint(event.pos) and self.coins >= 1_000_000:
+                        self.send({"type": "rebirth"})
+                    elif self.submit_btn.collidepoint(event.pos):
+                        self.submit_answer()
+                    elif self.scratch_rect.collidepoint(event.pos):
+                        self.scratch_drawing = True
+                        self.scratch_last_pos = (event.pos[0] - self.scratch_rect.x + self.scratch_scroll_x,
+                                                 event.pos[1] - self.scratch_rect.y)
+                    else:
+                        # Start drag panning in town area
+                        town_rect = pygame.Rect(15, 200, 605, HEIGHT - 215)
+                        if town_rect.collidepoint(event.pos):
+                            self.town_dragging = True
+                            self.drag_start = event.pos
+                            self.drag_scroll_start = (self.town_scroll_x, self.town_scroll_y)
         elif event.type == pygame.MOUSEBUTTONUP:
-            self.town_dragging = False
-            self.scratch_drawing = False
-            self.scratch_last_pos = None
+            if self.viewing_city and self.town_dragging:
+                self.town_dragging = False
+            else:
+                self.town_dragging = False
+                self.scratch_drawing = False
+                self.scratch_last_pos = None
         elif event.type == pygame.MOUSEMOTION:
-            if self.scratch_drawing and self.scratch_surface and not self.shop_open:
+            if self.viewing_city and self.town_dragging:
+                dx = self.drag_start[0] - event.pos[0]
+                dy = self.drag_start[1] - event.pos[1]
+                self.view_scroll_x = self.drag_scroll_start[0] + dx
+                self.view_scroll_y = self.drag_scroll_start[1] + dy
+            elif self.scratch_drawing and self.scratch_surface and not self.shop_open:
                 if self.scratch_rect.collidepoint(event.pos):
                     cur = (event.pos[0] - self.scratch_rect.x + self.scratch_scroll_x,
                            event.pos[1] - self.scratch_rect.y)
@@ -2371,6 +2548,9 @@ class Client:
                 dy = self.drag_start[1] - event.pos[1]
                 self.town_scroll_x = self.drag_scroll_start[0] + dx
                 self.town_scroll_y = self.drag_scroll_start[1] + dy
+        elif event.type == pygame.KEYDOWN and self.viewing_city:
+            if event.key == pygame.K_ESCAPE:
+                self.viewing_city = None
         elif event.type == pygame.KEYDOWN and not self.shop_open:
             if event.key == pygame.K_RETURN:
                 self.submit_answer()

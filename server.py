@@ -17,6 +17,7 @@ class Player:
         self.coins = 0
         self.buildings = []  # list of building names owned
         self.cars = []  # list of car names owned
+        self.rebirths = 0
         self.grade = 3
         self.problem = generate_problem()
 
@@ -49,6 +50,7 @@ class GameServer:
                 "buildings": p.buildings[:],
                 "cars": p.cars[:],
                 "grade": p.grade,
+                "rebirths": p.rebirths,
             }
         try:
             tmp = SAVE_FILE + ".tmp"
@@ -65,6 +67,7 @@ class GameServer:
             player.coins = data.get("coins", 0)
             player.buildings = data.get("buildings", [])
             player.cars = data.get("cars", [])
+            player.rebirths = data.get("rebirths", 0)
             saved_grade = data.get("grade", None)
             if saved_grade is not None:
                 player.grade = saved_grade
@@ -92,7 +95,7 @@ class GameServer:
 
     def get_pop_multiplier(self, player):
         pop = self.get_population(player)
-        return 1.0 + (pop // 100) * 0.1
+        return 1.0 + (pop // 100) * 0.1 + player.rebirths * 0.5
 
     def get_income(self, player):
         total = 0
@@ -113,6 +116,7 @@ class GameServer:
             "population": pop,
             "pop_bonus": pop_mult,
             "leaderboard": self.get_leaderboard(),
+            "rebirths": player.rebirths,
         }
 
     def send_to(self, player, msg):
@@ -178,6 +182,53 @@ class GameServer:
                                 "reward": reward,
                             })
                             self._save()
+                        self.broadcast_states()
+
+                    elif msg["type"] == "view_city" and player:
+                        with self.lock:
+                            target_name = msg.get("player_name", "")
+                            target_data = None
+                            # Check live players first
+                            for p in self.players.values():
+                                if p.name == target_name:
+                                    target_data = {
+                                        "coins": p.coins,
+                                        "buildings": p.buildings[:],
+                                        "cars": p.cars[:],
+                                        "population": self.get_population(p),
+                                        "pop_bonus": self.get_pop_multiplier(p),
+                                    }
+                                    break
+                            # Fall back to saved data
+                            if target_data is None and target_name in self.saved_data:
+                                sd = self.saved_data[target_name]
+                                buildings = sd.get("buildings", [])
+                                cars = sd.get("cars", [])
+                                pop = sum(BUILDING_POPULATION.get(b, 0) for b in buildings)
+                                pop += sum(CARS[c][1] for c in cars if c in CARS)
+                                pop_bonus = 1.0 + (pop // 100) * 0.1
+                                target_data = {
+                                    "coins": sd.get("coins", 0),
+                                    "buildings": buildings,
+                                    "cars": cars,
+                                    "population": pop,
+                                    "pop_bonus": pop_bonus,
+                                }
+                            if target_data:
+                                self.send_to(player, {
+                                    "type": "city_view",
+                                    "player_name": target_name,
+                                    **target_data,
+                                })
+
+                    elif msg["type"] == "rebirth" and player:
+                        with self.lock:
+                            if player.coins >= 1_000_000:
+                                player.coins = 0
+                                player.buildings = []
+                                player.cars = []
+                                player.rebirths += 1
+                                self._save()
                         self.broadcast_states()
 
                     elif msg["type"] == "buy" and player:
