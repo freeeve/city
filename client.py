@@ -8,7 +8,7 @@ import os
 from shared import BUILDINGS, BUILDING_ORDER, BUILDING_COLORS, PORT
 
 # --- Constants ---
-WIDTH, HEIGHT = 900, 650
+WIDTH, HEIGHT = 1000, 750
 FPS = 30
 
 # Colors
@@ -25,6 +25,20 @@ SHOP_BG = (240, 240, 255, 230)
 INPUT_BG = (255, 255, 255)
 BUTTON_COLOR = (80, 160, 240)
 BUTTON_HOVER = (60, 130, 200)
+GRASS_COLOR = (120, 190, 80)
+GRASS_DARK = (100, 170, 60)
+ROAD_COLOR = (160, 155, 145)
+ROAD_LINE = (220, 210, 190)
+DIRT_COLOR = (180, 160, 120)
+
+# Town layout: fixed plot positions for each building (x, y) within the town area
+TOWN_PLOTS = {
+    "Lemonade Stand": (30, 30),
+    "Cookie Shop": (175, 30),
+    "Toy Store": (320, 30),
+    "Arcade": (100, 190),
+    "Theme Park": (270, 190),
+}
 
 
 class Client:
@@ -250,8 +264,8 @@ class Client:
             self.draw_text(f"+{self.income} bonus/solve", self.font_xs, (200, 255, 200), WIDTH - 250, 48)
 
         # --- Math problem area ---
-        pygame.draw.rect(self.screen, WHITE, (20, 75, 580, 120), border_radius=10)
-        pygame.draw.rect(self.screen, HEADER_COLOR, (20, 75, 580, 120), 3, border_radius=10)
+        pygame.draw.rect(self.screen, WHITE, (20, 75, 600, 120), border_radius=10)
+        pygame.draw.rect(self.screen, HEADER_COLOR, (20, 75, 600, 120), 3, border_radius=10)
         self.draw_text("Solve:", self.font_sm, DARK_GRAY, 40, 85)
         self.draw_text(self.problem_text, self.font_big, BLACK, 310, 105, center=True)
 
@@ -269,9 +283,8 @@ class Client:
                 self.draw_text("Wrong!", self.font_sm, RED, 480, 152)
             self.result_timer -= 1
 
-        # --- Buildings area ---
-        self.draw_text("Your Buildings:", self.font_sm, BLACK, 20, 210)
-        self.draw_buildings()
+        # --- Town area ---
+        self.draw_town()
 
         # --- Shop button ---
         self.shop_btn = self.draw_button("Shop", WIDTH - 130, 75, 110, 40, (200, 100, 255))
@@ -283,60 +296,106 @@ class Client:
         if self.shop_open:
             self.draw_shop()
 
-    def draw_buildings(self):
-        if not self.buildings:
-            self.draw_text("No buildings yet - visit the Shop!", self.font_xs, DARK_GRAY, 30, 245)
-            return
+    def draw_town(self):
+        town_x, town_y = 15, 205
+        town_w, town_h = 600, 530
+        plot_w, plot_h = 130, 150
+
+        # Grass background
+        pygame.draw.rect(self.screen, GRASS_COLOR, (town_x, town_y, town_w, town_h), border_radius=12)
+        # Grass texture stripes
+        for gy in range(town_y + 10, town_y + town_h - 5, 18):
+            pygame.draw.line(self.screen, GRASS_DARK, (town_x + 8, gy), (town_x + town_w - 8, gy), 1)
+
+        # Horizontal road
+        road_y = town_y + 160
+        pygame.draw.rect(self.screen, ROAD_COLOR, (town_x, road_y, town_w, 30))
+        # Road dashes
+        for rx in range(town_x + 15, town_x + town_w - 15, 40):
+            pygame.draw.rect(self.screen, ROAD_LINE, (rx, road_y + 13, 20, 4))
+
+        # Vertical road
+        road_x = town_x + 150
+        pygame.draw.rect(self.screen, ROAD_COLOR, (road_x, town_y, 30, town_h))
+        for ry in range(town_y + 15, town_y + town_h - 15, 40):
+            pygame.draw.rect(self.screen, ROAD_LINE, (road_x + 13, ry, 4, 20))
+
+        # Intersection patch
+        pygame.draw.rect(self.screen, ROAD_COLOR, (road_x, road_y, 30, 30))
 
         # Count buildings
         counts = {}
         for b in self.buildings:
             counts[b] = counts.get(b, 0) + 1
 
-        x, y = 30, 240
+        # Draw each plot
         for name in BUILDING_ORDER:
-            if name not in counts:
-                continue
-            count = counts[name]
-            color = BUILDING_COLORS[name]
-            cost, inc = BUILDINGS[name]
+            px, py = TOWN_PLOTS[name]
+            abs_x = town_x + px
+            abs_y = town_y + py
 
-            # Building card with image
-            card_w, card_h = 110, 140
-            # Card background
-            card_surf = pygame.Surface((card_w, card_h), pygame.SRCALPHA)
-            pygame.draw.rect(card_surf, (*color, 60), (0, 0, card_w, card_h), border_radius=10)
-            pygame.draw.rect(card_surf, color, (0, 0, card_w, card_h), 2, border_radius=10)
-            self.screen.blit(card_surf, (x, y))
+            owned = name in counts
 
-            # Building image
-            if name in self.building_images:
-                img = self.building_images[name]
-                self.screen.blit(img, (x + (card_w - 80) // 2, y + 5))
+            if owned:
+                count = counts[name]
+                inc = BUILDINGS[name][1]
 
-            # Count badge
-            badge_x, badge_y = x + card_w - 24, y + 4
-            pygame.draw.circle(self.screen, HEADER_COLOR, (badge_x, badge_y), 14)
-            self.draw_text(f"x{count}", self.font_xs, WHITE, badge_x, badge_y, center=True)
+                # Building image
+                if name in self.building_images:
+                    img = self.building_images[name]
+                    img_x = abs_x + (plot_w - 80) // 2
+                    img_y = abs_y + 5
+                    # Shadow
+                    shadow = pygame.Surface((84, 20), pygame.SRCALPHA)
+                    pygame.draw.ellipse(shadow, (0, 0, 0, 40), (0, 0, 84, 20))
+                    self.screen.blit(shadow, (img_x - 2, img_y + 68))
+                    self.screen.blit(img, (img_x, img_y))
 
-            # Label and income
-            self.draw_text(name, self.font_xs, BLACK, x + card_w // 2, y + 92, center=True)
-            self.draw_text(f"+{inc * count}/solve", self.font_xs, (0, 100, 0), x + card_w // 2, y + 112, center=True)
+                # Count badge
+                badge_x = abs_x + plot_w - 18
+                badge_y = abs_y + 10
+                pygame.draw.circle(self.screen, HEADER_COLOR, (badge_x, badge_y), 15)
+                pygame.draw.circle(self.screen, WHITE, (badge_x, badge_y), 15, 2)
+                self.draw_text(f"x{count}", self.font_xs, WHITE, badge_x, badge_y, center=True)
 
-            x += card_w + 10
-            if x + card_w > 620:
-                x = 30
-                y += card_h + 10
+                # Name plate
+                plate_w = len(name) * 8 + 16
+                plate_x = abs_x + plot_w // 2
+                plate_y = abs_y + 95
+                plate_surf = pygame.Surface((plate_w, 22), pygame.SRCALPHA)
+                pygame.draw.rect(plate_surf, (255, 255, 255, 200), (0, 0, plate_w, 22), border_radius=6)
+                self.screen.blit(plate_surf, (plate_x - plate_w // 2, plate_y - 2))
+                self.draw_text(name, self.font_xs, BLACK, plate_x, plate_y + 8, center=True)
+
+                # Income label
+                self.draw_text(f"+{inc * count}/solve", self.font_xs, (255, 255, 255), plate_x, plate_y + 26, center=True)
+            else:
+                # Empty plot - fenced area
+                plot_surf = pygame.Surface((plot_w, plot_h - 30), pygame.SRCALPHA)
+                pygame.draw.rect(plot_surf, (0, 0, 0, 25), (0, 0, plot_w, plot_h - 30), border_radius=8)
+                self.screen.blit(plot_surf, (abs_x, abs_y))
+                # Fence posts
+                for fx in range(abs_x + 5, abs_x + plot_w - 5, 20):
+                    pygame.draw.rect(self.screen, DIRT_COLOR, (fx, abs_y + plot_h - 50, 4, 18))
+                # Fence rail
+                pygame.draw.line(self.screen, DIRT_COLOR, (abs_x + 5, abs_y + plot_h - 42), (abs_x + plot_w - 5, abs_y + plot_h - 42), 2)
+                # "For Sale" sign
+                self.draw_text("FOR SALE", self.font_xs, (180, 160, 120), abs_x + plot_w // 2, abs_y + plot_h // 2 - 20, center=True)
+
+        # Town label
+        label_surf = pygame.Surface((120, 26), pygame.SRCALPHA)
+        pygame.draw.rect(label_surf, (255, 255, 255, 180), (0, 0, 120, 26), border_radius=6)
+        self.screen.blit(label_surf, (town_x + 5, town_y + 5))
+        self.draw_text("Your Town", self.font_sm, (60, 100, 40), town_x + 65, town_y + 18, center=True)
 
     def draw_leaderboard(self):
-        lx = 630
-        pygame.draw.rect(self.screen, WHITE, (lx, 130, 255, HEIGHT - 145), border_radius=10)
-        pygame.draw.rect(self.screen, HEADER_COLOR, (lx, 130, 255, 40), border_radius=0)
-        # Top corners
-        pygame.draw.rect(self.screen, HEADER_COLOR, (lx, 130, 255, 40))
-        pygame.draw.rect(self.screen, WHITE, (lx, 155, 255, 20))
-        pygame.draw.rect(self.screen, HEADER_COLOR, (lx, 130, 255, 40), border_radius=10)
-        self.draw_text("Leaderboard", self.font_sm, WHITE, lx + 127, 140, center=True)
+        lx = 635
+        lb_w = WIDTH - lx - 15
+        pygame.draw.rect(self.screen, WHITE, (lx, 130, lb_w, HEIGHT - 145), border_radius=10)
+        pygame.draw.rect(self.screen, HEADER_COLOR, (lx, 130, lb_w, 40))
+        pygame.draw.rect(self.screen, WHITE, (lx, 155, lb_w, 20))
+        pygame.draw.rect(self.screen, HEADER_COLOR, (lx, 130, lb_w, 40), border_radius=10)
+        self.draw_text("Leaderboard", self.font_sm, WHITE, lx + lb_w // 2, 140, center=True)
 
         y = 180
         for i, entry in enumerate(self.leaderboard[:6]):
@@ -354,7 +413,7 @@ class Client:
             if len(name) > 12:
                 name = name[:11] + ".."
             self.draw_text(f"{medal} {name}", self.font_xs, color, lx + 15, y)
-            self.draw_text(f"{entry['coins']}c", self.font_xs, COIN_COLOR, lx + 190, y)
+            self.draw_text(f"{entry['coins']}c", self.font_xs, COIN_COLOR, lx + lb_w - 60, y)
             y += 30
 
     def draw_shop(self):
