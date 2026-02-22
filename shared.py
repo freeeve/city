@@ -1,4 +1,4 @@
-"""Shared definitions for Math Tycoon: buildings, protocol helpers, math problems."""
+"""Shared definitions for City: buildings, protocol helpers, math problems."""
 
 import random
 

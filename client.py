@@ -1,4 +1,4 @@
-"""Math Tycoon client - Pygame UI with network communication."""
+"""City client - Pygame UI with network communication."""
 
 import pygame
 import socket
@@ -71,7 +71,7 @@ class Client:
     def __init__(self):
         pygame.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        pygame.display.set_caption("Math Tycoon")
+        pygame.display.set_caption("City")
         self.clock = pygame.time.Clock()
         self.tick = 0
 
@@ -291,7 +291,7 @@ class Client:
         pygame.draw.rect(self.screen, WHITE, (card_x, card_y, card_w, card_h), border_radius=16)
 
         # Title above card
-        self.draw_text("Math Tycoon", self.font_title, ACCENT, WIDTH // 2, card_y - 60, center=True, shadow=True)
+        self.draw_text("City", self.font_title, ACCENT, WIDTH // 2, card_y - 60, center=True, shadow=True)
         self.draw_text("Solve math, earn coins, build your town!", self.font_sm, MID_GRAY, WIDTH // 2, card_y - 15, center=True)
 
         # Form inside card
@@ -362,7 +362,7 @@ class Client:
         # Subtle bottom border
         pygame.draw.line(self.screen, (35, 80, 150), (0, 60), (WIDTH, 60), 2)
 
-        self.draw_text("Math Tycoon", self.font_med, WHITE, 18, 16, shadow=True)
+        self.draw_text("City", self.font_med, WHITE, 18, 16, shadow=True)
 
         # Coin display
         self.draw_coin_icon(WIDTH - 260, 22, 14)

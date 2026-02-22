@@ -1,4 +1,4 @@
-"""Math Tycoon server - manages all game state for up to 6 players."""
+"""City server - manages all game state for up to 6 players."""
 
 import socket
 import threading
@@ -139,7 +139,7 @@ class GameServer:
         server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server_sock.bind(("0.0.0.0", PORT))
         server_sock.listen(MAX_PLAYERS)
-        print(f"Math Tycoon server running on port {PORT}")
+        print(f"City server running on port {PORT}")
         print("Waiting for players...")
 
         try:
