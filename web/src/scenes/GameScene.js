@@ -69,13 +69,18 @@ export class GameScene extends Phaser.Scene {
     // Main camera stays fixed at origin for UI
     this.cameras.main.setScroll(0, 0);
 
-    // Key bindings
-    this.cursors = this.input.keyboard.createCursorKeys();
+    // Key bindings (capture=false so Phaser won't preventDefault, allowing DOM inputs to work)
+    this.cursors = {
+      up: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP, false),
+      down: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN, false),
+      left: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT, false),
+      right: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT, false),
+    };
     this.wasd = {
-      W: this.input.keyboard.addKey('W'),
-      A: this.input.keyboard.addKey('A'),
-      S: this.input.keyboard.addKey('S'),
-      D: this.input.keyboard.addKey('D'),
+      W: this.input.keyboard.addKey('W', false),
+      A: this.input.keyboard.addKey('A', false),
+      S: this.input.keyboard.addKey('S', false),
+      D: this.input.keyboard.addKey('D', false),
     };
   }
 

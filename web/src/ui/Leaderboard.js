@@ -40,27 +40,17 @@ export class Leaderboard {
       color: '#6677aa',
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(801));
 
-    this.backBtnBg = ui(scene.add.graphics());
-    this.backBtnBg.setScrollFactor(0);
-    this.backBtnBg.setDepth(801);
-    this.backBtnBg.visible = false;
-
-    this.backBtnText = ui(scene.add.text(panelX + panelW / 2, panelY + panelH - 40, 'Back to My City', {
-      fontFamily: 'Arial',
-      fontSize: '14px',
-      fontStyle: 'bold',
-      color: '#ffffff',
-    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(802).setVisible(false));
-
-    this.backBtnZone = ui(scene.add.zone(panelX + panelW / 2, panelY + panelH - 30, 120, 30)
-      .setScrollFactor(0)
-      .setDepth(802)
-      .setInteractive({ useHandCursor: true })
-      .setVisible(false));
-
-    this.backBtnZone.on('pointerdown', () => {
-      scene.leaveCityView();
-    });
+    // Back button (DOM for reliable clicking)
+    const backHTML = `<button id="lb-back-btn" style="
+      background: #3778c8; color: white; border: none; border-radius: 6px;
+      padding: 6px 16px; font-family: Arial, sans-serif; font-size: 14px;
+      font-weight: bold; cursor: pointer; display: none;
+    ">Back to My City</button>`;
+    this.backBtnDOM = ui(scene.add.dom(panelX + panelW / 2, panelY + panelH - 30).createFromHTML(backHTML));
+    this.backBtnDOM.setScrollFactor(0);
+    this.backBtnDOM.setDepth(802);
+    this.backBtnEl = this.backBtnDOM.getChildByID('lb-back-btn');
+    this.backBtnEl.addEventListener('click', () => scene.leaveCityView());
 
     // Leaderboard entry texts
     this.entryTexts = [];
@@ -140,23 +130,12 @@ export class Leaderboard {
   showCityView(playerName) {
     this.cityViewName = playerName;
     this.cityViewLabel.setText(`Viewing ${playerName}'s City`);
-    this.backBtnBg.visible = true;
-    this.backBtnBg.clear();
-    this.backBtnBg.fillStyle(0x3778c8, 1);
-    this.backBtnBg.fillRoundedRect(
-      this.panelX + this.panelW / 2 - 65,
-      this.panelY + this.panelH - 45,
-      130, 30, 6
-    );
-    this.backBtnText.setVisible(true);
-    this.backBtnZone.setVisible(true);
+    this.backBtnEl.style.display = 'block';
   }
 
   hideCityView() {
     this.cityViewName = null;
     this.cityViewLabel.setText('');
-    this.backBtnBg.visible = false;
-    this.backBtnText.setVisible(false);
-    this.backBtnZone.setVisible(false);
+    this.backBtnEl.style.display = 'none';
   }
 }

@@ -84,6 +84,7 @@ export class TownRenderer {
     this.plotGraphics = this.scene.add.graphics();
     this.plotGraphics.setDepth(1);
     this.scene.addTownObj(this.plotGraphics);
+    this.plotLabels = [];
     this.refreshPlots();
   }
 
@@ -98,23 +99,44 @@ export class TownRenderer {
   refreshPlots() {
     this.plotGraphics.clear();
 
+    // Destroy old plot labels
+    for (const label of this.plotLabels) label.destroy();
+    this.plotLabels = [];
+
     for (let i = 0; i < 72; i++) {
       const { x, y } = this.getPlotPosition(i);
       if (i < this.buildings.length) continue;
 
-      this.plotGraphics.lineStyle(1, 0x88aa66, 0.5);
+      // Light fill to distinguish from grass
+      this.plotGraphics.fillStyle(0xffffff, 0.15);
+      this.plotGraphics.fillRect(x, y, PLOT_W, PLOT_H);
+
+      // Visible dashed border
+      this.plotGraphics.lineStyle(1, 0xffffff, 0.45);
       const dashLen = 6;
       const gap = 4;
       for (let dx = 0; dx < PLOT_W; dx += dashLen + gap) {
         const len = Math.min(dashLen, PLOT_W - dx);
-        this.plotGraphics.strokeRect(x + dx, y, len, 0.5);
-        this.plotGraphics.strokeRect(x + dx, y + PLOT_H, len, 0.5);
+        this.plotGraphics.lineBetween(x + dx, y, x + dx + len, y);
+        this.plotGraphics.lineBetween(x + dx, y + PLOT_H, x + dx + len, y + PLOT_H);
       }
       for (let dy = 0; dy < PLOT_H; dy += dashLen + gap) {
         const len = Math.min(dashLen, PLOT_H - dy);
-        this.plotGraphics.strokeRect(x, y + dy, 0.5, len);
-        this.plotGraphics.strokeRect(x + PLOT_W, y + dy, 0.5, len);
+        this.plotGraphics.lineBetween(x, y + dy, x, y + dy + len);
+        this.plotGraphics.lineBetween(x + PLOT_W, y + dy, x + PLOT_W, y + dy + len);
       }
+
+      // "FOR SALE" label
+      const label = this.scene.add.text(x + PLOT_W / 2, y + PLOT_H / 2, 'FOR SALE', {
+        fontFamily: 'Arial',
+        fontSize: '10px',
+        fontStyle: 'bold',
+        color: '#ffffff',
+        stroke: '#3d7a2a',
+        strokeThickness: 2,
+      }).setOrigin(0.5, 0.5).setDepth(2).setAlpha(0.6);
+      this.scene.addTownObj(label);
+      this.plotLabels.push(label);
     }
   }
 

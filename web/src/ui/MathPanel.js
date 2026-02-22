@@ -39,9 +39,9 @@ export class MathPanel {
     // DOM input for answer
     const formHTML = `
       <div style="display: flex; gap: 8px; align-items: center;">
-        <input id="answer-input" type="number" class="game-input"
+        <input id="answer-input" type="text" inputmode="numeric" class="game-input"
           style="width: 160px; font-size: 22px; padding: 8px 12px;"
-          placeholder="Answer" />
+          placeholder="Answer" autocomplete="off" />
         <button id="submit-btn" class="game-btn game-btn-green"
           style="font-size: 18px; padding: 10px 24px;">
           Submit

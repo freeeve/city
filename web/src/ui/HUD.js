@@ -58,45 +58,33 @@ export class HUD {
       color: '#ddaaff',
     }).setScrollFactor(0).setDepth(901));
 
-    // Shop button
-    this.shopBtn = ui(scene.add.graphics());
-    this.shopBtn.setScrollFactor(0);
-    this.shopBtn.setDepth(901);
-    this.drawShopButton(false);
+    // Shop button (DOM for reliable click handling)
+    const shopHTML = `<button id="hud-shop-btn" style="
+      background: #3cbe5a; color: white; border: none; border-radius: 6px;
+      padding: 6px 20px; font-family: Arial, sans-serif; font-size: 16px;
+      font-weight: bold; cursor: pointer;
+    ">Shop</button>`;
+    this.shopBtnDOM = ui(scene.add.dom(WIDTH - 70, 22).createFromHTML(shopHTML));
+    this.shopBtnDOM.setScrollFactor(0);
+    this.shopBtnDOM.setDepth(902);
+    const shopBtnEl = this.shopBtnDOM.getChildByID('hud-shop-btn');
+    shopBtnEl.addEventListener('click', () => scene.shopOverlay.toggle());
+    shopBtnEl.addEventListener('mouseenter', () => { shopBtnEl.style.background = '#2da048'; });
+    shopBtnEl.addEventListener('mouseleave', () => { shopBtnEl.style.background = '#3cbe5a'; });
 
-    this.shopBtnZone = ui(scene.add.zone(WIDTH - 70, 22, 100, 34)
-      .setScrollFactor(0)
-      .setDepth(902)
-      .setInteractive({ useHandCursor: true }));
-
-    this.shopBtnZone.on('pointerover', () => this.drawShopButton(true));
-    this.shopBtnZone.on('pointerout', () => this.drawShopButton(false));
-    this.shopBtnZone.on('pointerdown', () => {
-      scene.shopOverlay.toggle();
-    });
-
-    // Rebirth button (shows when coins >= 1M)
-    this.rebirthBtn = ui(scene.add.graphics());
-    this.rebirthBtn.setScrollFactor(0);
-    this.rebirthBtn.setDepth(901);
-    this.rebirthBtn.visible = false;
-
-    this.rebirthBtnText = ui(scene.add.text(WIDTH - 165, 14, 'Rebirth', {
-      fontFamily: 'Arial',
-      fontSize: '14px',
-      fontStyle: 'bold',
-      color: '#ffffff',
-    }).setScrollFactor(0).setDepth(902).setVisible(false));
-
-    this.rebirthBtnZone = ui(scene.add.zone(WIDTH - 155, 22, 65, 28)
-      .setScrollFactor(0)
-      .setDepth(902)
-      .setInteractive({ useHandCursor: true })
-      .setVisible(false));
-
-    this.rebirthBtnZone.on('pointerdown', () => {
-      scene.requestRebirth();
-    });
+    // Rebirth button (DOM, shows when coins >= 1M)
+    const rebirthHTML = `<button id="hud-rebirth-btn" style="
+      background: #8c50dc; color: white; border: none; border-radius: 4px;
+      padding: 4px 14px; font-family: Arial, sans-serif; font-size: 14px;
+      font-weight: bold; cursor: pointer; display: none;
+    ">Rebirth</button>`;
+    this.rebirthBtnDOM = ui(scene.add.dom(WIDTH - 155, 22).createFromHTML(rebirthHTML));
+    this.rebirthBtnDOM.setScrollFactor(0);
+    this.rebirthBtnDOM.setDepth(902);
+    this.rebirthBtnEl = this.rebirthBtnDOM.getChildByID('hud-rebirth-btn');
+    this.rebirthBtnEl.addEventListener('click', () => scene.requestRebirth());
+    this.rebirthBtnEl.addEventListener('mouseenter', () => { this.rebirthBtnEl.style.background = '#783cbe'; });
+    this.rebirthBtnEl.addEventListener('mouseleave', () => { this.rebirthBtnEl.style.background = '#8c50dc'; });
   }
 
   drawHeader() {
@@ -113,21 +101,6 @@ export class HUD {
     this.headerBg.fillRect(0, 48, WIDTH, 2);
   }
 
-  drawShopButton(hover) {
-    this.shopBtn.clear();
-    const color = hover ? 0x2da046 : 0x3cbe5a;
-    this.shopBtn.fillStyle(color, 1);
-    this.shopBtn.fillRoundedRect(WIDTH - 120, 6, 100, 34, 6);
-    if (!this.shopLabel) {
-      this.shopLabel = this.scene.addUIObj(this.scene.add.text(WIDTH - 70, 15, 'Shop', {
-        fontFamily: 'Arial',
-        fontSize: '16px',
-        fontStyle: 'bold',
-        color: '#ffffff',
-      }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(902));
-    }
-  }
-
   update(state) {
     this.coinsText.setText(formatNumber(state.coins));
     this.popText.setText(`Pop: ${formatNumber(state.population)}`);
@@ -141,14 +114,6 @@ export class HUD {
     }
 
     const canRebirth = state.coins >= 1_000_000;
-    this.rebirthBtn.visible = canRebirth;
-    this.rebirthBtnText.setVisible(canRebirth);
-    this.rebirthBtnZone.setVisible(canRebirth);
-
-    if (canRebirth) {
-      this.rebirthBtn.clear();
-      this.rebirthBtn.fillStyle(0x8c50dc, 1);
-      this.rebirthBtn.fillRoundedRect(WIDTH - 190, 8, 65, 28, 4);
-    }
+    this.rebirthBtnEl.style.display = canRebirth ? 'block' : 'none';
   }
 }

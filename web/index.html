@@ -16,7 +16,11 @@
       height: 100vh;
     }
     #game-container { position: relative; }
-    canvas { display: block; }
+    canvas { display: block; position: relative; z-index: 1; }
+    /* Ensure Phaser DOM container sits above the canvas */
+    #game-container > div {
+      z-index: 2 !important;
+    }
     /* DOM input styling for Phaser DOM elements */
     .game-input {
       font-family: Arial, sans-serif;
