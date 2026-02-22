@@ -34,7 +34,6 @@ export class ConnectScene extends Phaser.Scene {
     bg.fillStyle(0x1a1a30, 1);
     bg.fillRect(0, silhouetteY + 40, WIDTH, 80);
 
-    // Simple building shapes for silhouette
     const buildings = [
       [50, 35], [100, 55], [160, 40], [220, 70], [290, 45],
       [350, 80], [420, 50], [490, 65], [560, 40], [630, 55],
@@ -43,7 +42,6 @@ export class ConnectScene extends Phaser.Scene {
     for (const [bx, bh] of buildings) {
       bg.fillStyle(0x151528, 1);
       bg.fillRect(bx, silhouetteY + 40 - bh, 40, bh);
-      // Window lights
       for (let wy = silhouetteY + 40 - bh + 5; wy < silhouetteY + 35; wy += 12) {
         for (let wx = bx + 6; wx < bx + 34; wx += 10) {
           if (Math.random() > 0.4) {
@@ -55,7 +53,7 @@ export class ConnectScene extends Phaser.Scene {
       }
     }
 
-    // Title
+    // Title (Phaser text — no click needed)
     this.add.text(WIDTH / 2, 100, 'CITY', {
       fontFamily: PX_FONT,
       fontSize: '48px',
@@ -70,93 +68,125 @@ export class ConnectScene extends Phaser.Scene {
       color: '#aabbdd',
     }).setOrigin(0.5);
 
-    // Form panel
-    const panelX = WIDTH / 2 - 180;
-    const panelY = 200;
-    const panelW = 360;
-    const panelH = 320;
-
-    const panel = this.add.graphics();
-    panel.fillStyle(0x202040, 0.85);
-    panel.fillRoundedRect(panelX, panelY, panelW, panelH, 12);
-    panel.lineStyle(2, 0x3778c8, 0.6);
-    panel.strokeRoundedRect(panelX, panelY, panelW, panelH, 12);
-
-    // Build grade options HTML
+    // ── Plain HTML form (bypasses Phaser DOM for reliable clicks) ──
     let gradeOptions = '';
     for (const [g, label] of Object.entries(GRADE_LABELS)) {
       const sel = g === '3' ? ' selected' : '';
       gradeOptions += `<option value="${g}"${sel}>Grade ${g}: ${label}</option>`;
     }
 
-    // DOM form
-    const formHTML = `
-      <div style="width: 320px; font-family: Arial, sans-serif; color: #ddd;">
-        <div style="margin-bottom: 14px;">
-          <label style="font-size: 14px; color: #8899bb; display: block; margin-bottom: 4px;">Player Name</label>
-          <input id="name-input" type="text" class="game-input" style="width: 100%;" placeholder="Enter your name" maxlength="20" />
-        </div>
-        <div style="margin-bottom: 14px;">
-          <label style="font-size: 14px; color: #8899bb; display: block; margin-bottom: 4px;">Server Address</label>
-          <input id="server-input" type="text" class="game-input" style="width: 100%;" value="localhost" />
-        </div>
-        <div style="margin-bottom: 20px;">
-          <label style="font-size: 14px; color: #8899bb; display: block; margin-bottom: 4px;">Math Grade</label>
-          <select id="grade-select" class="game-select" style="width: 100%;">
-            ${gradeOptions}
-          </select>
-        </div>
-        <button id="play-btn" class="game-btn game-btn-green" style="width: 100%; padding: 12px; font-size: 18px;">
-          Play
-        </button>
-        <div id="error-msg" style="color: #ff6666; font-size: 14px; margin-top: 10px; text-align: center; min-height: 20px;"></div>
-      </div>
+    const overlay = document.createElement('div');
+    overlay.id = 'connect-overlay';
+    overlay.style.cssText = `
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      display: flex; justify-content: center; align-items: center;
+      z-index: 100; pointer-events: none;
     `;
 
-    const form = this.add.dom(WIDTH / 2, panelY + panelH / 2 + 5).createFromHTML(formHTML);
+    const formPanel = document.createElement('div');
+    formPanel.style.cssText = `
+      pointer-events: auto;
+      width: 340px; padding: 24px;
+      background: rgba(32, 32, 64, 0.9);
+      border: 2px solid rgba(55, 120, 200, 0.6);
+      border-radius: 12px;
+      font-family: 'Press Start 2P', monospace;
+      color: #ddd;
+      margin-top: 80px;
+    `;
 
-    const nameInput = form.getChildByID('name-input');
-    const serverInput = form.getChildByID('server-input');
-    const gradeSelect = form.getChildByID('grade-select');
-    const playBtn = form.getChildByID('play-btn');
-    const errorMsg = form.getChildByID('error-msg');
+    formPanel.innerHTML = `
+      <div style="margin-bottom: 14px;">
+        <label style="font-size: 8px; color: #8899bb; display: block; margin-bottom: 6px;">Player Name</label>
+        <input id="connect-name" type="text" style="
+          width: 100%; padding: 8px 10px; font-size: 10px;
+          font-family: 'Press Start 2P', monospace;
+          border: 2px solid #b4bee2; border-radius: 6px;
+          background: #fafaff; color: #333; outline: none;
+          box-sizing: border-box;
+        " placeholder="Enter name" maxlength="20" />
+      </div>
+      <div style="margin-bottom: 14px;">
+        <label style="font-size: 8px; color: #8899bb; display: block; margin-bottom: 6px;">Server Address</label>
+        <input id="connect-server" type="text" style="
+          width: 100%; padding: 8px 10px; font-size: 10px;
+          font-family: 'Press Start 2P', monospace;
+          border: 2px solid #b4bee2; border-radius: 6px;
+          background: #fafaff; color: #333; outline: none;
+          box-sizing: border-box;
+        " value="localhost" />
+      </div>
+      <div style="margin-bottom: 20px;">
+        <label style="font-size: 8px; color: #8899bb; display: block; margin-bottom: 6px;">Math Grade</label>
+        <select id="connect-grade" style="
+          width: 100%; padding: 8px 10px; font-size: 9px;
+          font-family: 'Press Start 2P', monospace;
+          border: 2px solid #b4bee2; border-radius: 6px;
+          background: #fafaff; color: #333; outline: none;
+          box-sizing: border-box;
+        ">${gradeOptions}</select>
+      </div>
+      <button id="connect-play" style="
+        width: 100%; padding: 12px; font-size: 11px;
+        font-family: 'Press Start 2P', monospace;
+        background: #3cbe5a; color: white; border: none;
+        border-radius: 6px; cursor: pointer;
+      ">Play</button>
+      <div id="connect-error" style="
+        color: #ff6666; font-size: 8px; margin-top: 10px;
+        text-align: center; min-height: 16px;
+      "></div>
+    `;
 
-    // Focus name input after a moment
-    this.time.delayedCall(100, () => nameInput.focus());
+    overlay.appendChild(formPanel);
+    const container = this.game.canvas.parentElement;
+    container.appendChild(overlay);
+    this._overlay = overlay;
+
+    // Wire up events
+    const nameInput = overlay.querySelector('#connect-name');
+    const serverInput = overlay.querySelector('#connect-server');
+    const gradeSelect = overlay.querySelector('#connect-grade');
+    const playBtn = overlay.querySelector('#connect-play');
+    const errorMsg = overlay.querySelector('#connect-error');
+
+    setTimeout(() => nameInput.focus(), 100);
 
     const doConnect = () => {
       const name = nameInput.value.trim();
       const server = serverInput.value.trim();
       const grade = parseInt(gradeSelect.value);
 
-      if (!name) {
-        errorMsg.textContent = 'Please enter a name';
-        return;
-      }
-      if (!server) {
-        errorMsg.textContent = 'Please enter a server address';
-        return;
-      }
+      if (!name) { errorMsg.textContent = 'Please enter a name'; return; }
+      if (!server) { errorMsg.textContent = 'Please enter a server address'; return; }
 
       errorMsg.textContent = 'Connecting...';
       errorMsg.style.color = '#88bbff';
       playBtn.disabled = true;
       playBtn.textContent = 'Connecting...';
 
-      // Determine WebSocket URL
       let wsUrl;
       if (server.startsWith('ws://') || server.startsWith('wss://')) {
         wsUrl = server;
       } else {
-        const port = 5556;
-        wsUrl = `ws://${server}:${port}`;
+        wsUrl = `ws://${server}:5556`;
       }
 
+      // Remove overlay before switching scenes
+      overlay.remove();
       this.scene.start('GameScene', { name, wsUrl, grade });
     };
 
     playBtn.addEventListener('click', doConnect);
     nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doConnect(); });
     serverInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doConnect(); });
+  }
+
+  shutdown() {
+    // Clean up overlay if scene is stopped
+    if (this._overlay) {
+      this._overlay.remove();
+      this._overlay = null;
+    }
   }
 }
