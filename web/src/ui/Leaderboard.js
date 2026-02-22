@@ -7,7 +7,7 @@ export class Leaderboard {
     const ui = (obj) => scene.addUIObj(obj);
 
     const panelX = TOWN_X + TOWN_VIEW_W + 15;
-    const panelY = 200;
+    const panelY = 250;
     const panelW = 350;
     const panelH = HEIGHT - panelY - 15;
 
@@ -57,8 +57,8 @@ export class Leaderboard {
     this.entryZones = [];
     const medalColors = ['#ffc832', '#bec3cd', '#cd965a'];
 
-    for (let i = 0; i < 10; i++) {
-      const y = panelY + 45 + i * 44;
+    for (let i = 0; i < 6; i++) {
+      const y = panelY + 45 + i * 38;
       const rank = i + 1;
 
       const rankText = ui(scene.add.text(panelX + 15, y + 4, `${rank}.`, {
@@ -99,7 +99,7 @@ export class Leaderboard {
   }
 
   update(leaderboard) {
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 6; i++) {
       const entry = this.entryTexts[i];
       if (i < leaderboard.length) {
         const p = leaderboard[i];

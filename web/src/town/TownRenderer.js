@@ -82,11 +82,26 @@ export class TownRenderer {
       g.fillStyle(rgb(150, 145, 135), 1);
       g.fillRect(rx - ROAD_THICK / 2 - 1, -50, 3, worldH + 100);
       g.fillRect(rx + ROAD_THICK / 2 - 1, -50, 3, worldH + 100);
-      // Double yellow center line
+      // Double yellow center line — break at intersections
       const cx = rx;
       g.fillStyle(rgb(220, 200, 80), 1);
-      g.fillRect(cx - 3, -50, 2, worldH + 100);
-      g.fillRect(cx + 1, -50, 2, worldH + 100);
+      let prevY = -50;
+      for (let row = 0; row <= totalRows; row++) {
+        const ry = row * ROW_HEIGHT + 15;
+        const gapTop = ry - ROAD_THICK / 2;
+        const gapBot = ry + ROAD_THICK / 2;
+        // Draw segment from prevY to gapTop
+        if (gapTop > prevY) {
+          g.fillRect(cx - 3, prevY, 2, gapTop - prevY);
+          g.fillRect(cx + 1, prevY, 2, gapTop - prevY);
+        }
+        prevY = gapBot;
+      }
+      // Final segment from last intersection to end
+      if (prevY < worldH + 50) {
+        g.fillRect(cx - 3, prevY, 2, worldH + 50 - prevY);
+        g.fillRect(cx + 1, prevY, 2, worldH + 50 - prevY);
+      }
     }
 
     // Horizontal roads (only in commercial zone)
@@ -105,10 +120,53 @@ export class TownRenderer {
       g.fillStyle(rgb(150, 145, 135), 1);
       g.fillRect(-50, ry - ROAD_THICK / 2 - 1, COMMERCIAL_W + 100, 2);
       g.fillRect(-50, ry + ROAD_THICK / 2 - 1, COMMERCIAL_W + 100, 2);
-      // Center dashes (white)
+      // Center dashes (white) — skip intersection zones
       for (let dx = 0; dx < COMMERCIAL_W; dx += 30) {
-        g.fillStyle(ROAD_DASH, 1);
-        g.fillRect(dx, ry - 1, 15, 2);
+        let inIntersection = false;
+        for (const vx of ROAD_V_POSITIONS) {
+          if (dx + 15 > vx - ROAD_THICK / 2 && dx < vx + ROAD_THICK / 2) {
+            inIntersection = true;
+            break;
+          }
+        }
+        if (!inIntersection) {
+          g.fillStyle(ROAD_DASH, 1);
+          g.fillRect(dx, ry - 1, 15, 2);
+        }
+      }
+    }
+
+    // Road intersections — clean surface + crosswalk markings
+    const halfR = ROAD_THICK / 2;
+    for (const rx of ROAD_V_POSITIONS) {
+      for (let row = 0; row <= totalRows; row++) {
+        const ry = row * ROW_HEIGHT + 15;
+
+        // Clean road surface at intersection (covers yellow lines)
+        g.fillStyle(ROAD_FILL, 1);
+        g.fillRect(rx - halfR, ry - halfR, ROAD_THICK, ROAD_THICK);
+
+        // Crosswalk stripes on all four approaches
+        g.fillStyle(0xffffff, 0.55);
+        const stripeW = 5, stripeGap = 8;
+        const numStripes = Math.floor(ROAD_THICK / stripeGap);
+
+        // North approach (above intersection)
+        for (let i = 0; i < numStripes; i++) {
+          g.fillRect(rx - halfR + 3 + i * stripeGap, ry - halfR - 5, stripeW, 4);
+        }
+        // South approach (below intersection)
+        for (let i = 0; i < numStripes; i++) {
+          g.fillRect(rx - halfR + 3 + i * stripeGap, ry + halfR + 1, stripeW, 4);
+        }
+        // West approach (left of intersection)
+        for (let i = 0; i < numStripes; i++) {
+          g.fillRect(rx - halfR - 5, ry - halfR + 3 + i * stripeGap, 4, stripeW);
+        }
+        // East approach (right of intersection)
+        for (let i = 0; i < numStripes; i++) {
+          g.fillRect(rx + halfR + 1, ry - halfR + 3 + i * stripeGap, 4, stripeW);
+        }
       }
     }
   }
