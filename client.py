@@ -60,16 +60,16 @@ BRONZE = (205, 150, 90)
 
 # Town layout
 ROAD_THICK = 36
-ROW_HEIGHT = 140
-PLOT_W, PLOT_H = 110, 105
+ROW_HEIGHT = 190
+PLOT_W, PLOT_H = 150, 140
 
 # Grid: columns of plots separated by vertical roads
 # Column positions (x offsets in world space)
-PLOT_COLS = [10, 155, 340, 485, 670, 815]
+PLOT_COLS = [10, 200, 440, 630, 870, 1060]
 # Vertical road x positions (in world space)
-ROAD_V_POSITIONS = [295, 630]
+ROAD_V_POSITIONS = [385, 820]
 # Total town world width
-TOWN_WORLD_W = 960
+TOWN_WORLD_W = 1250
 
 # Residential neighbourhood
 HOUSE_W, HOUSE_H = 40, 45
@@ -1916,11 +1916,11 @@ class Client:
             inc = BUILDINGS[name][1]
 
             # 3D Building image (or colored fallback)
-            img_x = abs_x + (PLOT_W - 72) // 2
-            img_y = abs_y + 2
-            shadow = pygame.Surface((80, 16), pygame.SRCALPHA)
-            pygame.draw.ellipse(shadow, (0, 0, 0, 30), (0, 0, 80, 16))
-            self.screen.blit(shadow, (img_x - 2, img_y + 64))
+            img_x = abs_x + (PLOT_W - 96) // 2
+            img_y = abs_y + 4
+            shadow = pygame.Surface((104, 18), pygame.SRCALPHA)
+            pygame.draw.ellipse(shadow, (0, 0, 0, 30), (0, 0, 104, 18))
+            self.screen.blit(shadow, (img_x - 2, img_y + 86))
             if name in self.building_images_3d:
                 self.screen.blit(self.building_images_3d[name], (img_x, img_y))
             else:
@@ -1928,29 +1928,29 @@ class Client:
                 base = BUILDING_COLORS.get(name, (150, 150, 150))
                 dark = (max(0, base[0] - 60), max(0, base[1] - 60), max(0, base[2] - 60))
                 light = (min(255, base[0] + 40), min(255, base[1] + 40), min(255, base[2] + 40))
-                bw, bh = 56, 56
+                bw, bh = 80, 78
                 bx, by = img_x + 8, img_y + 8
                 # Side face
-                side_pts = [(bx + bw, by), (bx + bw + 8, by - 8), (bx + bw + 8, by + bh - 8), (bx + bw, by + bh)]
+                side_pts = [(bx + bw, by), (bx + bw + 10, by - 10), (bx + bw + 10, by + bh - 10), (bx + bw, by + bh)]
                 pygame.draw.polygon(self.screen, dark, side_pts)
                 # Top face
-                top_pts = [(bx, by), (bx + 8, by - 8), (bx + bw + 8, by - 8), (bx + bw, by)]
+                top_pts = [(bx, by), (bx + 10, by - 10), (bx + bw + 10, by - 10), (bx + bw, by)]
                 pygame.draw.polygon(self.screen, light, top_pts)
                 # Front face
                 pygame.draw.rect(self.screen, base, (bx, by, bw, bh))
                 pygame.draw.rect(self.screen, dark, (bx, by, bw, bh), 1)
                 # Windows
-                for wy in range(by + 8, by + bh - 15, 18):
-                    for wx in range(bx + 8, bx + bw - 10, 18):
-                        pygame.draw.rect(self.screen, (180, 210, 240), (wx, wy, 12, 10), border_radius=1)
-                        pygame.draw.rect(self.screen, dark, (wx, wy, 12, 10), 1)
+                for wy in range(by + 10, by + bh - 18, 20):
+                    for wx in range(bx + 10, bx + bw - 12, 20):
+                        pygame.draw.rect(self.screen, (180, 210, 240), (wx, wy, 14, 12), border_radius=1)
+                        pygame.draw.rect(self.screen, dark, (wx, wy, 14, 12), 1)
                 # Door
-                pygame.draw.rect(self.screen, dark, (bx + bw // 2 - 8, by + bh - 18, 16, 18))
-                pygame.draw.rect(self.screen, (max(0, dark[0] - 20), max(0, dark[1] - 20), max(0, dark[2] - 20)), (bx + bw // 2 - 8, by + bh - 18, 16, 18), 1)
+                pygame.draw.rect(self.screen, dark, (bx + bw // 2 - 10, by + bh - 22, 20, 22))
+                pygame.draw.rect(self.screen, (max(0, dark[0] - 20), max(0, dark[1] - 20), max(0, dark[2] - 20)), (bx + bw // 2 - 10, by + bh - 22, 20, 22), 1)
 
             # Name plate
             plate_cx = abs_x + PLOT_W // 2
-            plate_y = abs_y + 78
+            plate_y = abs_y + 104
             tw = self.font_xs.size(name)[0] + 14
             ps = pygame.Surface((tw, 20), pygame.SRCALPHA)
             pygame.draw.rect(ps, (255, 255, 255, 210), (0, 0, tw, 20), border_radius=5)
