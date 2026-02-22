@@ -1,4 +1,4 @@
-import { WIDTH, HEIGHT } from '../constants.js';
+import { WIDTH, HEIGHT, TOWN_X, TOWN_VIEW_W } from '../constants.js';
 
 // Scratch Paper — Draw/Type/Clear pad in the top-right area
 // Uses an offscreen canvas for freehand drawing, and a DOM textarea for typing.
@@ -10,7 +10,7 @@ export class ScratchPad {
     const ui = (obj) => scene.addUIObj(obj);
 
     // Layout — right of the math panel, above the leaderboard
-    const lx = 635;
+    const lx = TOWN_X + TOWN_VIEW_W + 15;
     const spW = WIDTH - lx - 15;
     const spH = 135;
     const spY = 55;

@@ -1,4 +1,4 @@
-import { WIDTH, HEIGHT, formatNumber } from '../constants.js';
+import { WIDTH, HEIGHT, TOWN_X, TOWN_VIEW_W, formatNumber } from '../constants.js';
 
 export class Leaderboard {
   constructor(scene) {
@@ -6,7 +6,7 @@ export class Leaderboard {
     this.cityViewName = null;
     const ui = (obj) => scene.addUIObj(obj);
 
-    const panelX = WIDTH - 365;
+    const panelX = TOWN_X + TOWN_VIEW_W + 15;
     const panelY = 200;
     const panelW = 350;
     const panelH = HEIGHT - panelY - 15;

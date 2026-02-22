@@ -2,15 +2,25 @@ import Phaser from 'phaser';
 import {
   GRASS_1, GRASS_2, GRASS_3, ROAD_FILL, ROAD_EDGE, ROAD_DASH, SIDEWALK,
   ROAD_THICK, ROW_HEIGHT, PLOT_W, PLOT_H, PLOT_COLS, ROAD_V_POSITIONS,
-  TOWN_WORLD_W, DEPTH_PX, SIDE_DX, SIDE_DY, rgb,
+  TOWN_WORLD_W, COMMERCIAL_W, NEIGHBOURHOOD_X, HOUSE_W, HOUSE_H,
+  DEPTH_PX, SIDE_DX, SIDE_DY, rgb,
 } from '../constants.js';
 import { BUILDING_COLORS, BUILDING_IMAGES, BUILDING_ORDER } from '../shared.js';
+
+const HOUSE_COLORS = [
+  [180,120,90], [160,170,185], [200,180,140], [170,140,130],
+  [190,200,170], [220,200,180], [150,160,180], [200,160,140],
+];
+const ROOF_COLORS = [
+  [140,60,50], [80,80,90], [120,90,60], [60,80,60],
+];
 
 export class TownRenderer {
   constructor(scene) {
     this.scene = scene;
     this.buildings = [];
     this.buildingSprites = [];
+    this.houseSprites = [];
 
     this.drawGrass();
     this.drawRoads();
@@ -160,6 +170,10 @@ export class TownRenderer {
         this.drawColorBuilding(name, x, y);
       }
     }
+
+    // Update neighbourhood based on current population
+    const pop = this.scene.gameState ? this.scene.gameState.population : 0;
+    this.updateNeighbourhood(pop);
   }
 
   // Helper: create a graphics/image for the town layer
@@ -281,6 +295,218 @@ export class TownRenderer {
     }).setOrigin(0.5, 1).setDepth(by + bh + 2);
     this.scene.addTownObj(label);
     this.buildingSprites.push(label);
+  }
+
+  // --- Residential Neighbourhood ---
+
+  getHousePositions(population) {
+    const numHouses = population >= 100 ? Math.max(1, Math.floor(population / 100)) : 0;
+    if (numHouses === 0) return [];
+    const cols = 6;
+    const colSpacing = HOUSE_W + 40;
+    const rowSpacing = HOUSE_H + 50;
+    const positions = [];
+    for (let i = 0; i < numHouses; i++) {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      positions.push({
+        x: NEIGHBOURHOOD_X + col * colSpacing,
+        y: 30 + row * rowSpacing,
+        seed: i,
+      });
+    }
+    return positions;
+  }
+
+  seededRng(seed) {
+    let s = (seed * 137 + 53) | 0;
+    return () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+  }
+
+  updateNeighbourhood(population) {
+    // Clean up old neighbourhood sprites
+    if (this.houseSprites) {
+      for (const s of this.houseSprites) s.destroy();
+    }
+    this.houseSprites = [];
+
+    const positions = this.getHousePositions(population);
+    if (positions.length === 0) return;
+
+    // "Neighbourhood" label
+    const lx = positions[0].x;
+    const ly = positions[0].y - 20;
+    const label = this.scene.add.text(lx + 40, ly, 'Neighbourhood', {
+      fontFamily: 'Arial',
+      fontSize: '13px',
+      fontStyle: 'bold',
+      color: '#645032',
+      backgroundColor: 'rgba(255,255,255,0.7)',
+      padding: { x: 8, y: 3 },
+    }).setOrigin(0, 0.5).setDepth(5);
+    this.scene.addTownObj(label);
+    this.houseSprites.push(label);
+
+    // Draw each house
+    for (const pos of positions) {
+      this.drawHouse(pos.x, pos.y, pos.seed);
+    }
+  }
+
+  drawHouse(x, y, seed) {
+    const rng = this.seededRng(seed);
+    const hc = HOUSE_COLORS[Math.floor(rng() * HOUSE_COLORS.length)];
+    const rc = ROOF_COLORS[Math.floor(rng() * ROOF_COLORS.length)];
+
+    const wallColor = rgb(hc[0], hc[1], hc[2]);
+    const darkWall = rgb(Math.max(0,hc[0]-40), Math.max(0,hc[1]-40), Math.max(0,hc[2]-40));
+    const lightWall = rgb(Math.min(255,hc[0]+30), Math.min(255,hc[1]+30), Math.min(255,hc[2]+30));
+    const roofColor = rgb(rc[0], rc[1], rc[2]);
+    const darkRoof = rgb(Math.max(0,rc[0]-30), Math.max(0,rc[1]-30), Math.max(0,rc[2]-30));
+
+    const w = 28, hBody = 28;
+    const roofPeakY = y;
+    const wallTop = y + 17;  // roof is 17px tall
+    const bottom = wallTop + hBody;
+    const eave = 4;
+    const sideDx = 8, sideDy = -8;
+
+    const g = this._addTownGraphics();
+    g.setDepth(bottom);
+
+    // Shadow
+    g.fillStyle(0x000000, 0.1);
+    g.fillEllipse(x + w / 2, bottom + 3, w + 10, 8);
+
+    // Front wall
+    g.fillStyle(wallColor, 1);
+    g.fillRect(x, wallTop, w, hBody);
+    // Siding lines
+    g.lineStyle(1, darkWall, 0.3);
+    for (let sy = 4; sy < hBody - 2; sy += 5) {
+      g.lineBetween(x + 1, wallTop + sy, x + w - 1, wallTop + sy);
+    }
+    // Foundation
+    g.fillStyle(rgb(120, 115, 110), 1);
+    g.fillRect(x, wallTop + hBody - 3, w, 3);
+
+    // 3D side face
+    g.fillStyle(darkWall, 1);
+    g.fillPoints([
+      { x: x + w, y: wallTop },
+      { x: x + w + sideDx, y: wallTop + sideDy },
+      { x: x + w + sideDx, y: bottom + sideDy },
+      { x: x + w, y: bottom },
+    ], true);
+
+    // Pitched roof (front triangle)
+    g.fillStyle(roofColor, 1);
+    g.fillTriangle(
+      x - eave, wallTop,
+      x + w / 2, roofPeakY,
+      x + w + eave, wallTop
+    );
+    // Roof outline
+    g.lineStyle(1, darkRoof, 0.8);
+    g.strokeTriangle(
+      x - eave, wallTop,
+      x + w / 2, roofPeakY,
+      x + w + eave, wallTop
+    );
+    // Shingle lines
+    for (let ry = 3; ry < 17; ry += 4) {
+      const t = ry / 17;
+      const lx = Math.floor(x + w / 2 - (w / 2 + eave) * t);
+      const rx = Math.floor(x + w / 2 + (w / 2 + eave) * t);
+      g.lineBetween(lx, roofPeakY + ry, rx, roofPeakY + ry);
+    }
+
+    // Roof side face
+    g.fillStyle(darkRoof, 1);
+    g.fillPoints([
+      { x: x + w + eave, y: wallTop },
+      { x: x + w / 2, y: roofPeakY },
+      { x: x + w / 2 + sideDx, y: roofPeakY + sideDy },
+      { x: x + w + eave + sideDx, y: wallTop + sideDy },
+    ], true);
+
+    // Chimney (50% chance)
+    if (rng() < 0.5) {
+      const chimColor = rng() < 0.5 ? rgb(140, 100, 80) : rgb(120, 115, 110);
+      g.fillStyle(chimColor, 1);
+      g.fillRect(x + w - 8, roofPeakY - 2, 5, 12);
+      g.fillStyle(rgb(100, 95, 90), 1);
+      g.fillRect(x + w - 9, roofPeakY - 4, 7, 2);
+    }
+
+    // Door
+    const doorX = x + w / 2 - 4;
+    const doorY = wallTop + hBody - 16;
+    const doorColors = [rgb(90,60,40), rgb(60,80,50), rgb(80,40,40), rgb(50,50,80)];
+    const doorColor = doorColors[Math.floor(rng() * doorColors.length)];
+    g.fillStyle(doorColor, 1);
+    g.fillRect(doorX, doorY, 8, 13);
+    g.lineStyle(1, 0x000000, 0.2);
+    g.strokeRect(doorX, doorY, 8, 13);
+    // Doorstep
+    g.fillStyle(rgb(150, 145, 135), 1);
+    g.fillRect(doorX - 1, doorY + 13, 10, 3);
+    // Doorknob
+    g.fillStyle(0xccaa44, 1);
+    g.fillCircle(doorX + 6, doorY + 8, 1);
+
+    // Windows
+    const winGlass = rgb(180, 210, 240);
+    const winY = wallTop + 7;
+    // Left window
+    g.fillStyle(lightWall, 1);
+    g.fillRect(x + 2, winY - 1, 10, 10);
+    g.fillStyle(winGlass, 1);
+    g.fillRect(x + 3, winY, 8, 8);
+    g.lineStyle(1, darkWall, 0.6);
+    g.lineBetween(x + 7, winY, x + 7, winY + 8);
+    g.lineBetween(x + 3, winY + 4, x + 11, winY + 4);
+    // Window sill
+    g.fillStyle(lightWall, 1);
+    g.fillRect(x + 2, winY + 8, 10, 2);
+
+    // Right window
+    const w2x = x + w - 11;
+    g.fillStyle(lightWall, 1);
+    g.fillRect(w2x, winY - 1, 10, 10);
+    g.fillStyle(winGlass, 1);
+    g.fillRect(w2x + 1, winY, 8, 8);
+    g.lineStyle(1, darkWall, 0.6);
+    g.lineBetween(w2x + 5, winY, w2x + 5, winY + 8);
+    g.lineBetween(w2x + 1, winY + 4, w2x + 9, winY + 4);
+    g.fillStyle(lightWall, 1);
+    g.fillRect(w2x, winY + 8, 10, 2);
+
+    // House number
+    const houseNum = (seed % 42) + 1;
+    const numLabel = this.scene.add.text(doorX + 4, doorY - 10, `${houseNum}`, {
+      fontFamily: 'Arial',
+      fontSize: '7px',
+      color: '#ddd',
+      stroke: '#333',
+      strokeThickness: 1,
+    }).setOrigin(0.5, 0.5).setDepth(bottom + 1);
+    this.scene.addTownObj(numLabel);
+    this.houseSprites.push(numLabel);
+
+    // Garden (50% chance)
+    if (rng() < 0.5) {
+      const gardenColors = [0x3c963c, 0x46a03c, 0x508c32];
+      for (let gi = 0; gi < 3; gi++) {
+        const gc = gardenColors[Math.floor(rng() * gardenColors.length)];
+        g.fillStyle(gc, 1);
+        g.fillCircle(x + Math.floor(rng() * 12), bottom + 1, 2 + Math.floor(rng() * 2));
+      }
+      // Tiny flower
+      const flowerColors = [0xff6478, 0xffc850, 0xb478ff];
+      g.fillStyle(flowerColors[Math.floor(rng() * flowerColors.length)], 1);
+      g.fillCircle(x + 5, bottom - 1, 1);
+    }
   }
 
   depthSort() {

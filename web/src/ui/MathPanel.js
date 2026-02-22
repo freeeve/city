@@ -1,4 +1,4 @@
-import { WIDTH, HEIGHT, ACCENT } from '../constants.js';
+import { WIDTH, HEIGHT, ACCENT, TOWN_VIEW_W } from '../constants.js';
 
 export class MathPanel {
   constructor(scene) {
@@ -8,7 +8,7 @@ export class MathPanel {
 
     const panelX = 15;
     const panelY = 55;
-    const panelW = 605;  // stop before scratch pad at x=635
+    const panelW = TOWN_VIEW_W;
     const panelH = 135;
 
     // Panel background

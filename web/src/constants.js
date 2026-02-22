@@ -1,6 +1,6 @@
 // Layout
-export const WIDTH = 1000;
-export const HEIGHT = 750;
+export const WIDTH = 1200;
+export const HEIGHT = 800;
 export const FPS = 30;
 
 // Colors (hex)
@@ -58,12 +58,18 @@ export const PLOT_W = 120;
 export const PLOT_H = 115;
 export const PLOT_COLS = [10, 170, 380, 540, 750, 910];
 export const ROAD_V_POSITIONS = [330, 700];
-export const TOWN_WORLD_W = 1070;
+export const COMMERCIAL_W = 1070;
+export const TOWN_WORLD_W = 1700;
+
+// Residential neighbourhood
+export const HOUSE_W = 40;
+export const HOUSE_H = 45;
+export const NEIGHBOURHOOD_X = COMMERCIAL_W + 40;
 
 // Town viewport
 export const TOWN_X = 15;
 export const TOWN_Y = 200;
-export const TOWN_VIEW_W = 605;
+export const TOWN_VIEW_W = 805;
 
 // Helper to convert (r,g,b) tuple to hex
 export function rgb(r, g, b) {
