@@ -241,6 +241,13 @@ class Client:
         self.scratch_clear_btn = pygame.Rect(0, 0, 0, 0)
         self.scratch_scroll_x = 0
         self.scratch_pad_w = 0  # visible width, set during draw
+        self.scratch_typing = False  # toggle between draw and type mode
+        self.scratch_text_lines = [""]  # lines of typed text
+        self.scratch_cursor_line = 0
+        self.scratch_cursor_col = 0
+        self.scratch_type_btn = pygame.Rect(0, 0, 0, 0)
+        self.scratch_draw_btn = pygame.Rect(0, 0, 0, 0)
+        self.scratch_focused = False
 
         self.running = True
 
@@ -2691,14 +2698,35 @@ class Client:
         pygame.draw.rect(self.screen, WHITE, (lx, sp_y + 30, sp_w, 6))
         self.draw_text("Scratch Paper", self.font_xs, WHITE, lx + 14, sp_y + 8)
 
+        # Mode toggle buttons in header
+        mode_y = sp_y + 5
+        draw_x = lx + sp_w - 148
+        type_x = lx + sp_w - 100
+
+        # Draw mode button
+        draw_active = not self.scratch_typing
+        draw_s = pygame.Surface((44, 22), pygame.SRCALPHA)
+        pygame.draw.rect(draw_s, (255, 255, 255, 140 if draw_active else 40), (0, 0, 44, 22), border_radius=4)
+        self.screen.blit(draw_s, (draw_x, mode_y))
+        self.draw_text("Draw", self.font_tiny, (255, 255, 255) if draw_active else (180, 185, 200), draw_x + 22, mode_y + 4, center=True)
+        self.scratch_draw_btn = pygame.Rect(draw_x, mode_y, 44, 22)
+
+        # Type mode button
+        type_active = self.scratch_typing
+        type_s = pygame.Surface((44, 22), pygame.SRCALPHA)
+        pygame.draw.rect(type_s, (255, 255, 255, 140 if type_active else 40), (0, 0, 44, 22), border_radius=4)
+        self.screen.blit(type_s, (type_x, mode_y))
+        self.draw_text("Type", self.font_tiny, (255, 255, 255) if type_active else (180, 185, 200), type_x + 22, mode_y + 4, center=True)
+        self.scratch_type_btn = pygame.Rect(type_x, mode_y, 44, 22)
+
         # Clear button in header
-        clr_x = lx + sp_w - 58
+        clr_x = lx + sp_w - 52
         clr_y = sp_y + 5
-        self.scratch_clear_btn = pygame.Rect(clr_x, clr_y, 48, 22)
-        btn_s = pygame.Surface((48, 22), pygame.SRCALPHA)
-        pygame.draw.rect(btn_s, (255, 255, 255, 50), (0, 0, 48, 22), border_radius=4)
+        self.scratch_clear_btn = pygame.Rect(clr_x, clr_y, 44, 22)
+        btn_s = pygame.Surface((44, 22), pygame.SRCALPHA)
+        pygame.draw.rect(btn_s, (255, 255, 255, 50), (0, 0, 44, 22), border_radius=4)
         self.screen.blit(btn_s, (clr_x, clr_y))
-        self.draw_text("Clear", self.font_tiny, (220, 225, 240), clr_x + 24, clr_y + 4, center=True)
+        self.draw_text("Clear", self.font_tiny, (220, 225, 240), clr_x + 22, clr_y + 4, center=True)
 
         # Drawing area — surface is 3x wider than visible for scrolling
         self.scratch_pad_w = pad_w
@@ -2712,8 +2740,27 @@ class Client:
         max_scroll = total_w - pad_w
         self.scratch_scroll_x = max(0, min(self.scratch_scroll_x, max_scroll))
         # Blit visible portion
-        self.screen.blit(self.scratch_surface, (pad_x, pad_y),
-                         area=pygame.Rect(self.scratch_scroll_x, 0, pad_w, pad_h))
+        if not self.scratch_typing:
+            self.screen.blit(self.scratch_surface, (pad_x, pad_y),
+                             area=pygame.Rect(self.scratch_scroll_x, 0, pad_w, pad_h))
+        else:
+            # Type mode: white background with text
+            pygame.draw.rect(self.screen, (245, 245, 240), (pad_x, pad_y, pad_w, pad_h))
+            line_h = 18
+            max_visible = pad_h // line_h
+            # Ensure cursor line is visible by scrolling
+            start_line = max(0, self.scratch_cursor_line - max_visible + 1)
+            text_y = pad_y + 4
+            for i in range(start_line, min(len(self.scratch_text_lines), start_line + max_visible)):
+                line = self.scratch_text_lines[i]
+                self.draw_text(line, self.font_xs, (50, 50, 60), pad_x + 6, text_y)
+                # Draw cursor on current line
+                if i == self.scratch_cursor_line and self.tick % 30 < 20:
+                    cursor_x_off = self.font_xs.size(line[:self.scratch_cursor_col])[0]
+                    pygame.draw.line(self.screen, (50, 50, 60),
+                                     (pad_x + 6 + cursor_x_off, text_y),
+                                     (pad_x + 6 + cursor_x_off, text_y + line_h - 2), 2)
+                text_y += line_h
         pygame.draw.rect(self.screen, (200, 200, 195), (pad_x, pad_y, pad_w, pad_h), 1, border_radius=2)
 
         # Scroll indicator
@@ -3117,12 +3164,23 @@ class Client:
                         clicked_lb = True
                         break
                 if not clicked_lb:
+                    # Unfocus scratch pad when clicking outside it
+                    if not self.scratch_rect.collidepoint(event.pos):
+                        self.scratch_focused = False
                     if self.shop_btn.collidepoint(event.pos):
                         self.shop_open = True
                         self.shop_scroll = 0
                         self.buy_buttons = []
+                    elif self.scratch_draw_btn.collidepoint(event.pos):
+                        self.scratch_typing = False
+                    elif self.scratch_type_btn.collidepoint(event.pos):
+                        self.scratch_typing = True
                     elif self.scratch_clear_btn.collidepoint(event.pos):
-                        if self.scratch_surface:
+                        if self.scratch_typing:
+                            self.scratch_text_lines = [""]
+                            self.scratch_cursor_line = 0
+                            self.scratch_cursor_col = 0
+                        elif self.scratch_surface:
                             self.scratch_surface.fill((245, 245, 240))
                             self.scratch_scroll_x = 0
                     elif self.rebirth_btn.collidepoint(event.pos) and self.coins >= 1_000_000:
@@ -3130,9 +3188,29 @@ class Client:
                     elif self.submit_btn.collidepoint(event.pos):
                         self.submit_answer()
                     elif self.scratch_rect.collidepoint(event.pos):
-                        self.scratch_drawing = True
-                        self.scratch_last_pos = (event.pos[0] - self.scratch_rect.x + self.scratch_scroll_x,
-                                                 event.pos[1] - self.scratch_rect.y)
+                        if self.scratch_typing:
+                            self.scratch_focused = True
+                            # Place cursor near click position
+                            click_y = event.pos[1] - self.scratch_rect.y - 4
+                            line_h = 18
+                            max_visible = self.scratch_rect.h // line_h
+                            start_line = max(0, self.scratch_cursor_line - max_visible + 1)
+                            clicked_line = start_line + max(0, click_y // line_h)
+                            clicked_line = min(clicked_line, len(self.scratch_text_lines) - 1)
+                            self.scratch_cursor_line = clicked_line
+                            # Find column from x position
+                            click_x = event.pos[0] - self.scratch_rect.x - 6
+                            line = self.scratch_text_lines[clicked_line]
+                            col = len(line)
+                            for c in range(len(line) + 1):
+                                if self.font_xs.size(line[:c])[0] >= click_x:
+                                    col = c
+                                    break
+                            self.scratch_cursor_col = col
+                        else:
+                            self.scratch_drawing = True
+                            self.scratch_last_pos = (event.pos[0] - self.scratch_rect.x + self.scratch_scroll_x,
+                                                     event.pos[1] - self.scratch_rect.y)
                     else:
                         # Start drag panning in town area
                         town_rect = pygame.Rect(15, 200, 605, HEIGHT - 215)
@@ -3171,6 +3249,58 @@ class Client:
         elif event.type == pygame.KEYDOWN and self.viewing_city:
             if event.key == pygame.K_ESCAPE:
                 self.viewing_city = None
+        elif event.type == pygame.KEYDOWN and self.scratch_typing and self.scratch_focused and not self.shop_open and not self.viewing_city:
+            # Typing into scratch pad
+            line = self.scratch_text_lines[self.scratch_cursor_line]
+            if event.key == pygame.K_RETURN:
+                # Split line at cursor
+                before = line[:self.scratch_cursor_col]
+                after = line[self.scratch_cursor_col:]
+                self.scratch_text_lines[self.scratch_cursor_line] = before
+                self.scratch_text_lines.insert(self.scratch_cursor_line + 1, after)
+                self.scratch_cursor_line += 1
+                self.scratch_cursor_col = 0
+            elif event.key == pygame.K_BACKSPACE:
+                if self.scratch_cursor_col > 0:
+                    self.scratch_text_lines[self.scratch_cursor_line] = line[:self.scratch_cursor_col - 1] + line[self.scratch_cursor_col:]
+                    self.scratch_cursor_col -= 1
+                elif self.scratch_cursor_line > 0:
+                    # Merge with previous line
+                    prev = self.scratch_text_lines[self.scratch_cursor_line - 1]
+                    self.scratch_cursor_col = len(prev)
+                    self.scratch_text_lines[self.scratch_cursor_line - 1] = prev + line
+                    del self.scratch_text_lines[self.scratch_cursor_line]
+                    self.scratch_cursor_line -= 1
+            elif event.key == pygame.K_LEFT:
+                if self.scratch_cursor_col > 0:
+                    self.scratch_cursor_col -= 1
+                elif self.scratch_cursor_line > 0:
+                    self.scratch_cursor_line -= 1
+                    self.scratch_cursor_col = len(self.scratch_text_lines[self.scratch_cursor_line])
+            elif event.key == pygame.K_RIGHT:
+                if self.scratch_cursor_col < len(line):
+                    self.scratch_cursor_col += 1
+                elif self.scratch_cursor_line < len(self.scratch_text_lines) - 1:
+                    self.scratch_cursor_line += 1
+                    self.scratch_cursor_col = 0
+            elif event.key == pygame.K_UP:
+                if self.scratch_cursor_line > 0:
+                    self.scratch_cursor_line -= 1
+                    self.scratch_cursor_col = min(self.scratch_cursor_col, len(self.scratch_text_lines[self.scratch_cursor_line]))
+            elif event.key == pygame.K_DOWN:
+                if self.scratch_cursor_line < len(self.scratch_text_lines) - 1:
+                    self.scratch_cursor_line += 1
+                    self.scratch_cursor_col = min(self.scratch_cursor_col, len(self.scratch_text_lines[self.scratch_cursor_line]))
+            elif event.key == pygame.K_ESCAPE:
+                self.scratch_focused = False
+            elif event.key == pygame.K_TAB:
+                # Tab switches focus back to answer box
+                self.scratch_focused = False
+            else:
+                char = event.unicode
+                if char and char >= ' ':
+                    self.scratch_text_lines[self.scratch_cursor_line] = line[:self.scratch_cursor_col] + char + line[self.scratch_cursor_col:]
+                    self.scratch_cursor_col += 1
         elif event.type == pygame.KEYDOWN and not self.shop_open:
             if event.key == pygame.K_RETURN:
                 self.submit_answer()
@@ -3179,6 +3309,9 @@ class Client:
             elif event.key == pygame.K_ESCAPE:
                 if self.shop_open:
                     self.shop_open = False
+            elif event.key == pygame.K_TAB and self.scratch_typing:
+                # Tab into scratch pad from answer box
+                self.scratch_focused = True
             else:
                 char = event.unicode
                 if char and (char.isdigit() or char == "-"):
