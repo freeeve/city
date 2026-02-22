@@ -6,7 +6,7 @@ import threading
 import json
 import os
 import math
-from shared import BUILDINGS, BUILDING_ORDER, BUILDING_COLORS, PORT
+from shared import BUILDINGS, BUILDING_ORDER, BUILDING_COLORS, CARS, CAR_ORDER, BUILDING_POPULATION, UNLOCK_REQUIREMENTS, PORT
 
 # --- Constants ---
 WIDTH, HEIGHT = 1000, 750
@@ -48,6 +48,11 @@ TREE_GREEN = (60, 150, 55)
 TREE_LIGHT = (80, 175, 70)
 FENCE_COLOR = (165, 140, 100)
 
+# 3D oblique projection
+DEPTH_PX = 20
+SIDE_DX = 10   # horizontal offset for side/top faces
+SIDE_DY = -10  # vertical offset (upward)
+
 # Leaderboard medal colors
 GOLD = (255, 200, 50)
 SILVER = (190, 195, 205)
@@ -65,6 +70,13 @@ PLOT_COLS = [10, 155, 340, 485, 670, 815]
 ROAD_V_POSITIONS = [295, 630]
 # Total town world width
 TOWN_WORLD_W = 960
+
+# Residential neighbourhood
+HOUSE_W, HOUSE_H = 40, 45
+RESIDENTIAL_Y_START = 402 * 6  # Below all 6 commercial sections (2412)
+HOUSE_COLORS = [(180,120,90), (160,170,185), (200,180,140), (170,140,130),
+                (190,200,170), (220,200,180), (150,160,180), (200,160,140)]
+ROOF_COLORS = [(140,60,50), (80,80,90), (120,90,60), (60,80,60)]
 
 
 class Client:
@@ -106,6 +118,48 @@ class Client:
                 self.building_images[name] = pygame.transform.smoothscale(img, (90, 90))
                 self.building_images_shop[name] = pygame.transform.smoothscale(img, (52, 52))
 
+        # Pre-render 3D building composites
+        self.building_images_3d = {}
+        for name, front_img in self.building_images.items():
+            base_color = BUILDING_COLORS.get(name, (150, 150, 150))
+            fw, fh = front_img.get_size()  # 90x90
+            # Composite surface: extra room for side/top faces
+            comp_w = fw + abs(SIDE_DX) + 2
+            comp_h = fh + abs(SIDE_DY) + 2
+            comp = pygame.Surface((comp_w, comp_h), pygame.SRCALPHA)
+            # Right side face (darker) - parallelogram on right edge of front
+            dark = (max(0, base_color[0] - 60), max(0, base_color[1] - 60), max(0, base_color[2] - 60))
+            side_pts = [
+                (fw, abs(SIDE_DY)),          # front top-right
+                (fw + SIDE_DX, abs(SIDE_DY) + SIDE_DY),  # back top-right
+                (fw + SIDE_DX, fh + SIDE_DY),             # back bottom-right
+                (fw, fh + abs(SIDE_DY)),                   # front bottom-right
+            ]
+            # Correct the points: front face sits at y=abs(SIDE_DY)
+            front_y0 = abs(SIDE_DY)
+            side_pts = [
+                (fw, front_y0),                     # front top-right
+                (fw + SIDE_DX, front_y0 + SIDE_DY), # back top-right (shifts up and right)
+                (fw + SIDE_DX, front_y0 + fh + SIDE_DY),  # back bottom-right
+                (fw, front_y0 + fh),                        # front bottom-right
+            ]
+            pygame.draw.polygon(comp, dark, side_pts)
+            # Top face (lighter) - parallelogram on top edge of front
+            light = (min(255, base_color[0] + 40), min(255, base_color[1] + 40), min(255, base_color[2] + 40))
+            top_pts = [
+                (0, front_y0),                       # front top-left
+                (SIDE_DX, front_y0 + SIDE_DY),       # back top-left
+                (fw + SIDE_DX, front_y0 + SIDE_DY),  # back top-right
+                (fw, front_y0),                       # front top-right
+            ]
+            pygame.draw.polygon(comp, light, top_pts)
+            # Edge lines for definition
+            pygame.draw.polygon(comp, (max(0, dark[0] - 20), max(0, dark[1] - 20), max(0, dark[2] - 20)), side_pts, 1)
+            pygame.draw.polygon(comp, (max(0, light[0] - 30), max(0, light[1] - 30), max(0, light[2] - 30)), top_pts, 1)
+            # Front face (the existing PNG)
+            comp.blit(front_img, (0, front_y0))
+            self.building_images_3d[name] = comp
+
         # Network
         self.sock = None
         self.connected = False
@@ -114,11 +168,22 @@ class Client:
         # Game state from server
         self.coins = 0
         self.buildings = []
+        self.cars = []
+        self.population = 0
+        self.pop_bonus = 1.0
         self.problem_text = ""
         self.income = 0
         self.leaderboard = []
         self.last_result = ""
         self.result_timer = 0
+
+        # Car animation state
+        self.car_anims = []
+        self.car_anim_count = 0  # track when to reinitialize
+
+        # Pedestrian animation state
+        self.pedestrian_anims = []
+        self.pedestrian_count = 0
 
         # Screens
         self.screen_state = "connect"
@@ -184,6 +249,9 @@ class Client:
         if msg["type"] == "state":
             self.coins = msg["coins"]
             self.buildings = msg["buildings"]
+            self.cars = msg.get("cars", [])
+            self.population = msg.get("population", 0)
+            self.pop_bonus = msg.get("pop_bonus", 1.0)
             self.problem_text = msg["problem"]["text"]
             self.income = msg["income"]
             self.leaderboard = msg["leaderboard"]
@@ -270,6 +338,132 @@ class Client:
         pygame.draw.circle(self.screen, COIN_DARK, (x, y), size)
         pygame.draw.circle(self.screen, COIN_GOLD, (x, y), size - 2)
         self.draw_text("$", self.font_tiny, COIN_DARK, x, y, center=True)
+
+    def draw_person_icon(self, x, y, size=10):
+        """Draw a small person silhouette."""
+        # Head
+        pygame.draw.circle(self.screen, WHITE, (x, y - size // 2), size // 3)
+        # Body
+        pygame.draw.rect(self.screen, WHITE, (x - size // 4, y - size // 6, size // 2, size // 2))
+        # Legs
+        pygame.draw.rect(self.screen, WHITE, (x - size // 4, y + size // 3, size // 5, size // 3))
+        pygame.draw.rect(self.screen, WHITE, (x + size // 20, y + size // 3, size // 5, size // 3))
+
+    def draw_car(self, surf, x, y, car_type, direction='right', scale=1.0):
+        """Draw a car on the given surface at (x, y)."""
+        color = CARS[car_type][2]
+        dark = (max(0, color[0] - 40), max(0, color[1] - 40), max(0, color[2] - 40))
+        light = (min(255, color[0] + 60), min(255, color[1] + 60), min(255, color[2] + 60))
+        window_color = (180, 210, 240)
+
+        if car_type == "Bicycle":
+            # Small bicycle
+            w, h = int(16 * scale), int(10 * scale)
+            # Wheels
+            pygame.draw.circle(surf, (50, 50, 50), (x - w // 3, y + h // 3), int(3 * scale))
+            pygame.draw.circle(surf, (50, 50, 50), (x + w // 3, y + h // 3), int(3 * scale))
+            # Frame
+            pygame.draw.line(surf, color, (x - w // 3, y + h // 3), (x, y - h // 3), max(1, int(scale)))
+            pygame.draw.line(surf, color, (x + w // 3, y + h // 3), (x, y - h // 3), max(1, int(scale)))
+            pygame.draw.line(surf, color, (x - w // 3, y + h // 3), (x + w // 6, y), max(1, int(scale)))
+            # Seat
+            pygame.draw.rect(surf, dark, (x - int(2 * scale), y - h // 3 - int(2 * scale), int(4 * scale), int(2 * scale)))
+        elif car_type == "Bus":
+            # Large bus
+            w, h = int(40 * scale), int(16 * scale)
+            bx = x - w // 2 if direction == 'right' else x - w // 2
+            # Body
+            pygame.draw.rect(surf, color, (bx, y - h // 2, w, h), border_radius=int(3 * scale))
+            # Windows
+            for wx in range(bx + int(4 * scale), bx + w - int(6 * scale), int(8 * scale)):
+                pygame.draw.rect(surf, window_color, (wx, y - h // 2 + int(2 * scale), int(5 * scale), int(5 * scale)), border_radius=1)
+            # Wheels
+            pygame.draw.circle(surf, (40, 40, 40), (bx + int(8 * scale), y + h // 2 - int(1 * scale)), int(3 * scale))
+            pygame.draw.circle(surf, (40, 40, 40), (bx + w - int(8 * scale), y + h // 2 - int(1 * scale)), int(3 * scale))
+            # Stripe
+            pygame.draw.rect(surf, dark, (bx, y + int(2 * scale), w, int(2 * scale)))
+        elif car_type == "Fire Truck":
+            # Long fire truck
+            w, h = int(38 * scale), int(14 * scale)
+            bx = x - w // 2
+            pygame.draw.rect(surf, color, (bx, y - h // 2, w, h), border_radius=int(2 * scale))
+            # Cab window
+            cab_side = bx + w - int(10 * scale) if direction == 'right' else bx
+            pygame.draw.rect(surf, window_color, (cab_side, y - h // 2 + int(2 * scale), int(8 * scale), int(5 * scale)), border_radius=1)
+            # Ladder on top
+            pygame.draw.rect(surf, (180, 170, 130), (bx + int(4 * scale), y - h // 2 - int(2 * scale), int(20 * scale), int(2 * scale)))
+            # Light on top
+            blink = (self.tick // 8) % 2
+            light_c = (255, 50, 50) if blink else (255, 150, 150)
+            pygame.draw.circle(surf, light_c, (bx + w - int(6 * scale), y - h // 2 - int(1 * scale)), int(2 * scale))
+            # Wheels
+            pygame.draw.circle(surf, (40, 40, 40), (bx + int(8 * scale), y + h // 2 - int(1 * scale)), int(3 * scale))
+            pygame.draw.circle(surf, (40, 40, 40), (bx + w - int(8 * scale), y + h // 2 - int(1 * scale)), int(3 * scale))
+        else:
+            # Generic car shape (Scooter, Sedan, Taxi, Sports Car, Ice Cream Van)
+            if car_type == "Scooter":
+                w, h = int(18 * scale), int(10 * scale)
+            elif car_type == "Sports Car":
+                w, h = int(28 * scale), int(10 * scale)
+            elif car_type == "Ice Cream Van":
+                w, h = int(30 * scale), int(14 * scale)
+            else:
+                w, h = int(24 * scale), int(12 * scale)
+            bx = x - w // 2
+            # Body
+            pygame.draw.rect(surf, color, (bx, y - h // 2, w, h), border_radius=int(3 * scale))
+            # Roof / window
+            roof_w = int(w * 0.5)
+            roof_x = bx + int(w * 0.25) if direction == 'right' else bx + int(w * 0.25)
+            pygame.draw.rect(surf, window_color, (roof_x, y - h // 2 + int(1 * scale), roof_w, int(h * 0.4)), border_radius=int(2 * scale))
+            # Wheels
+            pygame.draw.circle(surf, (40, 40, 40), (bx + int(5 * scale), y + h // 2 - int(1 * scale)), int(2.5 * scale))
+            pygame.draw.circle(surf, (40, 40, 40), (bx + w - int(5 * scale), y + h // 2 - int(1 * scale)), int(2.5 * scale))
+            # Headlight
+            hl_x = bx + w - int(2 * scale) if direction == 'right' else bx + int(2 * scale)
+            pygame.draw.circle(surf, (255, 255, 200), (hl_x, y), int(1.5 * scale))
+            # Ice cream van cone on top
+            if car_type == "Ice Cream Van":
+                pygame.draw.circle(surf, (255, 220, 180), (bx + w // 2, y - h // 2 - int(3 * scale)), int(3 * scale))
+                pygame.draw.polygon(surf, (200, 160, 100), [
+                    (bx + w // 2 - int(2 * scale), y - h // 2 - int(1 * scale)),
+                    (bx + w // 2, y - h // 2 + int(2 * scale)),
+                    (bx + w // 2 + int(2 * scale), y - h // 2 - int(1 * scale)),
+                ])
+
+    def draw_pedestrian(self, surf, x, y, direction='right', color_seed=0):
+        """Draw a walking pedestrian (about 18px tall)."""
+        import random
+        rng = random.Random(color_seed)
+        skin = rng.choice([(240, 210, 180), (210, 170, 130), (180, 130, 90), (140, 100, 70)])
+        shirt = (rng.randint(60, 230), rng.randint(60, 230), rng.randint(60, 230))
+        pants = rng.choice([(50, 50, 120), (80, 80, 80), (100, 70, 50), (40, 40, 40)])
+        hair = rng.choice([(40, 30, 20), (80, 50, 30), (180, 140, 60), (20, 20, 20)])
+        ix, iy = int(x), int(y)
+        # Head
+        pygame.draw.circle(surf, skin, (ix, iy - 13), 5)
+        # Hair
+        pygame.draw.arc(surf, hair, (ix - 5, iy - 18, 10, 8), 0, 3.14, 2)
+        # Body
+        pygame.draw.rect(surf, shirt, (ix - 4, iy - 8, 8, 9))
+        # Arms
+        arm_phase = (self.tick // 6) % 2
+        if arm_phase == 0:
+            pygame.draw.rect(surf, shirt, (ix - 6, iy - 7, 2, 6))
+            pygame.draw.rect(surf, shirt, (ix + 4, iy - 5, 2, 6))
+        else:
+            pygame.draw.rect(surf, shirt, (ix - 6, iy - 5, 2, 6))
+            pygame.draw.rect(surf, shirt, (ix + 4, iy - 7, 2, 6))
+        # Legs - animate based on tick
+        leg_phase = (self.tick // 6) % 2
+        if leg_phase == 0:
+            lx_off = -2 if direction == 'right' else 2
+            pygame.draw.rect(surf, pants, (ix - 4 + lx_off, iy + 1, 3, 7))
+            pygame.draw.rect(surf, pants, (ix + 1 - lx_off, iy + 1, 3, 6))
+        else:
+            lx_off = 2 if direction == 'right' else -2
+            pygame.draw.rect(surf, pants, (ix - 4 + lx_off, iy + 1, 3, 6))
+            pygame.draw.rect(surf, pants, (ix + 1 - lx_off, iy + 1, 3, 7))
 
     # --- Connect Screen ---
     def draw_connect_screen(self):
@@ -488,13 +682,23 @@ class Client:
 
         self.draw_text("City", self.font_med, WHITE, 18, 16, shadow=True)
 
+        # Population display
+        self.draw_person_icon(100, 22, 10)
+        self.draw_text(f"{self.population}", self.font_sm, WHITE, 115, 15)
+        self.draw_text("pop", self.font_tiny, (180, 210, 255), 115, 36)
+        if self.pop_bonus > 1.0:
+            self.draw_text(f"x{self.pop_bonus:.1f}", self.font_tiny, (170, 255, 170), 155, 36)
+
         # Coin display
         self.draw_coin_icon(WIDTH - 260, 22, 14)
         self.draw_text(f"{self.coins:,}", self.font_med, WHITE, WIDTH - 240, 12, shadow=True)
         self.draw_text("coins", self.font_tiny, (180, 210, 255), WIDTH - 240, 40)
 
         if self.income > 0:
-            self.draw_text(f"+{self.income} bonus/solve", self.font_tiny, (170, 230, 170), WIDTH - 175, 40)
+            bonus_text = f"+{self.income} bonus/solve"
+            if self.pop_bonus > 1.0:
+                bonus_text += f" (x{self.pop_bonus:.1f})"
+            self.draw_text(bonus_text, self.font_tiny, (170, 230, 170), WIDTH - 175, 40)
 
         # --- Math problem card ---
         prob_x, prob_y, prob_w, prob_h = 18, 72, 600, 120
@@ -539,6 +743,76 @@ class Client:
             self.draw_shop()
 
     # --- Town ---
+    def draw_street_lamp(self, x, y):
+        """Draw a small street lamp with warm glow."""
+        # Pole
+        pygame.draw.rect(self.screen, (90, 90, 100), (x - 2, y - 30, 4, 32))
+        # Arm
+        pygame.draw.rect(self.screen, (90, 90, 100), (x - 1, y - 32, 12, 3))
+        # Lamp housing
+        pygame.draw.rect(self.screen, (70, 70, 80), (x + 6, y - 34, 8, 6), border_radius=2)
+        # Light glow
+        glow = pygame.Surface((24, 30), pygame.SRCALPHA)
+        pygame.draw.ellipse(glow, (255, 230, 130, 30), (0, 0, 24, 30))
+        self.screen.blit(glow, (x - 2, y - 28))
+        # Warm bulb
+        pygame.draw.circle(self.screen, (255, 240, 180), (x + 10, y - 29), 3)
+
+    def draw_pond(self, x, y, w, h):
+        """Draw a small decorative pond."""
+        # Water shadow
+        shadow_s = pygame.Surface((w + 4, h + 4), pygame.SRCALPHA)
+        pygame.draw.ellipse(shadow_s, (0, 0, 0, 20), shadow_s.get_rect())
+        self.screen.blit(shadow_s, (x - 2, y))
+        # Dark water edge
+        pygame.draw.ellipse(self.screen, (40, 100, 130), (x, y, w, h))
+        # Main water
+        pygame.draw.ellipse(self.screen, (70, 140, 180), (x + 2, y + 2, w - 4, h - 4))
+        # Light reflection
+        pygame.draw.ellipse(self.screen, (110, 175, 210, 140), (x + w // 4, y + 3, w // 3, h // 4))
+        # Sparkle
+        pygame.draw.circle(self.screen, (180, 220, 255), (x + w // 3, y + h // 3), 2)
+        # Lily pad
+        lx, ly = x + w * 2 // 3, y + h // 2
+        pygame.draw.ellipse(self.screen, (50, 140, 50), (lx, ly, 8, 5))
+        pygame.draw.ellipse(self.screen, (70, 165, 60), (lx + 1, ly + 1, 6, 3))
+        # Tiny pink flower on lily pad
+        pygame.draw.circle(self.screen, (255, 150, 180), (lx + 4, ly + 2), 2)
+
+    def draw_bench(self, x, y):
+        """Draw a small park bench."""
+        # Legs
+        pygame.draw.rect(self.screen, (100, 75, 45), (x, y, 3, 8))
+        pygame.draw.rect(self.screen, (100, 75, 45), (x + 17, y, 3, 8))
+        # Seat
+        pygame.draw.rect(self.screen, (140, 100, 55), (x - 1, y - 2, 22, 4), border_radius=1)
+        # Back
+        pygame.draw.rect(self.screen, (130, 90, 50), (x, y - 8, 20, 3), border_radius=1)
+        # Highlight
+        pygame.draw.line(self.screen, (160, 120, 70), (x, y - 2), (x + 20, y - 2), 1)
+
+    def draw_flower_garden(self, x, y, seed=0):
+        """Draw a small cluster of flowers in a garden patch."""
+        import random
+        rng = random.Random(seed)
+        # Garden dirt patch
+        gs = pygame.Surface((26, 14), pygame.SRCALPHA)
+        pygame.draw.ellipse(gs, (110, 85, 50, 80), (0, 0, 26, 14))
+        self.screen.blit(gs, (x - 13, y - 2))
+        # Several flowers
+        colors = [(255, 100, 120), (255, 200, 80), (180, 120, 255), (255, 160, 200), (120, 200, 255)]
+        for _ in range(4):
+            fx = x + rng.randint(-8, 8)
+            fy = y + rng.randint(-5, 3)
+            fc = rng.choice(colors)
+            pygame.draw.line(self.screen, (60, 130, 50), (fx, fy + 2), (fx, fy + 6), 1)
+            for angle_deg in range(0, 360, 72):
+                angle = math.radians(angle_deg + rng.randint(-10, 10))
+                px = fx + int(2.5 * math.cos(angle))
+                py_f = fy + int(2.5 * math.sin(angle))
+                pygame.draw.circle(self.screen, fc, (px, py_f), 2)
+            pygame.draw.circle(self.screen, (255, 240, 150), (fx, fy), 1)
+
     def draw_tree(self, x, y, size=1.0):
         s = size
         tw = int(6 * s)
@@ -550,17 +824,24 @@ class Client:
         # Trunk with bark texture
         pygame.draw.rect(self.screen, (100, 70, 40), (x - tw // 2, y - th, tw, th), border_radius=2)
         pygame.draw.rect(self.screen, TREE_TRUNK, (x - tw // 2 + 1, y - th, tw - 2, th), border_radius=2)
+        # Bark detail lines
+        for by_off in range(3, th - 2, 4):
+            pygame.draw.line(self.screen, (90, 65, 35), (x - tw // 2 + 2, y - th + by_off),
+                             (x + tw // 2 - 2, y - th + by_off), 1)
         # Foliage - multiple overlapping circles for fuller look
         r1 = int(18 * s)
         dark_green = (45, 130, 45)
         mid_green = (60, 155, 55)
         light_green = (85, 180, 70)
         highlight = (110, 200, 90)
+        bright = (140, 215, 110)
         pygame.draw.circle(self.screen, dark_green, (x + int(3 * s), y - th - r1 // 2 + int(3 * s)), int(14 * s))
         pygame.draw.circle(self.screen, mid_green, (x, y - th - r1 // 2), r1)
         pygame.draw.circle(self.screen, TREE_GREEN, (x - int(6 * s), y - th - r1 // 2 - int(2 * s)), int(13 * s))
         pygame.draw.circle(self.screen, light_green, (x + int(5 * s), y - th - r1 // 2 - int(4 * s)), int(11 * s))
         pygame.draw.circle(self.screen, highlight, (x - int(3 * s), y - th - r1 // 2 - int(6 * s)), int(7 * s))
+        # Top highlight sparkle
+        pygame.draw.circle(self.screen, bright, (x - int(1 * s), y - th - r1 // 2 - int(8 * s)), int(3 * s))
 
     def draw_bush(self, x, y, size=1.0):
         s = size
@@ -570,6 +851,11 @@ class Client:
         pygame.draw.ellipse(self.screen, (50, 140, 50), (x - int(10 * s), y - int(8 * s), int(20 * s), int(12 * s)))
         pygame.draw.ellipse(self.screen, (65, 160, 60), (x - int(7 * s), y - int(10 * s), int(14 * s), int(10 * s)))
         pygame.draw.ellipse(self.screen, (80, 175, 70), (x - int(4 * s), y - int(11 * s), int(9 * s), int(7 * s)))
+        # Berry dots on some bushes
+        if int(x * 7 + y * 3) % 3 == 0:
+            pygame.draw.circle(self.screen, (220, 60, 60), (x - int(3 * s), y - int(7 * s)), max(1, int(2 * s)))
+            pygame.draw.circle(self.screen, (220, 60, 60), (x + int(4 * s), y - int(9 * s)), max(1, int(2 * s)))
+            pygame.draw.circle(self.screen, (240, 80, 80), (x + int(1 * s), y - int(10 * s)), max(1, int(1.5 * s)))
 
     def draw_flower(self, x, y, color):
         # Stem
@@ -598,6 +884,180 @@ class Client:
                 positions.append((x, base_y + ROW_HEIGHT))
         return positions
 
+    def get_house_positions(self):
+        """Generate house positions in the residential neighbourhood below commercial sections."""
+        num_houses = min(max(1, self.population // 3), 30)
+        positions = []
+        cols = 15  # max columns across town width
+        col_spacing = TOWN_WORLD_W // cols
+        for i in range(num_houses):
+            col = i % cols
+            row = i // cols
+            x = col * col_spacing + 10
+            y = RESIDENTIAL_Y_START + row * (HOUSE_H + 25) + 30
+            positions.append((x, y, i))  # x, y, color_seed
+        return positions
+
+    def draw_house(self, x, y, color_seed=0):
+        """Draw a small procedural house (~40x45px) with 3D oblique projection."""
+        import random
+        rng = random.Random(color_seed * 137 + 53)
+        wall_color = rng.choice(HOUSE_COLORS)
+        roof_color = rng.choice(ROOF_COLORS)
+        dark_wall = (max(0, wall_color[0] - 40), max(0, wall_color[1] - 40), max(0, wall_color[2] - 40))
+        light_wall = (min(255, wall_color[0] + 30), min(255, wall_color[1] + 30), min(255, wall_color[2] + 30))
+        dark_roof = (max(0, roof_color[0] - 30), max(0, roof_color[1] - 30), max(0, roof_color[2] - 30))
+        light_roof = (min(255, roof_color[0] + 40), min(255, roof_color[1] + 40), min(255, roof_color[2] + 40))
+
+        w, h_body = 28, 28
+        ix, iy = int(x), int(y)
+
+        # Ground shadow ellipse
+        shadow_s = pygame.Surface((w + 20, 12), pygame.SRCALPHA)
+        pygame.draw.ellipse(shadow_s, (0, 0, 0, 28), shadow_s.get_rect())
+        self.screen.blit(shadow_s, (ix - 4, iy + HOUSE_H - 8))
+
+        # Front wall body
+        wall_top = iy + HOUSE_H - h_body
+        pygame.draw.rect(self.screen, wall_color, (ix, wall_top, w, h_body))
+        pygame.draw.rect(self.screen, dark_wall, (ix, wall_top, w, h_body), 1)
+
+        # Wall texture - horizontal siding lines
+        for sy_off in range(4, h_body - 2, 5):
+            pygame.draw.line(self.screen, (max(0, wall_color[0] - 15), max(0, wall_color[1] - 15), max(0, wall_color[2] - 15)),
+                             (ix + 1, wall_top + sy_off), (ix + w - 1, wall_top + sy_off), 1)
+
+        # Foundation strip at bottom of wall
+        pygame.draw.rect(self.screen, (120, 115, 110), (ix, wall_top + h_body - 3, w, 3))
+        pygame.draw.rect(self.screen, (100, 95, 90), (ix, wall_top + h_body - 3, w, 3), 1)
+
+        # 3D side face (right side, oblique)
+        side_dx, side_dy = 8, -8
+        side_pts = [
+            (ix + w, wall_top),
+            (ix + w + side_dx, wall_top + side_dy),
+            (ix + w + side_dx, wall_top + h_body + side_dy),
+            (ix + w, wall_top + h_body),
+        ]
+        pygame.draw.polygon(self.screen, dark_wall, side_pts)
+        pygame.draw.polygon(self.screen, (max(0, dark_wall[0] - 15), max(0, dark_wall[1] - 15), max(0, dark_wall[2] - 15)), side_pts, 1)
+        # Side wall siding lines
+        for sy_off in range(4, h_body - 2, 5):
+            y1 = wall_top + sy_off
+            pygame.draw.line(self.screen, (max(0, dark_wall[0] - 10), max(0, dark_wall[1] - 10), max(0, dark_wall[2] - 10)),
+                             (ix + w + 1, y1), (ix + w + side_dx - 1, y1 + side_dy), 1)
+
+        # Pitched triangular roof (front face)
+        roof_base_y = wall_top
+        roof_peak_y = roof_base_y - 17
+        eave = 4  # overhang
+        roof_pts = [
+            (ix - eave, roof_base_y),
+            (ix + w // 2, roof_peak_y),
+            (ix + w + eave, roof_base_y),
+        ]
+        pygame.draw.polygon(self.screen, roof_color, roof_pts)
+        # Roof shingle lines
+        for ry_off in range(3, 17, 4):
+            line_y = roof_peak_y + ry_off
+            t = ry_off / 17.0
+            left_x = int(ix + w // 2 - (w // 2 + eave) * t)
+            right_x = int(ix + w // 2 + (w // 2 + eave) * t)
+            pygame.draw.line(self.screen, dark_roof, (left_x, line_y), (right_x, line_y), 1)
+        pygame.draw.polygon(self.screen, dark_roof, roof_pts, 1)
+        # Roof ridge highlight
+        pygame.draw.line(self.screen, light_roof, (ix + w // 2, roof_peak_y), (ix + w // 2 - 2, roof_peak_y + 2), 1)
+
+        # 3D roof side face (right slope)
+        roof_side_pts = [
+            (ix + w + eave, roof_base_y),
+            (ix + w // 2, roof_peak_y),
+            (ix + w // 2 + side_dx, roof_peak_y + side_dy),
+            (ix + w + eave + side_dx, roof_base_y + side_dy),
+        ]
+        pygame.draw.polygon(self.screen, dark_roof, roof_side_pts)
+        pygame.draw.polygon(self.screen, (max(0, dark_roof[0] - 10), max(0, dark_roof[1] - 10), max(0, dark_roof[2] - 10)), roof_side_pts, 1)
+
+        # Chimney (on some houses)
+        if rng.random() < 0.5:
+            chim_x = ix + w - 8
+            chim_y = roof_peak_y - 2
+            chim_color = (140, 100, 80) if rng.random() < 0.5 else (120, 115, 110)
+            pygame.draw.rect(self.screen, chim_color, (chim_x, chim_y, 5, 12))
+            pygame.draw.rect(self.screen, (max(0, chim_color[0] - 20), max(0, chim_color[1] - 20), max(0, chim_color[2] - 20)), (chim_x, chim_y, 5, 12), 1)
+            # Chimney cap
+            pygame.draw.rect(self.screen, (max(0, chim_color[0] - 30), max(0, chim_color[1] - 30), max(0, chim_color[2] - 30)), (chim_x - 1, chim_y - 2, 7, 2))
+
+        # Door
+        door_x = ix + w // 2 - 4
+        door_y = wall_top + h_body - 16
+        door_color = rng.choice([(90, 60, 40), (60, 80, 50), (80, 40, 40), (50, 50, 80)])
+        pygame.draw.rect(self.screen, door_color, (door_x, door_y, 8, 13))
+        pygame.draw.rect(self.screen, (max(0, door_color[0] - 25), max(0, door_color[1] - 25), max(0, door_color[2] - 25)), (door_x, door_y, 8, 13), 1)
+        # Door panel detail
+        pygame.draw.rect(self.screen, (max(0, door_color[0] - 10), max(0, door_color[1] - 10), max(0, door_color[2] - 10)),
+                         (door_x + 2, door_y + 2, 4, 4), 1)
+        pygame.draw.rect(self.screen, (max(0, door_color[0] - 10), max(0, door_color[1] - 10), max(0, door_color[2] - 10)),
+                         (door_x + 2, door_y + 7, 4, 4), 1)
+        # Doorknob
+        pygame.draw.circle(self.screen, (210, 190, 110), (door_x + 6, door_y + 8), 1)
+        # Doorstep
+        pygame.draw.rect(self.screen, (150, 145, 135), (door_x - 1, door_y + 13, 10, 3))
+
+        # Left window with cross pane and sill
+        win_x = ix + 3
+        win_y = wall_top + 7
+        # Window frame
+        pygame.draw.rect(self.screen, light_wall, (win_x - 1, win_y - 1, 10, 10))
+        # Glass
+        win_glow = rng.random() < 0.3
+        win_glass = (240, 230, 160, 180) if win_glow else (180, 210, 240)
+        if win_glow:
+            glow_s = pygame.Surface((14, 14), pygame.SRCALPHA)
+            pygame.draw.rect(glow_s, (255, 240, 150, 30), (0, 0, 14, 14))
+            self.screen.blit(glow_s, (win_x - 2, win_y - 2))
+        pygame.draw.rect(self.screen, win_glass[:3], (win_x, win_y, 8, 8))
+        pygame.draw.rect(self.screen, dark_wall, (win_x, win_y, 8, 8), 1)
+        # Cross pane
+        pygame.draw.line(self.screen, dark_wall, (win_x + 4, win_y), (win_x + 4, win_y + 8), 1)
+        pygame.draw.line(self.screen, dark_wall, (win_x, win_y + 4), (win_x + 8, win_y + 4), 1)
+        # Window sill
+        pygame.draw.rect(self.screen, light_wall, (win_x - 1, win_y + 8, 10, 2))
+
+        # Right window (second window on wider houses)
+        win2_x = ix + w - 11
+        pygame.draw.rect(self.screen, light_wall, (win2_x - 1, win_y - 1, 10, 10))
+        pygame.draw.rect(self.screen, win_glass[:3], (win2_x, win_y, 8, 8))
+        pygame.draw.rect(self.screen, dark_wall, (win2_x, win_y, 8, 8), 1)
+        pygame.draw.line(self.screen, dark_wall, (win2_x + 4, win_y), (win2_x + 4, win_y + 8), 1)
+        pygame.draw.line(self.screen, dark_wall, (win2_x, win_y + 4), (win2_x + 8, win_y + 4), 1)
+        pygame.draw.rect(self.screen, light_wall, (win2_x - 1, win_y + 8, 10, 2))
+
+        # House number on door or wall
+        house_num = str((color_seed % 42) + 1)
+        num_s = self.font_tiny.render(house_num, True, light_wall)
+        self.screen.blit(num_s, (door_x + 1, door_y - 9))
+
+        # Mailbox (on some houses)
+        if rng.random() < 0.4:
+            mb_x = ix - 6
+            mb_y = wall_top + h_body - 10
+            pygame.draw.rect(self.screen, (80, 80, 90), (mb_x, mb_y, 2, 10))
+            pygame.draw.rect(self.screen, (60, 90, 160), (mb_x - 2, mb_y - 2, 6, 4), border_radius=1)
+
+        # Small front garden patch
+        if rng.random() < 0.5:
+            gx = ix + rng.randint(-3, 2)
+            gy = iy + HOUSE_H - 2
+            garden_colors = [(60, 150, 55), (70, 160, 60), (80, 140, 50)]
+            for _ in range(3):
+                gc = rng.choice(garden_colors)
+                gox = gx + rng.randint(0, 10)
+                pygame.draw.circle(self.screen, gc, (gox, gy), rng.randint(2, 3))
+            # Tiny flower
+            fc = rng.choice([(255, 100, 120), (255, 200, 80), (180, 120, 255)])
+            pygame.draw.circle(self.screen, fc, (gx + 5, gy - 1), 1)
+
     def draw_town(self):
         town_x, town_y = 15, 200
         town_w, town_h = 605, HEIGHT - town_y - 15
@@ -620,13 +1080,19 @@ class Client:
         while len(plot_assignments) < len(all_plots):
             plot_assignments.append(None)
 
-        # Total content size
+        # Total content size (account for 3D overhang)
         if all_plots:
             max_content_y = max(py for _, py in all_plots) + PLOT_H + 40
-            max_content_x = max(px for px, _ in all_plots) + PLOT_W + 20
+            max_content_x = max(px for px, _ in all_plots) + PLOT_W + SIDE_DX + 20
         else:
             max_content_y = view_h
             max_content_x = view_w
+
+        # Extend for residential neighbourhood
+        house_positions = self.get_house_positions()
+        if house_positions:
+            max_content_y = max(max_content_y, max(hy for _, hy, _ in house_positions) + HOUSE_H + 40)
+
         total_h = max(max_content_y, view_h)
         total_w = max(max_content_x, view_w)
 
@@ -686,7 +1152,7 @@ class Client:
                 bx = rng.randint(-3, 3)
                 pygame.draw.line(self.screen, blade_col, (draw_x + bx, draw_y), (draw_x + bx + rng.randint(-2, 2), draw_y - rng.randint(3, 7)), 1)
 
-        # --- Vertical roads ---
+        # --- Vertical roads (flat ground plane, always behind everything) ---
         for road_vx in ROAD_V_POSITIONS:
             vx = town_x + road_vx - sx
             if vx + ROAD_THICK + 12 < town_x or vx - 8 > town_x + view_w:
@@ -701,166 +1167,296 @@ class Client:
                 shade = 135 + (ry_off % 16 < 8) * 5
                 pygame.draw.line(self.screen, (shade, shade - 2, shade - 6),
                                  (vx + 1, town_y + ry_off), (vx + ROAD_THICK - 1, town_y + ry_off), 1)
-            # Curb edges
-            pygame.draw.line(self.screen, (170, 165, 155), (vx - 1, town_y), (vx - 1, town_y + view_h), 2)
-            pygame.draw.line(self.screen, (170, 165, 155), (vx + ROAD_THICK + 1, town_y), (vx + ROAD_THICK + 1, town_y + view_h), 2)
+            # 3D curb edges - left curb with raised side face
+            curb_dark = (150, 145, 135)
+            pygame.draw.line(self.screen, curb_dark, (vx - 1, town_y), (vx - 1, town_y + view_h), 3)
+            pygame.draw.line(self.screen, (175, 170, 160), (vx - 3, town_y), (vx - 3, town_y + view_h), 2)
+            # Right curb with raised side face
+            pygame.draw.line(self.screen, curb_dark, (vx + ROAD_THICK + 1, town_y), (vx + ROAD_THICK + 1, town_y + view_h), 3)
+            pygame.draw.line(self.screen, (175, 170, 160), (vx + ROAD_THICK + 3, town_y), (vx + ROAD_THICK + 3, town_y + view_h), 2)
             # Center line - double yellow
             cx = vx + ROAD_THICK // 2
             pygame.draw.line(self.screen, (220, 200, 80), (cx - 2, town_y), (cx - 2, town_y + view_h), 2)
             pygame.draw.line(self.screen, (220, 200, 80), (cx + 2, town_y), (cx + 2, town_y + view_h), 2)
 
-        # --- Horizontal roads between sections ---
+        # --- Car animation system ---
+        total_cars = len(self.cars)
+        if total_cars != self.car_anim_count:
+            self.car_anim_count = total_cars
+            self._init_car_anims()
+        self._update_car_anims()
+
+        # --- Pedestrian animation system ---
+        ped_target = min(self.population, 50)
+        if ped_target != self.pedestrian_count or (ped_target > 0 and not self.pedestrian_anims):
+            self.pedestrian_count = ped_target
+            if ped_target > 0:
+                self._init_pedestrian_anims()
+            else:
+                self.pedestrian_anims = []
+        if self.pedestrian_anims:
+            self._update_pedestrian_anims()
+
+        # --- Collect all depth-sorted drawables ---
+        # Each entry: (sort_y, draw_func)
+        drawables = []
+
+        # Horizontal roads
         section_h = ROW_HEIGHT * 2 + ROAD_THICK + 16
         for section in range(8):
             road_local_y = section * section_h + ROW_HEIGHT * 2 - 15
             hy = town_y + road_local_y - sy
             if hy > town_y + view_h + 15 or hy + ROAD_THICK < town_y - 15:
                 continue
-            road_draw_x = town_x - sx - 10
-            road_draw_w = total_w + 60
-            # Sidewalk with curb
-            pygame.draw.rect(self.screen, (185, 180, 170), (road_draw_x, hy - 7, road_draw_w, ROAD_THICK + 14))
-            pygame.draw.rect(self.screen, SIDEWALK, (road_draw_x, hy - 5, road_draw_w, ROAD_THICK + 10))
-            # Road surface
-            pygame.draw.rect(self.screen, ROAD_FILL, (road_draw_x, hy, road_draw_w, ROAD_THICK))
-            # Road texture
-            for rx_off in range(0, road_draw_w, 8):
-                shade = 135 + (rx_off % 16 < 8) * 5
-                pygame.draw.line(self.screen, (shade, shade - 2, shade - 6),
-                                 (road_draw_x + rx_off, hy + 1), (road_draw_x + rx_off, hy + ROAD_THICK - 1), 1)
-            # Curb edges
-            pygame.draw.line(self.screen, (170, 165, 155), (road_draw_x, hy - 1), (road_draw_x + road_draw_w, hy - 1), 2)
-            pygame.draw.line(self.screen, (170, 165, 155), (road_draw_x, hy + ROAD_THICK + 1), (road_draw_x + road_draw_w, hy + ROAD_THICK + 1), 2)
-            # Center line - double yellow
-            cy = hy + ROAD_THICK // 2
-            pygame.draw.line(self.screen, (220, 200, 80), (road_draw_x, cy - 2), (road_draw_x + road_draw_w, cy - 2), 2)
-            pygame.draw.line(self.screen, (220, 200, 80), (road_draw_x, cy + 2), (road_draw_x + road_draw_w, cy + 2), 2)
-            # Crosswalks at intersections
-            for road_vx in ROAD_V_POSITIONS:
-                ivx = town_x + road_vx - sx
-                # Fill intersection
-                pygame.draw.rect(self.screen, ROAD_FILL, (ivx - 5, hy - 5, ROAD_THICK + 10, ROAD_THICK + 10))
-                # Crosswalk stripes (white bars)
-                # Across vertical road (above and below intersection)
-                for cwy in [hy - 14, hy + ROAD_THICK + 3]:
-                    for cwx in range(ivx + 2, ivx + ROAD_THICK - 2, 7):
-                        pygame.draw.rect(self.screen, (230, 225, 215), (cwx, cwy, 5, 10), border_radius=1)
-                # Across horizontal road (left and right of intersection)
-                for cwx in [ivx - 14, ivx + ROAD_THICK + 3]:
-                    for cwy in range(hy + 2, hy + ROAD_THICK - 2, 7):
-                        pygame.draw.rect(self.screen, (230, 225, 215), (cwx, cwy, 10, 5), border_radius=1)
+            drawables.append((road_local_y, 'hroad', section, hy))
 
-        # --- Bushes along roads ---
+        # Bushes along roads
         bush_templates = [(280, 60, 0.7), (620, 90, 0.8), (280, 200, 0.6), (620, 250, 0.75),
                           (280, 340, 0.65), (620, 380, 0.7)]
-        for bx, by, bs in bush_templates:
-            draw_x = town_x + bx - sx
+        for btx, bty, bs in bush_templates:
+            draw_x = town_x + btx - sx
             if draw_x < town_x - 20 or draw_x > town_x + view_w + 20:
                 continue
-            draw_y = town_y + by - (sy % 450)
-            while draw_y < town_y + view_h + 20:
-                if draw_y > town_y - 20:
-                    self.draw_bush(draw_x, draw_y, bs)
-                draw_y += 450
+            draw_y_start = town_y + bty - (sy % 450)
+            dy = draw_y_start
+            while dy < town_y + view_h + 20:
+                if dy > town_y - 20:
+                    world_y = dy - town_y + sy
+                    drawables.append((world_y, 'bush', draw_x, dy, bs))
+                dy += 450
 
-        # --- Trees (scattered, tiled with both scrolls) ---
+        # Trees
         tree_templates = [(130, 50, 0.9), (260, 120, 1.15), (40, 300, 1.0),
                           (520, 280, 0.9), (750, 200, 1.1), (900, 100, 0.75),
                           (450, 50, 1.0), (180, 350, 0.85), (370, 200, 0.95),
                           (810, 320, 0.8)]
-        for tx, ty, ts in tree_templates:
-            draw_x = town_x + tx - sx
+        for ttx, tty, ts in tree_templates:
+            draw_x = town_x + ttx - sx
             if draw_x < town_x - 40 or draw_x > town_x + view_w + 40:
                 continue
-            draw_y = town_y + ty - (sy % 500)
-            while draw_y < town_y + view_h + 40:
-                if draw_y > town_y - 40:
-                    self.draw_tree(draw_x, draw_y, ts)
-                draw_y += 500
+            dy = town_y + tty - (sy % 500)
+            while dy < town_y + view_h + 40:
+                if dy > town_y - 40:
+                    world_y = dy - town_y + sy
+                    drawables.append((world_y, 'tree', draw_x, dy, ts))
+                dy += 500
 
-        # --- Flowers (tiled with both scrolls) ---
+        # Flowers
         flower_templates = [(30, 130, (255, 100, 120)), (500, 80, (180, 120, 255)),
                             (545, 300, (255, 130, 80)), (100, 140, (120, 200, 255)),
                             (700, 180, (255, 200, 100)), (850, 260, (200, 100, 255)),
                             (60, 250, (255, 180, 200)), (420, 160, (255, 255, 100)),
                             (780, 300, (255, 140, 160)), (200, 80, (200, 160, 255))]
-        for fx, fy, fc in flower_templates:
-            draw_x = town_x + fx - sx
+        for ffx, ffy, fc in flower_templates:
+            draw_x = town_x + ffx - sx
             if draw_x < town_x - 10 or draw_x > town_x + view_w + 10:
                 continue
-            draw_y = town_y + fy - (sy % 400)
-            while draw_y < town_y + view_h + 10:
-                if draw_y > town_y - 10:
-                    self.draw_flower(draw_x, draw_y, fc)
-                draw_y += 400
+            dy = town_y + ffy - (sy % 400)
+            while dy < town_y + view_h + 10:
+                if dy > town_y - 10:
+                    world_y = dy - town_y + sy
+                    drawables.append((world_y, 'flower', draw_x, dy, fc))
+                dy += 400
 
-        # --- Building plots ---
+        # Street lamps along vertical roads
+        for road_vx in ROAD_V_POSITIONS:
+            lamp_x = town_x + road_vx - sx - 12
+            for lamp_world_y in range(60, max_content_y, 120):
+                lamp_dy = town_y + lamp_world_y - sy
+                if lamp_dy < town_y - 40 or lamp_dy > town_y + view_h + 10:
+                    continue
+                drawables.append((lamp_world_y, 'lamp', lamp_x, lamp_dy))
+            # Lamps on right side too
+            lamp_x2 = town_x + road_vx + ROAD_THICK - sx + 8
+            for lamp_world_y in range(120, max_content_y, 120):
+                lamp_dy = town_y + lamp_world_y - sy
+                if lamp_dy < town_y - 40 or lamp_dy > town_y + view_h + 10:
+                    continue
+                drawables.append((lamp_world_y, 'lamp', lamp_x2, lamp_dy))
+
+        # Decorative ponds (a few scattered in world space)
+        pond_positions = [(70, 80, 36, 20), (470, 300, 30, 18), (170, 550, 34, 20),
+                          (560, 700, 32, 18), (100, 900, 36, 22)]
+        for ppx, ppy, pw, ph in pond_positions:
+            pdx = town_x + ppx - sx
+            pdy = town_y + ppy - sy
+            if pdx < town_x - 40 or pdx > town_x + view_w + 10:
+                continue
+            if pdy < town_y - 25 or pdy > town_y + view_h + 10:
+                continue
+            drawables.append((ppy + ph, 'pond', pdx, pdy, pw, ph))
+
+        # Park benches near roads
+        bench_positions = [(270, 50), (610, 130), (270, 280), (610, 400),
+                           (270, 520), (610, 650)]
+        for bbx, bby in bench_positions:
+            bdx = town_x + bbx - sx
+            bdy = town_y + bby - sy
+            if bdx < town_x - 25 or bdx > town_x + view_w + 10:
+                continue
+            if bdy < town_y - 15 or bdy > town_y + view_h + 10:
+                continue
+            drawables.append((bby, 'bench', bdx, bdy))
+
+        # Flower gardens near building plots
+        garden_positions = [(25, 140), (170, 140), (355, 140), (500, 140),
+                            (685, 140), (830, 140),
+                            (25, 325), (170, 325), (500, 525), (685, 525)]
+        for gi, (gx, gy) in enumerate(garden_positions):
+            gdx = town_x + gx - sx
+            gdy = town_y + gy - sy
+            if gdx < town_x - 15 or gdx > town_x + view_w + 15:
+                continue
+            if gdy < town_y - 10 or gdy > town_y + view_h + 10:
+                continue
+            drawables.append((gy, 'garden', gdx, gdy, gi))
+
+        # Building plots
         for i, (px, py) in enumerate(all_plots):
             abs_x = town_x + px - sx
             abs_y = town_y + py - sy
-
-            # Skip if off screen
             if (abs_y > town_y + view_h + 20 or abs_y + PLOT_H < town_y - 20 or
                     abs_x > town_x + view_w + 20 or abs_x + PLOT_W < town_x - 20):
                 continue
+            assignment = plot_assignments[i] if i < len(plot_assignments) else None
+            drawables.append((py + PLOT_H, 'plot', abs_x, abs_y, i, assignment))
 
-            if i < len(plot_assignments) and plot_assignments[i] is not None:
-                name, count = plot_assignments[i]
-                inc = BUILDINGS[name][1]
+        # Animated cars on roads
+        for anim in self.car_anims:
+            car_world_x = anim['x']
+            car_world_y = anim['y']
+            car_screen_x = town_x + car_world_x - sx
+            car_screen_y = town_y + car_world_y - sy
+            if (car_screen_x < town_x - 40 or car_screen_x > town_x + view_w + 40 or
+                    car_screen_y < town_y - 20 or car_screen_y > town_y + view_h + 20):
+                continue
+            drawables.append((car_world_y, 'car_anim', car_screen_x, car_screen_y, anim['type'], anim['direction']))
 
-                # Building image
-                if name in self.building_images:
-                    img = self.building_images[name]
-                    img_x = abs_x + (PLOT_W - 90) // 2
-                    img_y = abs_y + 2
-                    shadow = pygame.Surface((94, 18), pygame.SRCALPHA)
-                    pygame.draw.ellipse(shadow, (0, 0, 0, 35), (0, 0, 94, 18))
-                    self.screen.blit(shadow, (img_x - 2, img_y + 78))
-                    self.screen.blit(img, (img_x, img_y))
+        # Parked cars near buildings
+        if self.cars:
+            import random as _rng_mod
+            park_rng = _rng_mod.Random(len(self.cars) * 31 + len(self.buildings) * 7)
+            for i, (px, py) in enumerate(all_plots):
+                if i >= len(plot_assignments) or plot_assignments[i] is None:
+                    continue
+                if park_rng.random() < 0.4 and self.cars:
+                    car_type = park_rng.choice(self.cars)
+                    park_x = px + PLOT_W + 5
+                    park_y = py + PLOT_H - 15
+                    psx = town_x + park_x - sx
+                    psy = town_y + park_y - sy
+                    if (psx < town_x - 30 or psx > town_x + view_w + 30 or
+                            psy < town_y - 15 or psy > town_y + view_h + 15):
+                        continue
+                    drawables.append((park_y, 'car_parked', psx, psy, car_type))
 
-                # Count badge
-                bx, by = abs_x + PLOT_W - 16, abs_y + 6
-                pygame.draw.circle(self.screen, ACCENT, (bx, by), 14)
-                pygame.draw.circle(self.screen, WHITE, (bx, by), 14, 2)
-                self.draw_text(f"x{count}", self.font_xs, WHITE, bx, by, center=True)
+        # Animated pedestrians on sidewalks
+        for anim in self.pedestrian_anims:
+            if anim['state'] == 'entering':
+                continue  # hidden while inside building
+            ped_screen_x = town_x + anim['x'] - sx
+            ped_screen_y = town_y + anim['y'] - sy
+            if (ped_screen_x < town_x - 15 or ped_screen_x > town_x + view_w + 15 or
+                    ped_screen_y < town_y - 15 or ped_screen_y > town_y + view_h + 15):
+                continue
+            ped_dir = 'right' if anim['direction'] in ('right', 'down') else 'left'
+            drawables.append((anim['y'], 'pedestrian', ped_screen_x, ped_screen_y, ped_dir, anim['color_seed']))
 
-                # Name plate
-                plate_cx = abs_x + PLOT_W // 2
-                plate_y = abs_y + 96
-                tw = self.font_xs.size(name)[0] + 14
-                ps = pygame.Surface((tw, 20), pygame.SRCALPHA)
-                pygame.draw.rect(ps, (255, 255, 255, 210), (0, 0, tw, 20), border_radius=5)
-                self.screen.blit(ps, (plate_cx - tw // 2, plate_y))
-                self.draw_text(name, self.font_xs, DARK_GRAY, plate_cx, plate_y + 10, center=True)
+        # Residential neighbourhood label
+        if house_positions:
+            label_y = RESIDENTIAL_Y_START - 5
+            label_screen_y = town_y + label_y - sy
+            if town_y - 20 < label_screen_y < town_y + view_h + 20:
+                drawables.append((label_y, 'res_label', town_x - sx, label_screen_y))
 
-                # Income label
-                inc_text = f"+{inc * count}/solve"
-                iw = self.font_tiny.size(inc_text)[0] + 10
-                inc_s = pygame.Surface((iw, 16), pygame.SRCALPHA)
-                pygame.draw.rect(inc_s, (60, 150, 60, 160), (0, 0, iw, 16), border_radius=4)
-                self.screen.blit(inc_s, (plate_cx - iw // 2, plate_y + 22))
-                self.draw_text(inc_text, self.font_tiny, WHITE, plate_cx, plate_y + 30, center=True)
-            else:
-                # Empty plot
-                eh = PLOT_H - 10
-                ps = pygame.Surface((PLOT_W, eh), pygame.SRCALPHA)
-                pygame.draw.rect(ps, (0, 0, 0, 18), (0, 0, PLOT_W, eh), border_radius=10)
-                for ssx in range(0, PLOT_W, 12):
-                    pygame.draw.rect(ps, (255, 255, 255, 50), (ssx, 0, 6, 2))
-                    pygame.draw.rect(ps, (255, 255, 255, 50), (ssx, eh - 2, 6, 2))
-                for ssy in range(0, eh, 12):
-                    pygame.draw.rect(ps, (255, 255, 255, 50), (0, ssy, 2, 6))
-                    pygame.draw.rect(ps, (255, 255, 255, 50), (PLOT_W - 2, ssy, 2, 6))
-                self.screen.blit(ps, (abs_x, abs_y))
+        # Houses in residential neighbourhood
+        import random as _house_rng_mod
+        house_tree_rng = _house_rng_mod.Random(999)
+        for hx, hy, hseed in house_positions:
+            hsx = town_x + hx - sx
+            hsy = town_y + hy - sy
+            if (hsx < town_x - HOUSE_W - 10 or hsx > town_x + view_w + 10 or
+                    hsy < town_y - HOUSE_H - 20 or hsy > town_y + view_h + 10):
+                continue
+            drawables.append((hy + HOUSE_H, 'house', hsx, hsy, hseed))
+            # Small decorative trees between some houses
+            if house_tree_rng.random() < 0.35:
+                tree_off_x = hx + HOUSE_W + 8
+                tree_off_y = hy + HOUSE_H - 2
+                tsx = town_x + tree_off_x - sx
+                tsy = town_y + tree_off_y - sy
+                if town_x - 20 < tsx < town_x + view_w + 20:
+                    drawables.append((tree_off_y, 'tree', tsx, tsy, 0.5))
 
-                sign_cx = abs_x + PLOT_W // 2
-                sign_y = abs_y + eh // 2 - 15
-                pygame.draw.rect(self.screen, FENCE_COLOR, (sign_cx - 2, sign_y + 15, 4, 20))
-                ss = pygame.Surface((70, 24), pygame.SRCALPHA)
-                pygame.draw.rect(ss, (255, 255, 255, 180), (0, 0, 70, 24), border_radius=4)
-                pygame.draw.rect(ss, (*FENCE_COLOR, 200), (0, 0, 70, 24), 1, border_radius=4)
-                self.screen.blit(ss, (sign_cx - 35, sign_y - 6))
-                self.draw_text("FOR SALE", self.font_tiny, FENCE_COLOR, sign_cx, sign_y + 5, center=True)
+        # Sort by y-position (back to front)
+        drawables.sort(key=lambda d: d[0])
+
+        # Draw all sorted elements
+        for item in drawables:
+            kind = item[1]
+            if kind == 'hroad':
+                self._draw_hroad_3d(item[2], item[3], town_x, town_y, view_w, view_h, total_w, sx)
+            elif kind == 'bush':
+                _, _, dx, dy, bs = item
+                # Cast shadow offset to lower-right
+                sw, sh = int(24 * bs), int(10 * bs)
+                shadow_s = pygame.Surface((sw, sh), pygame.SRCALPHA)
+                pygame.draw.ellipse(shadow_s, (0, 0, 0, 25), shadow_s.get_rect())
+                self.screen.blit(shadow_s, (dx - sw // 2 + 5, dy + 2))
+                self.draw_bush(dx, dy, bs)
+            elif kind == 'tree':
+                _, _, dx, dy, ts = item
+                # Cast shadow - elongated ellipse offset to lower-right
+                sw, sh = int(36 * ts), int(14 * ts)
+                shadow_s = pygame.Surface((sw, sh), pygame.SRCALPHA)
+                pygame.draw.ellipse(shadow_s, (0, 0, 0, 22), shadow_s.get_rect())
+                self.screen.blit(shadow_s, (dx - sw // 3 + 8, dy + 2))
+                self.draw_tree(dx, dy, ts)
+            elif kind == 'flower':
+                _, _, dx, dy, fc = item
+                self.draw_flower(dx, dy, fc)
+            elif kind == 'lamp':
+                _, _, lx, ly = item
+                self.draw_street_lamp(lx, ly)
+            elif kind == 'pond':
+                _, _, pdx, pdy, pw, ph = item
+                self.draw_pond(pdx, pdy, pw, ph)
+            elif kind == 'bench':
+                _, _, bdx, bdy = item
+                self.draw_bench(bdx, bdy)
+            elif kind == 'garden':
+                _, _, gdx, gdy, gi = item
+                self.draw_flower_garden(gdx, gdy, seed=gi * 17 + 5)
+            elif kind == 'car_anim':
+                _, _, cx, cy, ctype, cdir = item
+                self.draw_car(self.screen, cx, cy, ctype, direction=cdir)
+            elif kind == 'car_parked':
+                _, _, cx, cy, ctype = item
+                self.draw_car(self.screen, cx, cy, ctype, direction='right', scale=0.8)
+            elif kind == 'pedestrian':
+                _, _, px, py, pdir, pseed = item
+                self.draw_pedestrian(self.screen, px, py, direction=pdir, color_seed=pseed)
+            elif kind == 'plot':
+                _, _, abs_x, abs_y, idx, assignment = item
+                self._draw_plot_3d(abs_x, abs_y, assignment)
+            elif kind == 'house':
+                _, _, hsx, hsy, hseed = item
+                self.draw_house(hsx, hsy, hseed)
+            elif kind == 'res_label':
+                _, _, rlx, rly = item
+                # Draw "Neighbourhood" section label
+                label_s = pygame.Surface((180, 24), pygame.SRCALPHA)
+                pygame.draw.rect(label_s, (255, 255, 255, 180), (0, 0, 180, 24), border_radius=6)
+                self.screen.blit(label_s, (rlx + 10, rly))
+                self.draw_text("Neighbourhood", self.font_sm, (100, 80, 60), rlx + 100, rly + 12, center=True)
+
+        # Atmospheric depth gradient (subtle darkening from top to bottom)
+        atmo = pygame.Surface((view_w, view_h), pygame.SRCALPHA)
+        for row in range(0, view_h, 4):
+            t = row / max(view_h - 1, 1)
+            alpha = int(12 * t)
+            pygame.draw.rect(atmo, (0, 0, 30, alpha), (0, row, view_w, 4))
+        self.screen.blit(atmo, (town_x, town_y))
 
         # Reset clip
         self.screen.set_clip(None)
@@ -896,6 +1492,392 @@ class Client:
             thumb_s = pygame.Surface((thumb_w, 6), pygame.SRCALPHA)
             pygame.draw.rect(thumb_s, (0, 0, 0, 80), (0, 0, thumb_w, 6), border_radius=3)
             self.screen.blit(thumb_s, (thumb_x, bar_y))
+
+    def _init_car_anims(self):
+        """Initialize car animation state for all owned cars."""
+        import random
+        rng = random.Random(42 + len(self.cars))
+        self.car_anims = []
+        section_h = ROW_HEIGHT * 2 + ROAD_THICK + 16
+        speeds = {
+            "Bicycle": 0.5, "Scooter": 0.8, "Sedan": 1.2, "Taxi": 1.3,
+            "Bus": 0.9, "Sports Car": 2.0, "Fire Truck": 1.0, "Ice Cream Van": 0.7,
+        }
+        for car_type in self.cars:
+            # Assign to a random road segment
+            if rng.random() < 0.5:
+                # Vertical road
+                road_vx = rng.choice(ROAD_V_POSITIONS)
+                x = road_vx + ROAD_THICK // 2 + rng.randint(-4, 4)
+                y = rng.uniform(0, section_h * 4)
+                direction = rng.choice(['up', 'down'])
+                road_type = 'v'
+                road_id = road_vx
+            else:
+                # Horizontal road
+                section = rng.randint(0, 5)
+                road_y = section * section_h + ROW_HEIGHT * 2 - 15 + ROAD_THICK // 2
+                x = rng.uniform(0, TOWN_WORLD_W)
+                y = road_y + rng.randint(-4, 4)
+                direction = rng.choice(['left', 'right'])
+                road_type = 'h'
+                road_id = section
+            speed = speeds.get(car_type, 1.0) * (0.8 + rng.random() * 0.4)
+            self.car_anims.append({
+                'type': car_type,
+                'x': x, 'y': y,
+                'speed': speed,
+                'direction': direction,
+                'road_type': road_type,
+                'road_id': road_id,
+            })
+
+    def _update_car_anims(self):
+        """Update car positions each frame."""
+        section_h = ROW_HEIGHT * 2 + ROAD_THICK + 16
+        max_y = section_h * 6
+        for anim in self.car_anims:
+            spd = anim['speed']
+            if anim['road_type'] == 'v':
+                if anim['direction'] == 'down':
+                    anim['y'] += spd
+                    if anim['y'] > max_y:
+                        anim['y'] = 0
+                        anim['direction'] = 'down'
+                else:
+                    anim['y'] -= spd
+                    if anim['y'] < 0:
+                        anim['y'] = max_y
+                        anim['direction'] = 'up'
+            else:
+                if anim['direction'] == 'right':
+                    anim['x'] += spd
+                    if anim['x'] > TOWN_WORLD_W + 40:
+                        anim['x'] = -40
+                else:
+                    anim['x'] -= spd
+                    if anim['x'] < -40:
+                        anim['x'] = TOWN_WORLD_W + 40
+
+    def _init_pedestrian_anims(self):
+        """Initialize pedestrian animation state, scaled to population."""
+        import random
+        rng = random.Random(77 + self.population)
+        self.pedestrian_anims = []
+        num_peds = min(self.population, 50)
+        section_h = ROW_HEIGHT * 2 + ROAD_THICK + 16
+        sidewalk_offset = ROAD_THICK // 2 + 8
+
+        # Get occupied plot indices for entering targets
+        all_plots = self.get_plot_positions()
+        counts = {}
+        for b in self.buildings:
+            counts[b] = counts.get(b, 0) + 1
+        plot_assignments = []
+        for name in BUILDING_ORDER:
+            if name in counts:
+                for _ in range(counts[name]):
+                    plot_assignments.append(name)
+        occupied_indices = [i for i in range(len(plot_assignments)) if i < len(all_plots)]
+
+        # Get house positions for house-spawning pedestrians
+        house_positions = self.get_house_positions()
+
+        for _ in range(num_peds):
+            # 60% spawn from houses, 40% road walkers
+            if rng.random() < 0.6 and house_positions and occupied_indices:
+                # House-spawned pedestrian
+                hx, hy, hseed = rng.choice(house_positions)
+                # Start at house door position
+                x = hx + HOUSE_W // 2
+                y = hy + HOUSE_H
+                target_plot = rng.choice(occupied_indices)
+                self.pedestrian_anims.append({
+                    'x': x, 'y': y,
+                    'speed': 0.3 + rng.random() * 0.3,
+                    'state': 'walking',
+                    'spawn_type': 'house',
+                    'home': (x, y),
+                    'target_plot': target_plot,
+                    'returning': False,
+                    'road_type': 'v',
+                    'direction': 'up',
+                    'color_seed': rng.randint(0, 10000),
+                    'enter_timer': 0,
+                })
+            else:
+                # Road-walking pedestrian (existing behavior)
+                has_target = rng.random() < 0.4 and occupied_indices
+                if rng.random() < 0.5:
+                    road_vx = rng.choice(ROAD_V_POSITIONS)
+                    side = rng.choice([-1, 1])
+                    x = road_vx + side * sidewalk_offset
+                    y = rng.uniform(0, section_h * 4)
+                    direction = rng.choice(['up', 'down'])
+                    road_type = 'v'
+                else:
+                    section = rng.randint(0, 5)
+                    road_y = section * section_h + ROW_HEIGHT * 2 - 15
+                    side = rng.choice([-1, 1])
+                    y = road_y + side * sidewalk_offset
+                    x = rng.uniform(0, TOWN_WORLD_W)
+                    direction = rng.choice(['left', 'right'])
+                    road_type = 'h'
+
+                target_plot = rng.choice(occupied_indices) if has_target else None
+
+                self.pedestrian_anims.append({
+                    'x': x, 'y': y,
+                    'speed': 0.3 + rng.random() * 0.3,
+                    'state': 'walking',
+                    'spawn_type': 'road',
+                    'home': None,
+                    'target_plot': target_plot,
+                    'returning': False,
+                    'road_type': road_type,
+                    'direction': direction,
+                    'color_seed': rng.randint(0, 10000),
+                    'enter_timer': 0,
+                })
+
+    def _update_pedestrian_anims(self):
+        """Update pedestrian positions each frame."""
+        import random
+        section_h = ROW_HEIGHT * 2 + ROAD_THICK + 16
+        max_y = section_h * 6
+        all_plots = self.get_plot_positions()
+
+        # Compute occupied indices for re-targeting
+        counts = {}
+        for b in self.buildings:
+            counts[b] = counts.get(b, 0) + 1
+        plot_assignments = []
+        for name in BUILDING_ORDER:
+            if name in counts:
+                for _ in range(counts[name]):
+                    plot_assignments.append(name)
+        occupied_indices = [i for i in range(len(plot_assignments)) if i < len(all_plots)]
+
+        for anim in self.pedestrian_anims:
+            if anim['state'] == 'entering':
+                anim['enter_timer'] -= 1
+                if anim['enter_timer'] <= 0:
+                    anim['state'] = 'walking'
+                    rng = random.Random(anim['color_seed'] + self.tick)
+
+                    if anim.get('spawn_type') == 'house':
+                        if anim.get('returning'):
+                            # Just exited home, pick a new target shop
+                            anim['returning'] = False
+                            if occupied_indices:
+                                anim['target_plot'] = rng.choice(occupied_indices)
+                            else:
+                                anim['target_plot'] = None
+                        else:
+                            # Just exited shop, head back home
+                            anim['returning'] = True
+                            anim['target_plot'] = None
+                    else:
+                        # Road pedestrian - pick new direction
+                        anim['target_plot'] = None
+                        if anim['road_type'] == 'h':
+                            anim['direction'] = rng.choice(['left', 'right'])
+                        else:
+                            anim['direction'] = rng.choice(['up', 'down'])
+                continue
+
+            spd = anim['speed']
+
+            # House-spawned pedestrian returning home
+            if anim.get('spawn_type') == 'house' and anim.get('returning') and anim.get('home'):
+                hx, hy = anim['home']
+                dx = hx - anim['x']
+                dy = hy - anim['y']
+                dist = max(1, (dx * dx + dy * dy) ** 0.5)
+                if dist < 10:
+                    # Arrived home - enter house
+                    anim['state'] = 'entering'
+                    anim['enter_timer'] = 60 + random.Random(anim['color_seed']).randint(0, 90)
+                    anim['x'] = hx
+                    anim['y'] = hy
+                    continue
+                anim['x'] += (dx / dist) * spd
+                anim['y'] += (dy / dist) * spd
+                anim['direction'] = 'right' if dx > 0 else 'left'
+                continue
+
+            # If has target, steer toward it
+            if anim['target_plot'] is not None and anim['target_plot'] < len(all_plots):
+                tx, ty = all_plots[anim['target_plot']]
+                tx += PLOT_W // 2
+                ty += PLOT_H
+                dx = tx - anim['x']
+                dy = ty - anim['y']
+                dist = max(1, (dx * dx + dy * dy) ** 0.5)
+                if dist < 10:
+                    # Arrived at building - enter
+                    anim['state'] = 'entering'
+                    anim['enter_timer'] = 90 + random.Random(anim['color_seed']).randint(0, 60)
+                    continue
+                anim['x'] += (dx / dist) * spd
+                anim['y'] += (dy / dist) * spd
+                anim['direction'] = 'right' if dx > 0 else 'left'
+            else:
+                # Walk along road
+                if anim['road_type'] == 'v':
+                    if anim['direction'] == 'down':
+                        anim['y'] += spd
+                        if anim['y'] > max_y:
+                            anim['y'] = 0
+                    else:
+                        anim['y'] -= spd
+                        if anim['y'] < 0:
+                            anim['y'] = max_y
+                else:
+                    if anim['direction'] == 'right':
+                        anim['x'] += spd
+                        if anim['x'] > TOWN_WORLD_W + 20:
+                            anim['x'] = -20
+                    else:
+                        anim['x'] -= spd
+                        if anim['x'] < -20:
+                            anim['x'] = TOWN_WORLD_W + 20
+
+    def _draw_hroad_3d(self, section, hy, town_x, town_y, view_w, view_h, total_w, sx):
+        """Draw a horizontal road with 3D curb edges."""
+        road_draw_x = town_x - sx - 10
+        road_draw_w = total_w + 60
+        # Sidewalk with curb
+        pygame.draw.rect(self.screen, (185, 180, 170), (road_draw_x, hy - 7, road_draw_w, ROAD_THICK + 14))
+        pygame.draw.rect(self.screen, SIDEWALK, (road_draw_x, hy - 5, road_draw_w, ROAD_THICK + 10))
+        # Cobblestone texture on sidewalk
+        for sw_x in range(max(road_draw_x, town_x), min(road_draw_x + road_draw_w, town_x + view_w), 10):
+            for sw_side in [hy - 5, hy + ROAD_THICK + 2]:
+                if (sw_x + sw_side) % 20 < 10:
+                    pygame.draw.rect(self.screen, (190, 185, 175), (sw_x, sw_side, 8, 4), border_radius=1)
+                else:
+                    pygame.draw.rect(self.screen, (200, 195, 185), (sw_x + 3, sw_side + 2, 8, 4), border_radius=1)
+        # Road surface
+        pygame.draw.rect(self.screen, ROAD_FILL, (road_draw_x, hy, road_draw_w, ROAD_THICK))
+        # Road texture
+        for rx_off in range(0, road_draw_w, 8):
+            shade = 135 + (rx_off % 16 < 8) * 5
+            pygame.draw.line(self.screen, (shade, shade - 2, shade - 6),
+                             (road_draw_x + rx_off, hy + 1), (road_draw_x + rx_off, hy + ROAD_THICK - 1), 1)
+        # 3D curb - top edge (raised face visible)
+        curb_top_color = (175, 170, 160)
+        curb_shadow = (150, 145, 135)
+        # Top curb - 3D raised strip
+        pygame.draw.rect(self.screen, curb_top_color, (road_draw_x, hy - 5, road_draw_w, 4))
+        pygame.draw.line(self.screen, curb_shadow, (road_draw_x, hy - 1), (road_draw_x + road_draw_w, hy - 1), 2)
+        # Bottom curb - 3D raised strip with visible side face
+        pygame.draw.rect(self.screen, curb_top_color, (road_draw_x, hy + ROAD_THICK + 1, road_draw_w, 4))
+        pygame.draw.line(self.screen, curb_shadow, (road_draw_x, hy + ROAD_THICK + 5), (road_draw_x + road_draw_w, hy + ROAD_THICK + 5), 1)
+        # Center line - double yellow
+        cy = hy + ROAD_THICK // 2
+        pygame.draw.line(self.screen, (220, 200, 80), (road_draw_x, cy - 2), (road_draw_x + road_draw_w, cy - 2), 2)
+        pygame.draw.line(self.screen, (220, 200, 80), (road_draw_x, cy + 2), (road_draw_x + road_draw_w, cy + 2), 2)
+        # Manhole cover
+        mh_x = town_x + 200 - sx
+        if road_draw_x < mh_x < road_draw_x + road_draw_w - 20:
+            mh_y = hy + ROAD_THICK // 2
+            pygame.draw.circle(self.screen, (120, 118, 112), (mh_x, mh_y), 7)
+            pygame.draw.circle(self.screen, (130, 128, 122), (mh_x, mh_y), 6)
+            pygame.draw.circle(self.screen, (125, 123, 117), (mh_x, mh_y), 4, 1)
+            pygame.draw.line(self.screen, (118, 116, 110), (mh_x - 3, mh_y), (mh_x + 3, mh_y), 1)
+            pygame.draw.line(self.screen, (118, 116, 110), (mh_x, mh_y - 3), (mh_x, mh_y + 3), 1)
+        # Crosswalks at intersections
+        for road_vx in ROAD_V_POSITIONS:
+            ivx = town_x + road_vx - sx
+            pygame.draw.rect(self.screen, ROAD_FILL, (ivx - 5, hy - 5, ROAD_THICK + 10, ROAD_THICK + 10))
+            for cwy in [hy - 14, hy + ROAD_THICK + 3]:
+                for cwx in range(ivx + 2, ivx + ROAD_THICK - 2, 7):
+                    pygame.draw.rect(self.screen, (230, 225, 215), (cwx, cwy, 5, 10), border_radius=1)
+            for cwx in [ivx - 14, ivx + ROAD_THICK + 3]:
+                for cwy_s in range(hy + 2, hy + ROAD_THICK - 2, 7):
+                    pygame.draw.rect(self.screen, (230, 225, 215), (cwx, cwy_s, 10, 5), border_radius=1)
+
+    def _draw_plot_3d(self, abs_x, abs_y, assignment):
+        """Draw a single plot with 3D building or empty lot."""
+        if assignment is not None:
+            name, count = assignment
+            inc = BUILDINGS[name][1]
+
+            # 3D Building image
+            if name in self.building_images_3d:
+                img3d = self.building_images_3d[name]
+                iw, ih = img3d.get_size()
+                img_x = abs_x + (PLOT_W - 90) // 2
+                img_y = abs_y + 2
+                # Ground shadow (offset to lower-right for 3D effect)
+                shadow = pygame.Surface((98, 20), pygame.SRCALPHA)
+                pygame.draw.ellipse(shadow, (0, 0, 0, 30), (0, 0, 98, 20))
+                self.screen.blit(shadow, (img_x + 2, img_y + 80))
+                self.screen.blit(img3d, (img_x, img_y))
+
+            # Count badge
+            bx, by = abs_x + PLOT_W - 12, abs_y + 6
+            pygame.draw.circle(self.screen, ACCENT, (bx, by), 14)
+            pygame.draw.circle(self.screen, WHITE, (bx, by), 14, 2)
+            self.draw_text(f"x{count}", self.font_xs, WHITE, bx, by, center=True)
+
+            # Name plate
+            plate_cx = abs_x + PLOT_W // 2
+            plate_y = abs_y + 96
+            tw = self.font_xs.size(name)[0] + 14
+            ps = pygame.Surface((tw, 20), pygame.SRCALPHA)
+            pygame.draw.rect(ps, (255, 255, 255, 210), (0, 0, tw, 20), border_radius=5)
+            self.screen.blit(ps, (plate_cx - tw // 2, plate_y))
+            self.draw_text(name, self.font_xs, DARK_GRAY, plate_cx, plate_y + 10, center=True)
+
+            # Income label
+            inc_text = f"+{inc * count}/solve"
+            iw = self.font_tiny.size(inc_text)[0] + 10
+            inc_s = pygame.Surface((iw, 16), pygame.SRCALPHA)
+            pygame.draw.rect(inc_s, (60, 150, 60, 160), (0, 0, iw, 16), border_radius=4)
+            self.screen.blit(inc_s, (plate_cx - iw // 2, plate_y + 22))
+            self.draw_text(inc_text, self.font_tiny, WHITE, plate_cx, plate_y + 30, center=True)
+        else:
+            # Empty plot with 3D fence posts
+            eh = PLOT_H - 10
+            ps = pygame.Surface((PLOT_W, eh), pygame.SRCALPHA)
+            pygame.draw.rect(ps, (0, 0, 0, 18), (0, 0, PLOT_W, eh), border_radius=10)
+            # Dashed border
+            for ssx in range(0, PLOT_W, 12):
+                pygame.draw.rect(ps, (255, 255, 255, 50), (ssx, 0, 6, 2))
+                pygame.draw.rect(ps, (255, 255, 255, 50), (ssx, eh - 2, 6, 2))
+            for ssy in range(0, eh, 12):
+                pygame.draw.rect(ps, (255, 255, 255, 50), (0, ssy, 2, 6))
+                pygame.draw.rect(ps, (255, 255, 255, 50), (PLOT_W - 2, ssy, 2, 6))
+            self.screen.blit(ps, (abs_x, abs_y))
+
+            # 3D fence posts at corners
+            post_color = FENCE_COLOR
+            post_top = (min(255, post_color[0] + 30), min(255, post_color[1] + 30), min(255, post_color[2] + 30))
+            for corner_x, corner_y in [(abs_x + 4, abs_y + 4), (abs_x + PLOT_W - 8, abs_y + 4),
+                                        (abs_x + 4, abs_y + eh - 12), (abs_x + PLOT_W - 8, abs_y + eh - 12)]:
+                # Post body
+                pygame.draw.rect(self.screen, post_color, (corner_x, corner_y, 6, 10))
+                # 3D top face
+                top_pts = [(corner_x, corner_y), (corner_x + 3, corner_y - 2),
+                           (corner_x + 9, corner_y - 2), (corner_x + 6, corner_y)]
+                pygame.draw.polygon(self.screen, post_top, top_pts)
+
+            # Slightly raised "FOR SALE" sign
+            sign_cx = abs_x + PLOT_W // 2
+            sign_y = abs_y + eh // 2 - 18
+            # Sign post
+            pygame.draw.rect(self.screen, FENCE_COLOR, (sign_cx - 2, sign_y + 15, 4, 22))
+            # Sign with 3D top edge
+            ss = pygame.Surface((70, 24), pygame.SRCALPHA)
+            pygame.draw.rect(ss, (255, 255, 255, 190), (0, 0, 70, 24), border_radius=4)
+            pygame.draw.rect(ss, (*FENCE_COLOR, 200), (0, 0, 70, 24), 1, border_radius=4)
+            self.screen.blit(ss, (sign_cx - 35, sign_y - 6))
+            # Tiny 3D top on sign
+            sign_top = pygame.Surface((72, 3), pygame.SRCALPHA)
+            pygame.draw.rect(sign_top, (*post_top, 140), (0, 0, 72, 3), border_radius=1)
+            self.screen.blit(sign_top, (sign_cx - 36, sign_y - 8))
+            self.draw_text("FOR SALE", self.font_tiny, FENCE_COLOR, sign_cx, sign_y + 5, center=True)
 
     # --- Leaderboard ---
     def draw_leaderboard(self):
@@ -975,7 +1957,8 @@ class Client:
         list_h = sh - 105
         row_h = 78
         row_gap = 8
-        total_content = len(BUILDING_ORDER) * (row_h + row_gap) + 10
+        divider_h = 36
+        total_content = len(BUILDING_ORDER) * (row_h + row_gap) + divider_h + len(CAR_ORDER) * (row_h + row_gap) + 10
         max_shop_scroll = max(0, total_content - list_h)
         self.shop_scroll = max(0, min(self.shop_scroll, max_shop_scroll))
 
@@ -989,6 +1972,8 @@ class Client:
             cost, inc = BUILDINGS[name]
             color = BUILDING_COLORS[name]
             can_afford = self.coins >= cost
+            req = UNLOCK_REQUIREMENTS.get(name, 0)
+            locked = req > 0 and self.population < req
 
             y = list_top + idx * (row_h + row_gap) - int(self.shop_scroll)
 
@@ -999,28 +1984,113 @@ class Client:
             # Row card
             row_w = sw - 40
             row_s = pygame.Surface((row_w, row_h), pygame.SRCALPHA)
-            pygame.draw.rect(row_s, (*color, 35), (0, 0, row_w, row_h), border_radius=10)
-            pygame.draw.rect(row_s, (*color, 120), (0, 0, row_w, row_h), 2, border_radius=10)
+            if locked:
+                pygame.draw.rect(row_s, (150, 150, 150, 35), (0, 0, row_w, row_h), border_radius=10)
+                pygame.draw.rect(row_s, (150, 150, 150, 80), (0, 0, row_w, row_h), 2, border_radius=10)
+            else:
+                pygame.draw.rect(row_s, (*color, 35), (0, 0, row_w, row_h), border_radius=10)
+                pygame.draw.rect(row_s, (*color, 120), (0, 0, row_w, row_h), 2, border_radius=10)
             self.screen.blit(row_s, (sx + 20, y))
 
             # Building image
             if name in self.building_images_shop:
-                self.screen.blit(self.building_images_shop[name], (sx + 30, y + 13))
+                img = self.building_images_shop[name]
+                if locked:
+                    dark_img = img.copy()
+                    dark_img.set_alpha(80)
+                    self.screen.blit(dark_img, (sx + 30, y + 13))
+                else:
+                    self.screen.blit(img, (sx + 30, y + 13))
 
             # Text
             text_x = sx + 92
-            self.draw_text(name, self.font_med, BLACK, text_x, y + 10)
-            self.draw_coin_icon(text_x, y + 50, 7)
-            self.draw_text(f"{cost:,}", self.font_xs, COIN_DARK, text_x + 12, y + 42)
-            cost_w = self.font_xs.size(f"{cost:,}")[0]
-            self.draw_text(f"  +{inc}/solve", self.font_xs, (60, 140, 60), text_x + 12 + cost_w, y + 42)
+            text_color = MID_GRAY if locked else BLACK
+            self.draw_text(name, self.font_med, text_color, text_x, y + 10)
+            if locked:
+                self.draw_text(f"Needs {req} pop", self.font_xs, MID_GRAY, text_x, y + 42)
+            else:
+                self.draw_coin_icon(text_x, y + 50, 7)
+                self.draw_text(f"{cost:,}", self.font_xs, COIN_DARK, text_x + 12, y + 42)
+                cost_w = self.font_xs.size(f"{cost:,}")[0]
+                pop_val = BUILDING_POPULATION.get(name, 0)
+                self.draw_text(f"  +{inc}/solve  +{pop_val} pop", self.font_xs, (60, 140, 60), text_x + 12 + cost_w, y + 42)
 
             # Buy button
-            btn_color = GREEN if can_afford else LIGHT_GRAY
-            btn_hover = GREEN_HOVER if can_afford else LIGHT_GRAY
-            btn_text = "Buy" if can_afford else "---"
-            btn = self.draw_button(btn_text, sx + sw - 130, y + 19, 95, 40, btn_color, btn_hover)
-            self.buy_buttons.append((btn, name, can_afford))
+            if locked:
+                btn = self.draw_button("Locked", sx + sw - 130, y + 19, 95, 40, LIGHT_GRAY, LIGHT_GRAY)
+                self.buy_buttons.append((btn, name, False))
+            else:
+                btn_color = GREEN if can_afford else LIGHT_GRAY
+                btn_hover = GREEN_HOVER if can_afford else LIGHT_GRAY
+                btn_text = "Buy" if can_afford else "---"
+                btn = self.draw_button(btn_text, sx + sw - 130, y + 19, 95, 40, btn_color, btn_hover)
+                self.buy_buttons.append((btn, name, can_afford))
+
+        # --- VEHICLES divider ---
+        div_y_offset = len(BUILDING_ORDER) * (row_h + row_gap)
+        div_y = list_top + div_y_offset - int(self.shop_scroll)
+        if div_y + divider_h > list_top - 10 and div_y < list_top + list_h + 10:
+            pygame.draw.line(self.screen, MID_GRAY, (sx + 40, div_y + divider_h // 2),
+                             (sx + sw - 40, div_y + divider_h // 2), 1)
+            label_s = pygame.Surface((140, 22), pygame.SRCALPHA)
+            pygame.draw.rect(label_s, (255, 255, 255, 255), (0, 0, 140, 22))
+            self.screen.blit(label_s, (sx + sw // 2 - 70, div_y + divider_h // 2 - 11))
+            self.draw_text("VEHICLES", self.font_xs, MID_GRAY, sx + sw // 2, div_y + divider_h // 2, center=True)
+
+        # Car rows
+        car_base_y = div_y_offset + divider_h
+        for idx, name in enumerate(CAR_ORDER):
+            cost, pop_boost, color = CARS[name]
+            can_afford = self.coins >= cost
+            req = UNLOCK_REQUIREMENTS.get(name, 0)
+            locked = req > 0 and self.population < req
+
+            y = list_top + car_base_y + idx * (row_h + row_gap) - int(self.shop_scroll)
+
+            # Skip if off screen
+            if y + row_h < list_top - 10 or y > list_top + list_h + 10:
+                continue
+
+            # Row card
+            row_w = sw - 40
+            row_s = pygame.Surface((row_w, row_h), pygame.SRCALPHA)
+            if locked:
+                pygame.draw.rect(row_s, (150, 150, 150, 35), (0, 0, row_w, row_h), border_radius=10)
+                pygame.draw.rect(row_s, (150, 150, 150, 80), (0, 0, row_w, row_h), 2, border_radius=10)
+            else:
+                pygame.draw.rect(row_s, (*color, 35), (0, 0, row_w, row_h), border_radius=10)
+                pygame.draw.rect(row_s, (*color, 120), (0, 0, row_w, row_h), 2, border_radius=10)
+            self.screen.blit(row_s, (sx + 20, y))
+
+            # Car icon (drawn procedurally)
+            car_icon_surf = pygame.Surface((56, 40), pygame.SRCALPHA)
+            self.draw_car(car_icon_surf, 28, 20, name, direction='right', scale=1.2)
+            if locked:
+                car_icon_surf.set_alpha(80)
+            self.screen.blit(car_icon_surf, (sx + 28, y + 19))
+
+            # Text
+            text_x = sx + 92
+            text_color = MID_GRAY if locked else BLACK
+            self.draw_text(name, self.font_med, text_color, text_x, y + 10)
+            if locked:
+                self.draw_text(f"Needs {req} pop", self.font_xs, MID_GRAY, text_x, y + 42)
+            else:
+                self.draw_coin_icon(text_x, y + 50, 7)
+                self.draw_text(f"{cost:,}", self.font_xs, COIN_DARK, text_x + 12, y + 42)
+                cost_w = self.font_xs.size(f"{cost:,}")[0]
+                self.draw_text(f"  +{pop_boost} pop", self.font_xs, (60, 140, 60), text_x + 12 + cost_w, y + 42)
+
+            # Buy button
+            if locked:
+                btn = self.draw_button("Locked", sx + sw - 130, y + 19, 95, 40, LIGHT_GRAY, LIGHT_GRAY)
+                self.buy_buttons.append((btn, name, False))
+            else:
+                btn_color = GREEN if can_afford else LIGHT_GRAY
+                btn_hover = GREEN_HOVER if can_afford else LIGHT_GRAY
+                btn_text = "Buy" if can_afford else "---"
+                btn = self.draw_button(btn_text, sx + sw - 130, y + 19, 95, 40, btn_color, btn_hover)
+                self.buy_buttons.append((btn, name, can_afford))
 
         self.screen.set_clip(None)
 
@@ -1055,7 +2125,7 @@ class Client:
                     self.shop_open = False
                 for btn, name, can_afford in self.buy_buttons:
                     if btn.collidepoint(event.pos) and can_afford:
-                        self.send({"type": "buy", "building": name})
+                        self.send({"type": "buy", "building": name, "name": name})
             else:
                 if self.shop_btn.collidepoint(event.pos):
                     self.shop_open = True
