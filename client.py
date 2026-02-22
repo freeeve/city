@@ -1402,8 +1402,8 @@ class Client:
         # Re-clamp and re-assign after lerp
         self.town_scroll_x = max(0, min(self.town_scroll_x, max_scroll_x))
         self.town_scroll_y = max(0, min(self.town_scroll_y, max_scroll_y))
-        sx = self.town_scroll_x
-        sy = self.town_scroll_y
+        sx = int(self.town_scroll_x)
+        sy = int(self.town_scroll_y)
 
         # --- Collect all depth-sorted drawables ---
         # Each entry: (sort_y, draw_func)
