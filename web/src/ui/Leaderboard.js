@@ -1,4 +1,4 @@
-import { WIDTH, HEIGHT, TOWN_X, TOWN_VIEW_W, formatNumber } from '../constants.js';
+import { WIDTH, HEIGHT, TOWN_X, TOWN_VIEW_W, PX_FONT, formatNumber } from '../constants.js';
 
 export class Leaderboard {
   constructor(scene) {
@@ -22,9 +22,8 @@ export class Leaderboard {
 
     // Title
     this.title = ui(scene.add.text(panelX + panelW / 2, panelY + 15, 'Leaderboard', {
-      fontFamily: 'Arial',
-      fontSize: '18px',
-      fontStyle: 'bold',
+      fontFamily: PX_FONT,
+      fontSize: '11px',
       color: '#2d3a5e',
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(801));
 
@@ -35,16 +34,16 @@ export class Leaderboard {
 
     // City view back button (hidden by default)
     this.cityViewLabel = ui(scene.add.text(panelX + panelW / 2, panelY + 40, '', {
-      fontFamily: 'Arial',
-      fontSize: '14px',
+      fontFamily: PX_FONT,
+      fontSize: '8px',
       color: '#6677aa',
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(801));
 
     // Back button (DOM for reliable clicking)
     const backHTML = `<button id="lb-back-btn" style="
-      background: #3778c8; color: white; border: none; border-radius: 6px;
-      padding: 6px 16px; font-family: Arial, sans-serif; font-size: 14px;
-      font-weight: bold; cursor: pointer; display: none;
+      background: #3778c8; color: white; border: none; border-radius: 4px;
+      padding: 6px 12px; font-family: 'Press Start 2P', monospace; font-size: 8px;
+      cursor: pointer; display: none;
     ">Back to My City</button>`;
     this.backBtnDOM = ui(scene.add.dom(panelX + panelW / 2, panelY + panelH - 30).createFromHTML(backHTML));
     this.backBtnDOM.setScrollFactor(0);
@@ -62,22 +61,20 @@ export class Leaderboard {
       const rank = i + 1;
 
       const rankText = ui(scene.add.text(panelX + 15, y + 4, `${rank}.`, {
-        fontFamily: 'Arial',
-        fontSize: '14px',
-        fontStyle: 'bold',
+        fontFamily: PX_FONT,
+        fontSize: '9px',
         color: i < 3 ? medalColors[i] : '#888',
       }).setScrollFactor(0).setDepth(801));
 
       const nameText = ui(scene.add.text(panelX + 38, y + 2, '', {
-        fontFamily: 'Arial',
-        fontSize: '15px',
-        fontStyle: 'bold',
+        fontFamily: PX_FONT,
+        fontSize: '9px',
         color: '#2d3a5e',
       }).setScrollFactor(0).setDepth(801));
 
       const coinsText = ui(scene.add.text(panelX + 38, y + 20, '', {
-        fontFamily: 'Arial',
-        fontSize: '12px',
+        fontFamily: PX_FONT,
+        fontSize: '7px',
         color: '#888',
       }).setScrollFactor(0).setDepth(801));
 

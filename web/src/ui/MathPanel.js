@@ -1,4 +1,4 @@
-import { WIDTH, HEIGHT, ACCENT, TOWN_VIEW_W } from '../constants.js';
+import { WIDTH, HEIGHT, ACCENT, TOWN_VIEW_W, PX_FONT } from '../constants.js';
 
 export class MathPanel {
   constructor(scene) {
@@ -21,18 +21,16 @@ export class MathPanel {
     this.bg.strokeRoundedRect(panelX, panelY, panelW, panelH, 10);
 
     // Problem text
-    this.problemText = ui(scene.add.text(panelX + 20, panelY + 15, 'Connecting...', {
-      fontFamily: 'Arial',
-      fontSize: '32px',
-      fontStyle: 'bold',
+    this.problemText = ui(scene.add.text(panelX + 20, panelY + 18, 'Connecting...', {
+      fontFamily: PX_FONT,
+      fontSize: '18px',
       color: '#2d3a5e',
     }).setScrollFactor(0).setDepth(901));
 
     // Result text (correct/wrong feedback)
-    this.resultText = ui(scene.add.text(panelX + 20, panelY + 55, '', {
-      fontFamily: 'Arial',
-      fontSize: '18px',
-      fontStyle: 'bold',
+    this.resultText = ui(scene.add.text(panelX + 20, panelY + 50, '', {
+      fontFamily: PX_FONT,
+      fontSize: '10px',
       color: '#44dd66',
     }).setScrollFactor(0).setDepth(901));
 
@@ -40,10 +38,10 @@ export class MathPanel {
     const formHTML = `
       <div style="display: flex; gap: 8px; align-items: center;">
         <input id="answer-input" type="number" class="game-input"
-          style="width: 160px; font-size: 22px; padding: 8px 12px;"
+          style="width: 160px; font-size: 14px; padding: 8px 12px; font-family: 'Press Start 2P', monospace;"
           placeholder="Answer" />
         <button id="submit-btn" class="game-btn game-btn-green"
-          style="font-size: 18px; padding: 10px 24px;">
+          style="font-size: 10px; padding: 10px 20px; font-family: 'Press Start 2P', monospace;">
           Submit
         </button>
       </div>
@@ -71,8 +69,6 @@ export class MathPanel {
     });
     answerInput.addEventListener('keyup', (e) => e.stopPropagation());
     answerInput.addEventListener('keypress', (e) => e.stopPropagation());
-
-    // Don't auto-focus — let user click input when ready (avoids blocking WASD movement)
   }
 
   updateProblem(text) {

@@ -3,7 +3,7 @@ import {
   GRASS_1, GRASS_2, GRASS_3, ROAD_FILL, ROAD_EDGE, ROAD_DASH, SIDEWALK,
   ROAD_THICK, ROW_HEIGHT, PLOT_W, PLOT_H, PLOT_COLS, ROAD_V_POSITIONS,
   TOWN_WORLD_W, COMMERCIAL_W, NEIGHBOURHOOD_X, HOUSE_W, HOUSE_H,
-  DEPTH_PX, SIDE_DX, SIDE_DY, rgb,
+  DEPTH_PX, SIDE_DX, SIDE_DY, PX_FONT, rgb,
 } from '../constants.js';
 import { BUILDING_COLORS, BUILDING_IMAGES, BUILDING_ORDER } from '../shared.js';
 
@@ -400,7 +400,7 @@ export class TownRenderer {
 
       // "FOR SALE" label
       const label = this.scene.add.text(x + PLOT_W / 2, y + PLOT_H / 2, 'FOR SALE', {
-        fontFamily: 'Arial',
+        fontFamily: PX_FONT,
         fontSize: '10px',
         fontStyle: 'bold',
         color: '#ffffff',
@@ -524,7 +524,7 @@ export class TownRenderer {
     this._drawBuildingDetails(g, name, bx, by, bw, bh, cr, cg, cb, baseColor, sideColor, lightColor, darkColor);
 
     const label = this.scene.add.text(bx + bw / 2, by + bh - 8, name, {
-      fontFamily: 'Arial',
+      fontFamily: PX_FONT,
       fontSize: '9px',
       fontStyle: 'bold',
       color: '#ffffff',
@@ -1451,9 +1451,8 @@ export class TownRenderer {
     const lx = positions[0].x;
     const ly = positions[0].y - 20;
     const label = this.scene.add.text(lx + 40, ly, 'Neighbourhood', {
-      fontFamily: 'Arial',
-      fontSize: '13px',
-      fontStyle: 'bold',
+      fontFamily: PX_FONT,
+      fontSize: '8px',
       color: '#645032',
       backgroundColor: 'rgba(255,255,255,0.7)',
       padding: { x: 8, y: 3 },
@@ -1599,7 +1598,7 @@ export class TownRenderer {
     // House number
     const houseNum = (seed % 42) + 1;
     const numLabel = this.scene.add.text(doorX + 4, doorY - 10, `${houseNum}`, {
-      fontFamily: 'Arial',
+      fontFamily: PX_FONT,
       fontSize: '7px',
       color: '#ddd',
       stroke: '#333',

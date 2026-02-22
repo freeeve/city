@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WIDTH, HEIGHT } from '../constants.js';
+import { WIDTH, HEIGHT, PX_FONT } from '../constants.js';
 import { GRADE_LABELS } from '../shared.js';
 
 export class ConnectScene extends Phaser.Scene {
@@ -57,17 +57,16 @@ export class ConnectScene extends Phaser.Scene {
 
     // Title
     this.add.text(WIDTH / 2, 100, 'CITY', {
-      fontFamily: 'Arial',
-      fontSize: '64px',
-      fontStyle: 'bold',
+      fontFamily: PX_FONT,
+      fontSize: '48px',
       color: '#ffffff',
       stroke: '#2d64b4',
       strokeThickness: 4,
     }).setOrigin(0.5);
 
     this.add.text(WIDTH / 2, 155, 'Build your city by solving math problems!', {
-      fontFamily: 'Arial',
-      fontSize: '18px',
+      fontFamily: PX_FONT,
+      fontSize: '10px',
       color: '#aabbdd',
     }).setOrigin(0.5);
 

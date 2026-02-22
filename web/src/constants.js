@@ -3,6 +3,9 @@ export const WIDTH = 1200;
 export const HEIGHT = 800;
 export const FPS = 30;
 
+// Pixel font
+export const PX_FONT = '"Press Start 2P", monospace';
+
 // Colors (hex)
 export const WHITE = 0xffffff;
 export const BLACK = 0x000000;

@@ -1,4 +1,4 @@
-import { TOWN_WORLD_W, ROW_HEIGHT } from '../constants.js';
+import { TOWN_WORLD_W, ROW_HEIGHT, PX_FONT } from '../constants.js';
 
 // Pixel-art pedestrian character matching the Python client's draw_pedestrian
 export class PlayerCharacter {
@@ -26,14 +26,13 @@ export class PlayerCharacter {
     scene.addTownObj(this.indicator);
 
     this.nameLabel = scene.add.text(0, 0, name, {
-      fontFamily: 'Arial',
-      fontSize: '11px',
-      fontStyle: 'bold',
+      fontFamily: PX_FONT,
+      fontSize: '7px',
       color: '#ffffff',
       stroke: '#000000',
       strokeThickness: 2,
       backgroundColor: 'rgba(0,0,0,0.55)',
-      padding: { x: 3, y: 1 },
+      padding: { x: 3, y: 2 },
     }).setOrigin(0.5, 0);
     scene.addTownObj(this.nameLabel);
 

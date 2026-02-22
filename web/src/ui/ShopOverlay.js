@@ -46,7 +46,7 @@ export class ShopOverlay {
     overlay.style.cssText = `
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.7); display: flex; justify-content: center;
-      align-items: center; z-index: 100; font-family: Arial, sans-serif;
+      align-items: center; z-index: 100; font-family: 'Press Start 2P', monospace;
     `;
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) this.hide();
@@ -64,15 +64,16 @@ export class ShopOverlay {
     const header = document.createElement('div');
     header.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;';
     header.innerHTML = `
-      <h2 style="margin:0; color:#2d3a5e; font-size:24px;">Shop</h2>
+      <h2 style="margin:0; color:#2d3a5e; font-size:14px;">Shop</h2>
       <button id="shop-close-btn" style="background:#dc4646; color:white; border:none;
-        border-radius:6px; padding:6px 16px; font-size:16px; font-weight:bold; cursor:pointer;">Close</button>
+        border-radius:4px; padding:6px 14px; font-size:8px; cursor:pointer;
+        font-family: 'Press Start 2P', monospace;">Close</button>
     `;
     modal.appendChild(header);
 
     // Info
     const info = document.createElement('div');
-    info.style.cssText = 'color:#666; font-size:14px; margin-bottom:12px;';
+    info.style.cssText = 'color:#666; font-size:8px; margin-bottom:12px;';
     info.textContent = `Coins: ${formatNumber(coins)} | Population: ${formatNumber(pop)}`;
     modal.appendChild(info);
 
@@ -105,8 +106,8 @@ export class ShopOverlay {
       const details = document.createElement('div');
       details.style.cssText = 'flex:1; min-width:0;';
       details.innerHTML = `
-        <div style="font-weight:bold; color:#2d3a5e; font-size:14px;">${name}</div>
-        <div style="font-size:12px; color:#666;">
+        <div style="color:#2d3a5e; font-size:9px;">${name}</div>
+        <div style="font-size:7px; color:#666;">
           Cost: ${formatNumber(b.cost)} | Income: +${formatNumber(b.income)} | Pop: +${bPop}
           ${locked ? ` | Needs ${formatNumber(req)} pop` : ''}
         </div>`;
@@ -117,7 +118,7 @@ export class ShopOverlay {
       buyBtn.style.cssText = `
         background:${locked ? '#aaa' : (canAfford ? '#3cbe5a' : '#999')};
         color:white; border:none; border-radius:6px; padding:6px 14px;
-        font-size:13px; font-weight:bold; flex-shrink:0;
+        font-size:8px; flex-shrink:0; font-family: 'Press Start 2P', monospace;
         cursor:${locked || !canAfford ? 'not-allowed' : 'pointer'};
       `;
       buyBtn.addEventListener('click', () => {
@@ -158,8 +159,8 @@ export class ShopOverlay {
       const details = document.createElement('div');
       details.style.cssText = 'flex:1; min-width:0;';
       details.innerHTML = `
-        <div style="font-weight:bold; color:#2d3a5e; font-size:14px;">${name}</div>
-        <div style="font-size:12px; color:#666;">
+        <div style="color:#2d3a5e; font-size:9px;">${name}</div>
+        <div style="font-size:7px; color:#666;">
           Cost: ${formatNumber(c.cost)} | Pop: +${c.population}
           ${locked ? ` | Needs ${formatNumber(req)} pop` : ''}
         </div>`;
@@ -170,7 +171,7 @@ export class ShopOverlay {
       buyBtn.style.cssText = `
         background:${locked ? '#aaa' : (canAfford ? '#3cbe5a' : '#999')};
         color:white; border:none; border-radius:6px; padding:6px 14px;
-        font-size:13px; font-weight:bold; flex-shrink:0;
+        font-size:8px; flex-shrink:0; font-family: 'Press Start 2P', monospace;
         cursor:${locked || !canAfford ? 'not-allowed' : 'pointer'};
       `;
       buyBtn.addEventListener('click', () => {

@@ -1,4 +1,4 @@
-import { WIDTH, HEADER_TOP, HEADER_BOT, COIN_GOLD, formatNumber, rgb } from '../constants.js';
+import { WIDTH, HEADER_TOP, HEADER_BOT, COIN_GOLD, PX_FONT, formatNumber, rgb } from '../constants.js';
 
 export class HUD {
   constructor(scene) {
@@ -23,46 +23,45 @@ export class HUD {
     this.coinIcon.fillCircle(29, 21, 5);
 
     // Coins text
-    this.coinsText = ui(scene.add.text(46, 12, '0', {
-      fontFamily: 'Arial',
-      fontSize: '20px',
-      fontStyle: 'bold',
+    this.coinsText = ui(scene.add.text(46, 16, '0', {
+      fontFamily: PX_FONT,
+      fontSize: '12px',
       color: '#ffd23c',
     }).setScrollFactor(0).setDepth(901));
 
     // Population
-    this.popText = ui(scene.add.text(220, 12, 'Pop: 0', {
-      fontFamily: 'Arial',
-      fontSize: '16px',
+    this.popText = ui(scene.add.text(200, 10, 'Pop: 0', {
+      fontFamily: PX_FONT,
+      fontSize: '10px',
       color: '#ddeeff',
     }).setScrollFactor(0).setDepth(901));
 
     // Bonus
-    this.bonusText = ui(scene.add.text(220, 30, 'Bonus: x1.0', {
-      fontFamily: 'Arial',
-      fontSize: '13px',
+    this.bonusText = ui(scene.add.text(200, 28, 'Bonus: x1.0', {
+      fontFamily: PX_FONT,
+      fontSize: '8px',
       color: '#aaccee',
     }).setScrollFactor(0).setDepth(901));
 
     // Income
-    this.incomeText = ui(scene.add.text(380, 12, 'Income: +0', {
-      fontFamily: 'Arial',
-      fontSize: '16px',
+    this.incomeText = ui(scene.add.text(400, 10, 'Income: +0', {
+      fontFamily: PX_FONT,
+      fontSize: '10px',
       color: '#88ddaa',
     }).setScrollFactor(0).setDepth(901));
 
     // Rebirths
-    this.rebirthText = ui(scene.add.text(380, 30, '', {
-      fontFamily: 'Arial',
-      fontSize: '13px',
+    this.rebirthText = ui(scene.add.text(400, 28, '', {
+      fontFamily: PX_FONT,
+      fontSize: '8px',
       color: '#ddaaff',
     }).setScrollFactor(0).setDepth(901));
 
     // Shop button (DOM for reliable click handling)
     const shopHTML = `<button id="hud-shop-btn" style="
-      background: #3cbe5a; color: white; border: none; border-radius: 6px;
-      padding: 6px 20px; font-family: Arial, sans-serif; font-size: 16px;
-      font-weight: bold; cursor: pointer;
+      background: #3cbe5a; color: white; border: none; border-radius: 4px;
+      padding: 6px 16px; font-family: 'Press Start 2P', monospace; font-size: 10px;
+      cursor: pointer;
     ">Shop</button>`;
     this.shopBtnDOM = ui(scene.add.dom(WIDTH - 70, 22).createFromHTML(shopHTML));
     this.shopBtnDOM.setScrollFactor(0);
@@ -77,10 +76,10 @@ export class HUD {
     // Rebirth button (DOM, shows when coins >= 1M)
     const rebirthHTML = `<button id="hud-rebirth-btn" style="
       background: #8c50dc; color: white; border: none; border-radius: 4px;
-      padding: 4px 14px; font-family: Arial, sans-serif; font-size: 14px;
-      font-weight: bold; cursor: pointer; display: none;
+      padding: 4px 12px; font-family: 'Press Start 2P', monospace; font-size: 8px;
+      cursor: pointer; display: none;
     ">Rebirth</button>`;
-    this.rebirthBtnDOM = ui(scene.add.dom(WIDTH - 155, 22).createFromHTML(rebirthHTML));
+    this.rebirthBtnDOM = ui(scene.add.dom(WIDTH - 160, 22).createFromHTML(rebirthHTML));
     this.rebirthBtnDOM.setScrollFactor(0);
     this.rebirthBtnDOM.setDepth(902);
     this.rebirthBtnEl = this.rebirthBtnDOM.getChildByID('hud-rebirth-btn');
@@ -91,7 +90,7 @@ export class HUD {
     // Music toggle button
     const musicHTML = `<button id="hud-music-btn" style="
       background: rgba(255,255,255,0.2); color: white; border: none; border-radius: 4px;
-      padding: 4px 10px; font-family: Arial, sans-serif; font-size: 16px;
+      padding: 4px 10px; font-family: 'Press Start 2P', monospace; font-size: 12px;
       cursor: pointer;
     ">♪</button>`;
     this.musicBtnDOM = ui(scene.add.dom(WIDTH - 240, 22).createFromHTML(musicHTML));

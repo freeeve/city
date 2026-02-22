@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>City</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -16,14 +19,14 @@
       height: 100vh;
     }
     #game-container { position: relative; }
-    canvas { display: block; position: relative; z-index: 1; }
+    canvas { display: block; position: relative; z-index: 1; image-rendering: pixelated; image-rendering: crisp-edges; }
     /* Ensure Phaser DOM container sits above the canvas */
     #game-container > div {
       z-index: 2 !important;
     }
     /* DOM input styling for Phaser DOM elements */
     .game-input {
-      font-family: Arial, sans-serif;
+      font-family: 'Press Start 2P', monospace;
       font-size: 18px;
       padding: 6px 10px;
       border: 2px solid #b4bee2;
@@ -36,7 +39,7 @@
       border-color: #3778c8;
     }
     .game-btn {
-      font-family: Arial, sans-serif;
+      font-family: 'Press Start 2P', monospace;
       font-size: 16px;
       font-weight: bold;
       padding: 8px 18px;
@@ -58,7 +61,7 @@
       background: #be3232;
     }
     .game-select {
-      font-family: Arial, sans-serif;
+      font-family: 'Press Start 2P', monospace;
       font-size: 16px;
       padding: 6px 10px;
       border: 2px solid #b4bee2;

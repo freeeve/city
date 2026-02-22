@@ -1,4 +1,4 @@
-import { WIDTH, HEIGHT, TOWN_X, TOWN_VIEW_W } from '../constants.js';
+import { WIDTH, HEIGHT, TOWN_X, TOWN_VIEW_W, PX_FONT } from '../constants.js';
 
 // Scratch Paper — Draw/Type/Clear pad in the top-right area
 // Uses an offscreen canvas for freehand drawing, and a DOM textarea for typing.
@@ -36,31 +36,33 @@ export class ScratchPad {
     this.drawHeaderBar();
 
     // Title
-    this.titleText = ui(scene.add.text(lx + 14, spY + 8, 'Scratch Paper', {
-      fontFamily: 'Arial',
-      fontSize: '13px',
-      fontStyle: 'bold',
+    this.titleText = ui(scene.add.text(lx + 14, spY + 10, 'Scratch Paper', {
+      fontFamily: PX_FONT,
+      fontSize: '8px',
       color: '#ffffff',
     }).setScrollFactor(0).setDepth(902));
 
     // Mode buttons + Clear (DOM for easier interaction)
     const btnY = spY + 4;
     const btnsHTML = `
-      <div style="display: flex; gap: 4px; font-family: Arial, sans-serif;">
+      <div style="display: flex; gap: 4px; font-family: 'Press Start 2P', monospace;">
         <button id="scratch-draw-btn" style="
-          padding: 3px 10px; font-size: 12px; font-weight: bold; border: none;
-          border-radius: 4px; cursor: pointer;
+          padding: 3px 8px; font-size: 7px; border: none;
+          border-radius: 3px; cursor: pointer;
           background: rgba(255,255,255,0.55); color: #fff;
+          font-family: 'Press Start 2P', monospace;
         ">Draw</button>
         <button id="scratch-type-btn" style="
-          padding: 3px 10px; font-size: 12px; font-weight: bold; border: none;
-          border-radius: 4px; cursor: pointer;
+          padding: 3px 8px; font-size: 7px; border: none;
+          border-radius: 3px; cursor: pointer;
           background: rgba(255,255,255,0.16); color: #b4b9cc;
+          font-family: 'Press Start 2P', monospace;
         ">Type</button>
         <button id="scratch-clear-btn" style="
-          padding: 3px 10px; font-size: 12px; font-weight: bold; border: none;
-          border-radius: 4px; cursor: pointer;
+          padding: 3px 8px; font-size: 7px; border: none;
+          border-radius: 3px; cursor: pointer;
           background: rgba(255,255,255,0.2); color: #dce1f0;
+          font-family: 'Press Start 2P', monospace;
         ">Clear</button>
       </div>
     `;
@@ -103,8 +105,8 @@ export class ScratchPad {
       <textarea id="scratch-textarea" style="
         width: ${this.padW - 4}px;
         height: ${this.padH - 4}px;
-        font-family: Arial, sans-serif;
-        font-size: 14px;
+        font-family: 'Press Start 2P', monospace;
+        font-size: 10px;
         color: #32323c;
         background: #f5f5f0;
         border: 1px solid #c8c8c3;
@@ -112,6 +114,7 @@ export class ScratchPad {
         padding: 4px 6px;
         resize: none;
         outline: none;
+        line-height: 1.6;
       " placeholder="Type here..."></textarea>
     `;
     this.textareaDOM = ui(scene.add.dom(this.padX + this.padW / 2, this.padY + this.padH / 2).createFromHTML(taHTML));
