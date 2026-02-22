@@ -8,6 +8,7 @@ import { Leaderboard } from '../ui/Leaderboard.js';
 import { ScratchPad } from '../ui/ScratchPad.js';
 import { TownRenderer } from '../town/TownRenderer.js';
 import { PlayerCharacter } from '../town/PlayerCharacter.js';
+import { MusicPlayer } from '../audio/MusicPlayer.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -67,6 +68,12 @@ export class GameScene extends Phaser.Scene {
     this.leaderboard = new Leaderboard(this);
     this.scratchPad = new ScratchPad(this);
     this.shopOverlay = new ShopOverlay(this);
+
+    // Music player (starts on first user click due to browser autoplay policy)
+    this.music = new MusicPlayer();
+    this.input.once('pointerdown', () => {
+      this.music.start();
+    });
 
     // Make canvas focusable so clicking it blurs DOM inputs
     this.game.canvas.setAttribute('tabindex', '0');

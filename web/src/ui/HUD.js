@@ -68,9 +68,7 @@ export class HUD {
     this.shopBtnDOM.setScrollFactor(0);
     this.shopBtnDOM.setDepth(902);
     const shopBtnEl = this.shopBtnDOM.getChildByID('hud-shop-btn');
-    console.log('[HUD] Shop button element:', shopBtnEl);
     shopBtnEl.addEventListener('click', () => {
-      console.log('[HUD] Shop button clicked');
       scene.shopOverlay.toggle();
     });
     shopBtnEl.addEventListener('mouseenter', () => { shopBtnEl.style.background = '#2da048'; });
@@ -89,6 +87,24 @@ export class HUD {
     this.rebirthBtnEl.addEventListener('click', () => scene.requestRebirth());
     this.rebirthBtnEl.addEventListener('mouseenter', () => { this.rebirthBtnEl.style.background = '#783cbe'; });
     this.rebirthBtnEl.addEventListener('mouseleave', () => { this.rebirthBtnEl.style.background = '#8c50dc'; });
+
+    // Music toggle button
+    const musicHTML = `<button id="hud-music-btn" style="
+      background: rgba(255,255,255,0.2); color: white; border: none; border-radius: 4px;
+      padding: 4px 10px; font-family: Arial, sans-serif; font-size: 16px;
+      cursor: pointer;
+    ">♪</button>`;
+    this.musicBtnDOM = ui(scene.add.dom(WIDTH - 240, 22).createFromHTML(musicHTML));
+    this.musicBtnDOM.setScrollFactor(0);
+    this.musicBtnDOM.setDepth(902);
+    this.musicBtnEl = this.musicBtnDOM.getChildByID('hud-music-btn');
+    this.musicBtnEl.addEventListener('click', () => {
+      if (scene.music) {
+        const muted = scene.music.toggleMute();
+        this.musicBtnEl.textContent = muted ? '♪✕' : '♪';
+        this.musicBtnEl.style.background = muted ? 'rgba(255,80,80,0.3)' : 'rgba(255,255,255,0.2)';
+      }
+    });
   }
 
   drawHeader() {

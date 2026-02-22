@@ -1,18 +1,18 @@
-import Phaser from 'phaser';
-import { WIDTH, HEIGHT, rgb, formatNumber } from '../constants.js';
-import { BUILDINGS, BUILDING_ORDER, BUILDING_COLORS, BUILDING_POPULATION, CARS, CAR_ORDER, UNLOCK_REQUIREMENTS, BUILDING_IMAGES } from '../shared.js';
+import { formatNumber } from '../constants.js';
+import { BUILDINGS, BUILDING_ORDER, BUILDING_COLORS, BUILDING_POPULATION, CARS, CAR_ORDER, UNLOCK_REQUIREMENTS } from '../shared.js';
 
+/**
+ * Shop overlay — uses plain HTML outside Phaser's DOM system
+ * to guarantee pointer events work reliably.
+ */
 export class ShopOverlay {
   constructor(scene) {
     this.scene = scene;
     this.visible = false;
-    this.scrollY = 0;
-    this.container = null;
-    this.domElement = null;
+    this.el = null; // plain HTML overlay element
   }
 
   toggle() {
-    console.log('[Shop] toggle called, visible:', this.visible);
     if (this.visible) {
       this.hide();
     } else {
@@ -21,77 +21,68 @@ export class ShopOverlay {
   }
 
   show() {
-    console.log('[Shop] show called');
     this.visible = true;
-    try {
-      this.render();
-    } catch (e) {
-      console.error('[Shop] render error:', e);
-    }
+    this.render();
   }
 
   hide() {
     this.visible = false;
-    if (this.domElement) {
-      this.domElement.destroy();
-      this.domElement = null;
-    }
-    if (this.backdrop) {
-      this.backdrop.destroy();
-      this.backdrop = null;
+    if (this.el) {
+      this.el.remove();
+      this.el = null;
     }
   }
 
   render() {
-    if (this.domElement) this.domElement.destroy();
-    if (this.backdrop) this.backdrop.destroy();
-
-    // Dark backdrop
-    this.backdrop = this.scene.add.graphics();
-    this.backdrop.setScrollFactor(0);
-    this.backdrop.setDepth(950);
-    this.backdrop.fillStyle(0x000000, 0.7);
-    this.backdrop.fillRect(0, 0, WIDTH, HEIGHT);
-    this.backdrop.setInteractive(
-      new Phaser.Geom.Rectangle(0, 0, WIDTH, HEIGHT),
-      Phaser.Geom.Rectangle.Contains
-    );
-    this.backdrop.on('pointerdown', () => this.hide());
-    // Hide from town camera
-    this.scene.addUIObj(this.backdrop);
+    if (this.el) this.el.remove();
 
     const state = this.scene.gameState;
     const pop = state.population;
     const coins = state.coins;
 
-    let html = `<div style="
-      width: 560px;
-      max-height: ${HEIGHT - 80}px;
-      background: #f0f2fa;
-      border-radius: 12px;
-      padding: 20px;
-      font-family: Arial, sans-serif;
-      overflow-y: auto;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-    " onclick="event.stopPropagation();">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h2 style="margin: 0; color: #2d3a5e; font-size: 24px;">Shop</h2>
-        <button id="shop-close-btn" style="
-          background: #dc4646;
-          color: white;
-          border: none;
-          border-radius: 6px;
-          padding: 6px 16px;
-          font-size: 16px;
-          font-weight: bold;
-          cursor: pointer;
-        ">Close</button>
-      </div>
-      <div style="color: #666; font-size: 14px; margin-bottom: 12px;">
-        Coins: ${formatNumber(coins)} | Population: ${formatNumber(pop)}
-      </div>
-      <h3 style="color: #2d3a5e; margin: 8px 0;">Buildings</h3>`;
+    // Create overlay container positioned over the game canvas
+    const overlay = document.createElement('div');
+    overlay.id = 'shop-overlay';
+    overlay.style.cssText = `
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7); display: flex; justify-content: center;
+      align-items: center; z-index: 100; font-family: Arial, sans-serif;
+    `;
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) this.hide();
+    });
 
+    // Shop modal
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      width: 560px; max-height: 85vh; background: #f0f2fa; border-radius: 12px;
+      padding: 20px; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    `;
+    modal.addEventListener('click', (e) => e.stopPropagation());
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;';
+    header.innerHTML = `
+      <h2 style="margin:0; color:#2d3a5e; font-size:24px;">Shop</h2>
+      <button id="shop-close-btn" style="background:#dc4646; color:white; border:none;
+        border-radius:6px; padding:6px 16px; font-size:16px; font-weight:bold; cursor:pointer;">Close</button>
+    `;
+    modal.appendChild(header);
+
+    // Info
+    const info = document.createElement('div');
+    info.style.cssText = 'color:#666; font-size:14px; margin-bottom:12px;';
+    info.textContent = `Coins: ${formatNumber(coins)} | Population: ${formatNumber(pop)}`;
+    modal.appendChild(info);
+
+    // Buildings header
+    const bh = document.createElement('h3');
+    bh.style.cssText = 'color:#2d3a5e; margin:8px 0;';
+    bh.textContent = 'Buildings';
+    modal.appendChild(bh);
+
+    // Building entries
     for (const name of BUILDING_ORDER) {
       const b = BUILDINGS[name];
       const bPop = BUILDING_POPULATION[name] || 0;
@@ -99,48 +90,52 @@ export class ShopOverlay {
       const locked = req > 0 && pop < req;
       const canAfford = coins >= b.cost;
       const [cr, cg, cb] = BUILDING_COLORS[name] || [128, 128, 128];
-      const colorHex = `rgb(${cr},${cg},${cb})`;
 
-      html += `<div style="
-        display: flex;
-        align-items: center;
-        padding: 8px 10px;
-        margin: 4px 0;
-        background: ${locked ? '#e0e0e0' : '#ffffff'};
-        border-radius: 8px;
-        border: 1px solid ${locked ? '#ccc' : '#dde0ee'};
-        opacity: ${locked ? '0.6' : '1'};
-      ">
-        <div style="
-          width: 36px;
-          height: 36px;
-          background: ${colorHex};
-          border-radius: 6px;
-          margin-right: 12px;
-          flex-shrink: 0;
-        "></div>
-        <div style="flex: 1; min-width: 0;">
-          <div style="font-weight: bold; color: #2d3a5e; font-size: 14px;">${name}</div>
-          <div style="font-size: 12px; color: #666;">
-            Cost: ${formatNumber(b.cost)} | Income: +${formatNumber(b.income)} | Pop: +${bPop}
-            ${locked ? ` | Needs ${formatNumber(req)} pop` : ''}
-          </div>
-        </div>
-        <button class="shop-buy-btn" data-name="${name}" style="
-          background: ${locked ? '#aaa' : (canAfford ? '#3cbe5a' : '#999')};
-          color: white;
-          border: none;
-          border-radius: 6px;
-          padding: 6px 14px;
-          font-size: 13px;
-          font-weight: bold;
-          cursor: ${locked || !canAfford ? 'not-allowed' : 'pointer'};
-          flex-shrink: 0;
-        " ${locked || !canAfford ? 'disabled' : ''}>Buy</button>
-      </div>`;
+      const row = document.createElement('div');
+      row.style.cssText = `
+        display:flex; align-items:center; padding:8px 10px; margin:4px 0;
+        background:${locked ? '#e0e0e0' : '#fff'}; border-radius:8px;
+        border:1px solid ${locked ? '#ccc' : '#dde0ee'}; opacity:${locked ? '0.6' : '1'};
+      `;
+
+      const swatch = document.createElement('div');
+      swatch.style.cssText = `width:36px; height:36px; background:rgb(${cr},${cg},${cb});
+        border-radius:6px; margin-right:12px; flex-shrink:0;`;
+
+      const details = document.createElement('div');
+      details.style.cssText = 'flex:1; min-width:0;';
+      details.innerHTML = `
+        <div style="font-weight:bold; color:#2d3a5e; font-size:14px;">${name}</div>
+        <div style="font-size:12px; color:#666;">
+          Cost: ${formatNumber(b.cost)} | Income: +${formatNumber(b.income)} | Pop: +${bPop}
+          ${locked ? ` | Needs ${formatNumber(req)} pop` : ''}
+        </div>`;
+
+      const buyBtn = document.createElement('button');
+      buyBtn.textContent = 'Buy';
+      buyBtn.disabled = locked || !canAfford;
+      buyBtn.style.cssText = `
+        background:${locked ? '#aaa' : (canAfford ? '#3cbe5a' : '#999')};
+        color:white; border:none; border-radius:6px; padding:6px 14px;
+        font-size:13px; font-weight:bold; flex-shrink:0;
+        cursor:${locked || !canAfford ? 'not-allowed' : 'pointer'};
+      `;
+      buyBtn.addEventListener('click', () => {
+        this.scene.buyItem(name);
+        setTimeout(() => { if (this.visible) this.render(); }, 300);
+      });
+
+      row.appendChild(swatch);
+      row.appendChild(details);
+      row.appendChild(buyBtn);
+      modal.appendChild(row);
     }
 
-    html += `<h3 style="color: #2d3a5e; margin: 16px 0 8px;">Vehicles</h3>`;
+    // Vehicles header
+    const vh = document.createElement('h3');
+    vh.style.cssText = 'color:#2d3a5e; margin:16px 0 8px;';
+    vh.textContent = 'Vehicles';
+    modal.appendChild(vh);
 
     for (const name of CAR_ORDER) {
       const c = CARS[name];
@@ -148,74 +143,56 @@ export class ShopOverlay {
       const locked = req > 0 && pop < req;
       const canAfford = coins >= c.cost;
       const [cr, cg, cb] = c.color;
-      const colorHex = `rgb(${cr},${cg},${cb})`;
 
-      html += `<div style="
-        display: flex;
-        align-items: center;
-        padding: 8px 10px;
-        margin: 4px 0;
-        background: ${locked ? '#e0e0e0' : '#ffffff'};
-        border-radius: 8px;
-        border: 1px solid ${locked ? '#ccc' : '#dde0ee'};
-        opacity: ${locked ? '0.6' : '1'};
-      ">
-        <div style="
-          width: 36px;
-          height: 36px;
-          background: ${colorHex};
-          border-radius: 6px;
-          margin-right: 12px;
-          flex-shrink: 0;
-        "></div>
-        <div style="flex: 1; min-width: 0;">
-          <div style="font-weight: bold; color: #2d3a5e; font-size: 14px;">${name}</div>
-          <div style="font-size: 12px; color: #666;">
-            Cost: ${formatNumber(c.cost)} | Pop: +${c.population}
-            ${locked ? ` | Needs ${formatNumber(req)} pop` : ''}
-          </div>
-        </div>
-        <button class="shop-buy-btn" data-name="${name}" style="
-          background: ${locked ? '#aaa' : (canAfford ? '#3cbe5a' : '#999')};
-          color: white;
-          border: none;
-          border-radius: 6px;
-          padding: 6px 14px;
-          font-size: 13px;
-          font-weight: bold;
-          cursor: ${locked || !canAfford ? 'not-allowed' : 'pointer'};
-          flex-shrink: 0;
-        " ${locked || !canAfford ? 'disabled' : ''}>Buy</button>
-      </div>`;
+      const row = document.createElement('div');
+      row.style.cssText = `
+        display:flex; align-items:center; padding:8px 10px; margin:4px 0;
+        background:${locked ? '#e0e0e0' : '#fff'}; border-radius:8px;
+        border:1px solid ${locked ? '#ccc' : '#dde0ee'}; opacity:${locked ? '0.6' : '1'};
+      `;
+
+      const swatch = document.createElement('div');
+      swatch.style.cssText = `width:36px; height:36px; background:rgb(${cr},${cg},${cb});
+        border-radius:6px; margin-right:12px; flex-shrink:0;`;
+
+      const details = document.createElement('div');
+      details.style.cssText = 'flex:1; min-width:0;';
+      details.innerHTML = `
+        <div style="font-weight:bold; color:#2d3a5e; font-size:14px;">${name}</div>
+        <div style="font-size:12px; color:#666;">
+          Cost: ${formatNumber(c.cost)} | Pop: +${c.population}
+          ${locked ? ` | Needs ${formatNumber(req)} pop` : ''}
+        </div>`;
+
+      const buyBtn = document.createElement('button');
+      buyBtn.textContent = 'Buy';
+      buyBtn.disabled = locked || !canAfford;
+      buyBtn.style.cssText = `
+        background:${locked ? '#aaa' : (canAfford ? '#3cbe5a' : '#999')};
+        color:white; border:none; border-radius:6px; padding:6px 14px;
+        font-size:13px; font-weight:bold; flex-shrink:0;
+        cursor:${locked || !canAfford ? 'not-allowed' : 'pointer'};
+      `;
+      buyBtn.addEventListener('click', () => {
+        this.scene.buyItem(name);
+        setTimeout(() => { if (this.visible) this.render(); }, 300);
+      });
+
+      row.appendChild(swatch);
+      row.appendChild(details);
+      row.appendChild(buyBtn);
+      modal.appendChild(row);
     }
 
-    html += `</div>`;
+    overlay.appendChild(modal);
 
-    this.domElement = this.scene.add.dom(WIDTH / 2, HEIGHT / 2).createFromHTML(html);
-    this.domElement.setScrollFactor(0);
-    this.domElement.setDepth(951);
-    this.scene.addUIObj(this.domElement);
+    // Append to game container (so it covers the game canvas)
+    const container = this.scene.game.canvas.parentElement;
+    container.appendChild(overlay);
+    this.el = overlay;
 
-    const closeBtn = this.domElement.getChildByID('shop-close-btn');
-    if (closeBtn) {
-      closeBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.hide();
-      });
-    }
-
-    const buyBtns = this.domElement.node.querySelectorAll('.shop-buy-btn');
-    buyBtns.forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const itemName = btn.getAttribute('data-name');
-        if (!btn.disabled) {
-          this.scene.buyItem(itemName);
-          this.scene.time.delayedCall(200, () => {
-            if (this.visible) this.render();
-          });
-        }
-      });
-    });
+    // Wire close button
+    const closeBtn = overlay.querySelector('#shop-close-btn');
+    closeBtn.addEventListener('click', () => this.hide());
   }
 }
