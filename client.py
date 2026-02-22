@@ -83,8 +83,7 @@ class Client:
     def __init__(self):
         pygame.init()
         self.fullscreen = False
-        self.logical_surface = pygame.Surface((WIDTH, HEIGHT))
-        self.screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
+        self.screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE | pygame.SCALED)
         pygame.display.set_caption("City")
         self.clock = pygame.time.Clock()
         self.tick = 0
@@ -337,7 +336,7 @@ class Client:
             font = self.font_sm
         if hover_color is None:
             hover_color = tuple(max(0, c - 25) for c in color)
-        mx, my = self.get_mouse_pos()
+        mx, my = pygame.mouse.get_pos()
         hovered = x <= mx <= x + w and y <= my <= y + h
         c = hover_color if hovered else color
         self.draw_shadow(x, y, w, h, radius=10, alpha=25)
@@ -2299,7 +2298,7 @@ class Client:
         if event.type == pygame.MOUSEWHEEL:
             if self.shop_open:
                 self.shop_scroll -= event.y * 30
-            elif self.scratch_rect.w > 0 and self.scratch_rect.collidepoint(self.get_mouse_pos()):
+            elif self.scratch_rect.w > 0 and self.scratch_rect.collidepoint(pygame.mouse.get_pos()):
                 scroll_amt = event.x * 30 if event.x != 0 else -event.y * 30
                 self.scratch_scroll_x += scroll_amt
             else:
@@ -2389,30 +2388,9 @@ class Client:
     def toggle_fullscreen(self):
         self.fullscreen = not self.fullscreen
         if self.fullscreen:
-            self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+            self.screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN | pygame.SCALED)
         else:
-            self.screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
-
-    def _scale_mouse_pos(self, pos):
-        real_w, real_h = pygame.display.get_surface().get_size()
-        return (int(pos[0] * WIDTH / real_w), int(pos[1] * HEIGHT / real_h))
-
-    def get_mouse_pos(self):
-        return self._scale_mouse_pos(pygame.mouse.get_pos())
-
-    def _scale_event(self, event):
-        """Scale mouse positions in events from real screen coords to logical coords."""
-        if hasattr(event, 'pos'):
-            scaled_pos = self._scale_mouse_pos(event.pos)
-            class ScaledEvent:
-                pass
-            se = ScaledEvent()
-            for attr in ('type', 'button', 'buttons', 'rel', 'touch'):
-                if hasattr(event, attr):
-                    setattr(se, attr, getattr(event, attr))
-            se.pos = scaled_pos
-            return se
-        return event
+            self.screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE | pygame.SCALED)
 
     def run(self):
         self.name_rect = pygame.Rect(0, 0, 0, 0)
@@ -2428,22 +2406,15 @@ class Client:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
-                elif event.type == pygame.VIDEORESIZE and not self.fullscreen:
-                    self.screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
                     self.toggle_fullscreen()
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_f and (event.mod & pygame.KMOD_META):
                     self.toggle_fullscreen()
-                else:
-                    scaled = self._scale_event(event)
-                    if self.screen_state == "connect":
-                        self.handle_connect_events(scaled)
-                    elif self.screen_state == "game":
-                        self.handle_game_events(scaled)
+                elif self.screen_state == "connect":
+                    self.handle_connect_events(event)
+                elif self.screen_state == "game":
+                    self.handle_game_events(event)
 
-            # Draw to logical surface
-            old_screen = self.screen
-            self.screen = self.logical_surface
             if self.screen_state == "connect":
                 self.draw_connect_screen()
             elif self.screen_state == "game":
@@ -2452,12 +2423,6 @@ class Client:
                     self.connect_error = "Disconnected from server"
                 else:
                     self.draw_game_screen()
-            self.screen = old_screen
-
-            # Scale and blit to real screen
-            real_w, real_h = self.screen.get_size()
-            scaled = pygame.transform.smoothscale(self.logical_surface, (real_w, real_h))
-            self.screen.blit(scaled, (0, 0))
 
             pygame.display.flip()
             self.clock.tick(FPS)

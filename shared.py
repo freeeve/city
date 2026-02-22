@@ -24,6 +24,16 @@ BUILDINGS = {
     "Stadium": (3000, 300),
     "Airport": (4000, 400),
     "Space Station": (5000, 500),
+    "Underwater Base": (7000, 650),
+    "Sky Castle": (9000, 800),
+    "Robot Factory": (12000, 1000),
+    "Volcano Lair": (15000, 1200),
+    "Crystal Palace": (20000, 1500),
+    "Time Machine": (25000, 1800),
+    "Dragon Tower": (35000, 2500),
+    "Moon Colony": (50000, 3500),
+    "Galactic Hub": (75000, 5000),
+    "Dyson Sphere": (100000, 7500),
 }
 
 BUILDING_ORDER = [
@@ -32,6 +42,9 @@ BUILDING_ORDER = [
     "Movie Theater", "Pizza Place", "Arcade", "Gym", "Hospital",
     "Water Park", "Library", "Museum",
     "Theme Park", "Stadium", "Airport", "Space Station",
+    "Underwater Base", "Sky Castle", "Robot Factory", "Volcano Lair",
+    "Crystal Palace", "Time Machine", "Dragon Tower", "Moon Colony",
+    "Galactic Hub", "Dyson Sphere",
 ]
 
 # Colors for each building (R, G, B)
@@ -56,6 +69,16 @@ BUILDING_COLORS = {
     "Stadium": (90, 140, 60),
     "Airport": (180, 195, 210),
     "Space Station": (180, 200, 220),
+    "Underwater Base": (30, 120, 160),
+    "Sky Castle": (200, 220, 255),
+    "Robot Factory": (140, 150, 160),
+    "Volcano Lair": (180, 50, 20),
+    "Crystal Palace": (220, 200, 255),
+    "Time Machine": (100, 200, 180),
+    "Dragon Tower": (160, 40, 60),
+    "Moon Colony": (210, 210, 200),
+    "Galactic Hub": (80, 60, 140),
+    "Dyson Sphere": (255, 200, 50),
 }
 
 # Car definitions: name -> (cost, population_boost, color)
@@ -94,6 +117,16 @@ BUILDING_POPULATION = {
     "Stadium": 400,
     "Airport": 450,
     "Space Station": 500,
+    "Underwater Base": 600,
+    "Sky Castle": 700,
+    "Robot Factory": 850,
+    "Volcano Lair": 1000,
+    "Crystal Palace": 1200,
+    "Time Machine": 1500,
+    "Dragon Tower": 2000,
+    "Moon Colony": 2500,
+    "Galactic Hub": 3500,
+    "Dyson Sphere": 5000,
 }
 
 # Minimum population required to unlock certain buildings/cars
@@ -112,6 +145,16 @@ UNLOCK_REQUIREMENTS = {
     "Stadium": 700,
     "Airport": 900,
     "Space Station": 1000,
+    "Underwater Base": 1200,
+    "Sky Castle": 1500,
+    "Robot Factory": 1800,
+    "Volcano Lair": 2200,
+    "Crystal Palace": 2800,
+    "Time Machine": 3500,
+    "Dragon Tower": 4500,
+    "Moon Colony": 6000,
+    "Galactic Hub": 8000,
+    "Dyson Sphere": 10000,
     "Bus": 50,
     "Sports Car": 100,
     "Fire Truck": 250,
