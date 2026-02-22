@@ -2010,7 +2010,7 @@ class Client:
     def draw_scratch_pad(self):
         lx = 635
         sp_w = WIDTH - lx - 15
-        sp_h = 170
+        sp_h = 270
         sp_y = 72
         pad_x = lx + 6
         pad_y = sp_y + 36
@@ -2069,7 +2069,7 @@ class Client:
     def draw_leaderboard(self):
         lx = 635
         lb_w = WIDTH - lx - 15
-        lb_top = 252
+        lb_top = 352
         lb_h = HEIGHT - lb_top - 15
 
         # Card
