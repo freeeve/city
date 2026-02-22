@@ -60,8 +60,8 @@ BRONZE = (205, 150, 90)
 
 # Town layout
 ROAD_THICK = 36
-ROW_HEIGHT = 175
-PLOT_W, PLOT_H = 135, 130
+ROW_HEIGHT = 140
+PLOT_W, PLOT_H = 110, 105
 
 # Grid: columns of plots separated by vertical roads
 # Column positions (x offsets in world space)
@@ -125,14 +125,14 @@ class Client:
             path = os.path.join(assets_dir, filename)
             if os.path.exists(path):
                 img = pygame.image.load(path).convert_alpha()
-                self.building_images[name] = pygame.transform.smoothscale(img, (90, 90))
-                self.building_images_shop[name] = pygame.transform.smoothscale(img, (52, 52))
+                self.building_images[name] = pygame.transform.smoothscale(img, (72, 72))
+                self.building_images_shop[name] = pygame.transform.smoothscale(img, (42, 42))
 
         # Pre-render 3D building composites
         self.building_images_3d = {}
         for name, front_img in self.building_images.items():
             base_color = BUILDING_COLORS.get(name, (150, 150, 150))
-            fw, fh = front_img.get_size()  # 90x90
+            fw, fh = front_img.get_size()  # 72x72
             # Composite surface: extra room for side/top faces
             comp_w = fw + abs(SIDE_DX) + 2
             comp_h = fh + abs(SIDE_DY) + 2
@@ -928,9 +928,9 @@ class Client:
         return False
 
     def get_house_positions(self):
-        """Generate house positions in the residential neighbourhood — one per person.
+        """Generate house positions in the residential neighbourhood — 1 per 5 population.
         Neighbourhood is to the right of the commercial area."""
-        num_houses = max(1, self.population) if self.population > 0 else 0
+        num_houses = max(1, self.population // 5) if self.population >= 5 else 0
         if num_houses == 0:
             return []
 
@@ -1861,11 +1861,11 @@ class Client:
             inc = BUILDINGS[name][1]
 
             # 3D Building image (or colored fallback)
-            img_x = abs_x + (PLOT_W - 90) // 2
+            img_x = abs_x + (PLOT_W - 72) // 2
             img_y = abs_y + 2
-            shadow = pygame.Surface((98, 20), pygame.SRCALPHA)
-            pygame.draw.ellipse(shadow, (0, 0, 0, 30), (0, 0, 98, 20))
-            self.screen.blit(shadow, (img_x + 2, img_y + 80))
+            shadow = pygame.Surface((80, 16), pygame.SRCALPHA)
+            pygame.draw.ellipse(shadow, (0, 0, 0, 30), (0, 0, 80, 16))
+            self.screen.blit(shadow, (img_x - 2, img_y + 64))
             if name in self.building_images_3d:
                 self.screen.blit(self.building_images_3d[name], (img_x, img_y))
             else:
@@ -1873,8 +1873,8 @@ class Client:
                 base = BUILDING_COLORS.get(name, (150, 150, 150))
                 dark = (max(0, base[0] - 60), max(0, base[1] - 60), max(0, base[2] - 60))
                 light = (min(255, base[0] + 40), min(255, base[1] + 40), min(255, base[2] + 40))
-                bw, bh = 70, 70
-                bx, by = img_x + 10, img_y + 10
+                bw, bh = 56, 56
+                bx, by = img_x + 8, img_y + 8
                 # Side face
                 side_pts = [(bx + bw, by), (bx + bw + 8, by - 8), (bx + bw + 8, by + bh - 8), (bx + bw, by + bh)]
                 pygame.draw.polygon(self.screen, dark, side_pts)
@@ -1895,7 +1895,7 @@ class Client:
 
             # Name plate
             plate_cx = abs_x + PLOT_W // 2
-            plate_y = abs_y + 96
+            plate_y = abs_y + 78
             tw = self.font_xs.size(name)[0] + 14
             ps = pygame.Surface((tw, 20), pygame.SRCALPHA)
             pygame.draw.rect(ps, (255, 255, 255, 210), (0, 0, tw, 20), border_radius=5)
