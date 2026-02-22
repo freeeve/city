@@ -1959,6 +1959,332 @@ class Client:
                 for cwy_s in range(hy + 2, hy + ROAD_THICK - 2, 7):
                     pygame.draw.rect(self.screen, (230, 225, 215), (cwx, cwy_s, 10, 5), border_radius=1)
 
+    def _draw_fallback_building(self, name, bx, by, bw, bh, base, dark, light):
+        """Draw a 3D building box with unique details per building type."""
+        s = self.screen
+        # --- 3D shell (shared by all) ---
+        side_pts = [(bx + bw, by), (bx + bw + 8, by - 8), (bx + bw + 8, by + bh - 8), (bx + bw, by + bh)]
+        pygame.draw.polygon(s, dark, side_pts)
+        top_pts = [(bx, by), (bx + 8, by - 8), (bx + bw + 8, by - 8), (bx + bw, by)]
+        pygame.draw.polygon(s, light, top_pts)
+        pygame.draw.rect(s, base, (bx, by, bw, bh))
+        pygame.draw.rect(s, dark, (bx, by, bw, bh), 1)
+
+        if name == "Quantum Computer":
+            # Dark screen panel
+            pygame.draw.rect(s, (10, 30, 40), (bx + 6, by + 5, bw - 12, 28), border_radius=3)
+            # Circuit traces
+            for ty in range(by + 10, by + 30, 6):
+                pygame.draw.line(s, (0, 255, 220), (bx + 10, ty), (bx + bw - 10, ty), 1)
+            for tx in range(bx + 14, bx + bw - 10, 10):
+                pygame.draw.line(s, (0, 255, 220), (tx, by + 8), (tx, by + 30), 1)
+            # Glowing core
+            glow = pygame.Surface((20, 20), pygame.SRCALPHA)
+            pygame.draw.circle(glow, (0, 255, 200, 80), (10, 10), 10)
+            pygame.draw.circle(glow, (0, 255, 220, 160), (10, 10), 5)
+            s.blit(glow, (bx + bw // 2 - 10, by + 34))
+            # Blinking LEDs along bottom
+            for lx in range(bx + 8, bx + bw - 6, 8):
+                c = (0, 255, 180) if (lx + self.tick // 8) % 3 == 0 else (0, 80, 60)
+                pygame.draw.circle(s, c, (lx, by + bh - 6), 2)
+
+        elif name == "Terraformer":
+            # Glass dome
+            pygame.draw.arc(s, (200, 255, 200, 180), (bx + 5, by - 8, bw - 10, 30), 0, 3.14, 2)
+            pygame.draw.ellipse(s, (180, 240, 180, 100), (bx + 8, by + 2, bw - 16, 16))
+            # Plants/vines inside
+            for vx in range(bx + 12, bx + bw - 10, 9):
+                vh = 10 + (vx * 7) % 12
+                pygame.draw.line(s, (40, 140, 40), (vx, by + bh - 4), (vx, by + bh - vh), 2)
+                pygame.draw.circle(s, (60, 180, 50), (vx, by + bh - vh), 4)
+                pygame.draw.circle(s, (80, 200, 70), (vx - 1, by + bh - vh - 1), 2)
+            # Soil band at bottom
+            pygame.draw.rect(s, (100, 70, 40), (bx + 2, by + bh - 6, bw - 4, 6))
+            # Small water drops
+            for dx in [bx + 15, bx + 30, bx + 45]:
+                pygame.draw.circle(s, (100, 180, 255), (dx, by + 18), 2)
+
+        elif name == "Star Forge":
+            # Furnace glow behind
+            glow = pygame.Surface((bw, bh), pygame.SRCALPHA)
+            pygame.draw.rect(glow, (255, 80, 0, 40), (0, 0, bw, bh))
+            s.blit(glow, (bx, by))
+            # Anvil shape
+            pygame.draw.rect(s, (80, 80, 90), (bx + 10, by + 30, bw - 20, 10))
+            pygame.draw.rect(s, (60, 60, 70), (bx + 15, by + 22, bw - 30, 10))
+            # Flames on top
+            flame_colors = [(255, 200, 0), (255, 140, 0), (255, 80, 0)]
+            for i, fx in enumerate(range(bx + 10, bx + bw - 8, 10)):
+                fh = 14 + (fx + self.tick // 4) % 8
+                fc = flame_colors[i % 3]
+                pts = [(fx, by + 20), (fx + 5, by + 20 - fh), (fx + 10, by + 20)]
+                pygame.draw.polygon(s, fc, pts)
+            # Hot metal sparks
+            for sx_off in range(3):
+                spark_x = bx + 15 + (self.tick * 3 + sx_off * 20) % (bw - 30)
+                spark_y = by + 25 + (self.tick * 2 + sx_off * 13) % 15
+                pygame.draw.circle(s, (255, 255, 150), (spark_x, spark_y), 1)
+
+        elif name == "Antimatter Plant":
+            # Containment rings
+            cx, cy = bx + bw // 2, by + bh // 2
+            pygame.draw.ellipse(s, (220, 100, 255), (cx - 20, cy - 14, 40, 28), 2)
+            pygame.draw.ellipse(s, (180, 60, 220), (cx - 14, cy - 20, 28, 40), 2)
+            # Glowing core
+            glow = pygame.Surface((24, 24), pygame.SRCALPHA)
+            pygame.draw.circle(glow, (255, 150, 255, 60), (12, 12), 12)
+            pygame.draw.circle(glow, (255, 200, 255, 130), (12, 12), 6)
+            pygame.draw.circle(glow, (255, 255, 255), (12, 12), 3)
+            s.blit(glow, (cx - 12, cy - 12))
+            # Warning stripes at bottom
+            for sx_off in range(bx + 2, bx + bw - 2, 8):
+                pygame.draw.rect(s, (255, 200, 0), (sx_off, by + bh - 8, 4, 8))
+
+        elif name == "Warp Gate":
+            # Portal ring
+            cx, cy = bx + bw // 2, by + bh // 2 - 2
+            # Outer ring glow
+            glow = pygame.Surface((50, 50), pygame.SRCALPHA)
+            pygame.draw.circle(glow, (80, 60, 255, 50), (25, 25), 25)
+            s.blit(glow, (cx - 25, cy - 25))
+            # Ring structure
+            pygame.draw.circle(s, (70, 50, 180), (cx, cy), 22, 4)
+            pygame.draw.circle(s, (120, 100, 255), (cx, cy), 20, 2)
+            # Swirl inside portal
+            import math
+            for i in range(6):
+                a = (self.tick * 0.05) + i * 1.05
+                r = 12 - i * 1.5
+                px = cx + int(r * math.cos(a))
+                py = cy + int(r * math.sin(a))
+                pygame.draw.circle(s, (150, 130, 255), (px, py), 3 - i // 3)
+            # Energy bolts at cardinal points
+            for angle in [0, 1.57, 3.14, 4.71]:
+                ex = cx + int(24 * math.cos(angle))
+                ey = cy + int(24 * math.sin(angle))
+                pygame.draw.circle(s, (180, 180, 255), (ex, ey), 2)
+
+        elif name == "Planet Engine":
+            # Large exhaust at bottom
+            for i in range(4):
+                ew = 10 + i * 3
+                ey = by + bh - 4 + i * 3
+                ea = max(0, 120 - i * 30)
+                exhaust = pygame.Surface((ew, 6), pygame.SRCALPHA)
+                pygame.draw.rect(exhaust, (255, 120 + i * 20, 40, ea), (0, 0, ew, 6), border_radius=3)
+                s.blit(exhaust, (bx + bw // 2 - ew // 2, ey))
+            # Industrial pipes
+            for px in [bx + 8, bx + bw - 14]:
+                pygame.draw.rect(s, (160, 80, 40), (px, by + 5, 6, bh - 15))
+                pygame.draw.rect(s, (180, 100, 50), (px, by + 5, 6, 3))
+            # Rivets
+            for ry in range(by + 12, by + bh - 10, 10):
+                pygame.draw.circle(s, (140, 70, 30), (bx + 11, ry), 2)
+                pygame.draw.circle(s, (140, 70, 30), (bx + bw - 11, ry), 2)
+            # Viewport
+            pygame.draw.circle(s, (40, 60, 80), (bx + bw // 2, by + 20), 10)
+            pygame.draw.circle(s, (80, 140, 180), (bx + bw // 2, by + 20), 8)
+            pygame.draw.circle(s, dark, (bx + bw // 2, by + 20), 10, 2)
+
+        elif name == "Galaxy Brain":
+            # Brain shape (two hemispheres)
+            cx, cy = bx + bw // 2, by + bh // 2 - 4
+            pygame.draw.ellipse(s, (255, 130, 220), (cx - 22, cy - 16, 22, 28))
+            pygame.draw.ellipse(s, (255, 120, 210), (cx, cy - 16, 22, 28))
+            # Brain folds
+            for fy in range(cy - 10, cy + 10, 5):
+                pygame.draw.arc(s, (220, 80, 180), (cx - 18, fy - 3, 18, 8), 0, 3.14, 1)
+                pygame.draw.arc(s, (220, 80, 180), (cx + 2, fy - 3, 18, 8), 0, 3.14, 1)
+            # Sparkles/neurons firing
+            import math
+            for i in range(5):
+                a = self.tick * 0.08 + i * 1.26
+                r = 14
+                nx = cx + int(r * math.cos(a))
+                ny = cy + int(r * math.sin(a))
+                pygame.draw.circle(s, (255, 255, 200), (nx, ny), 2)
+            # Pedestal
+            pygame.draw.rect(s, (200, 80, 160), (cx - 12, cy + 16, 24, 8), border_radius=2)
+
+        elif name == "Universe Simulator":
+            # Dark screen
+            pygame.draw.rect(s, (5, 5, 20), (bx + 4, by + 4, bw - 8, bh - 14), border_radius=3)
+            # Star field
+            import random
+            star_rng = random.Random(42)
+            for _ in range(25):
+                sx_s = bx + 6 + star_rng.randint(0, bw - 14)
+                sy_s = by + 6 + star_rng.randint(0, bh - 20)
+                brightness = star_rng.randint(150, 255)
+                pygame.draw.circle(s, (brightness, brightness, brightness), (sx_s, sy_s), 1)
+            # Spiral galaxy in center
+            cx, cy = bx + bw // 2, by + bh // 2 - 5
+            import math
+            for i in range(20):
+                a = i * 0.4 + self.tick * 0.02
+                r = 2 + i * 0.8
+                gx = cx + int(r * math.cos(a))
+                gy = cy + int(r * math.sin(a) * 0.5)
+                alpha = max(0, 255 - i * 10)
+                pygame.draw.circle(s, (200, 180, 255), (gx, gy), max(1, 3 - i // 8))
+            # Console lights at bottom
+            pygame.draw.rect(s, (30, 30, 50), (bx + 4, by + bh - 10, bw - 8, 8))
+            for lx in range(bx + 8, bx + bw - 6, 6):
+                c = (0, 200, 100) if (lx + self.tick // 10) % 4 == 0 else (0, 60, 30)
+                pygame.draw.circle(s, c, (lx, by + bh - 6), 2)
+
+        elif name == "Multiverse Portal":
+            # Swirling vortex
+            cx, cy = bx + bw // 2, by + bh // 2 - 2
+            import math
+            for ring in range(5, 0, -1):
+                r = ring * 5
+                a_off = self.tick * 0.06 * (1 if ring % 2 == 0 else -1)
+                alpha = 40 + ring * 30
+                color = (180 + ring * 10, 30 + ring * 5, 255, min(255, alpha))
+                ring_s = pygame.Surface((r * 2 + 4, r * 2 + 4), pygame.SRCALPHA)
+                pygame.draw.circle(ring_s, color, (r + 2, r + 2), r, 2)
+                s.blit(ring_s, (cx - r - 2, cy - r - 2))
+            # Portal particles
+            for i in range(8):
+                a = self.tick * 0.04 + i * 0.785
+                r = 10 + (i * 3 + self.tick // 6) % 14
+                px = cx + int(r * math.cos(a))
+                py = cy + int(r * math.sin(a))
+                pygame.draw.circle(s, (230, 180, 255), (px, py), 2)
+            # Bright center
+            pygame.draw.circle(s, (255, 220, 255), (cx, cy), 4)
+
+        elif name == "Reality Engine":
+            # Gear shapes
+            cx, cy = bx + bw // 2, by + bh // 2 - 2
+            import math
+            # Large gear
+            for i in range(8):
+                a = i * 0.785 + self.tick * 0.03
+                gx = cx - 10 + int(14 * math.cos(a))
+                gy = cy + int(14 * math.sin(a))
+                pygame.draw.rect(s, (200, 190, 150), (gx - 3, gy - 3, 6, 6))
+            pygame.draw.circle(s, (220, 210, 170), (cx - 10, cy), 8)
+            pygame.draw.circle(s, (180, 170, 130), (cx - 10, cy), 4)
+            # Small gear
+            for i in range(6):
+                a = -i * 1.047 - self.tick * 0.05
+                gx = cx + 12 + int(9 * math.cos(a))
+                gy = cy - 4 + int(9 * math.sin(a))
+                pygame.draw.rect(s, (200, 190, 150), (gx - 2, gy - 2, 4, 4))
+            pygame.draw.circle(s, (220, 210, 170), (cx + 12, cy - 4), 6)
+            pygame.draw.circle(s, (180, 170, 130), (cx + 12, cy - 4), 3)
+            # Control panel at bottom
+            pygame.draw.rect(s, (160, 150, 120), (bx + 6, by + bh - 14, bw - 12, 12), border_radius=2)
+            for lx in [bx + 12, bx + 22, bx + 32, bx + 42]:
+                pygame.draw.circle(s, (255, 60, 60) if lx % 20 == 12 else (60, 255, 60), (lx, by + bh - 8), 2)
+
+        elif name == "Cosmic Citadel":
+            # Central tower (taller)
+            tw = 16
+            pygame.draw.rect(s, (100, 65, 150), (bx + bw // 2 - tw // 2, by - 10, tw, bh + 8))
+            pygame.draw.polygon(s, (120, 80, 170), [
+                (bx + bw // 2, by - 20), (bx + bw // 2 - 10, by - 6), (bx + bw // 2 + 10, by - 6)])
+            # Side spires
+            for offset in [-18, 18]:
+                sx_t = bx + bw // 2 + offset
+                pygame.draw.rect(s, (90, 55, 140), (sx_t - 5, by + 5, 10, bh - 10))
+                pygame.draw.polygon(s, (110, 70, 160), [
+                    (sx_t, by - 5), (sx_t - 6, by + 6), (sx_t + 6, by + 6)])
+            # Windows (glowing)
+            for wy in range(by + 8, by + bh - 8, 12):
+                pygame.draw.rect(s, (200, 180, 255), (bx + bw // 2 - 4, wy, 8, 6), border_radius=1)
+            # Stars around
+            import random
+            star_rng = random.Random(77)
+            for _ in range(6):
+                sx_s = bx + star_rng.randint(2, bw - 2)
+                sy_s = by + star_rng.randint(0, 15)
+                pygame.draw.circle(s, (200, 180, 255), (sx_s, sy_s), 1)
+
+        elif name == "Infinity Tower":
+            # Spiral tower
+            cx = bx + bw // 2
+            tw = 20
+            pygame.draw.rect(s, (200, 170, 70), (cx - tw // 2, by - 6, tw, bh + 4))
+            # Spiral bands
+            for sy_b in range(by - 4, by + bh, 8):
+                band_off = ((sy_b + self.tick // 3) % 16) - 8
+                pygame.draw.line(s, (255, 240, 130), (cx - tw // 2, sy_b), (cx + tw // 2, sy_b + 4), 2)
+            # Glowing top
+            glow = pygame.Surface((20, 20), pygame.SRCALPHA)
+            pygame.draw.circle(glow, (255, 255, 150, 100), (10, 10), 10)
+            pygame.draw.circle(glow, (255, 255, 200, 200), (10, 10), 5)
+            s.blit(glow, (cx - 10, by - 16))
+            # Infinity symbol at center
+            import math
+            for t_val in range(30):
+                a = t_val * 0.21
+                ix = cx + int(8 * math.sin(a))
+                iy = by + bh // 2 + int(5 * math.sin(2 * a))
+                pygame.draw.circle(s, (255, 255, 200), (ix, iy), 1)
+
+        elif name == "Omega Station":
+            # Main dome
+            pygame.draw.arc(s, (180, 240, 255), (bx + 8, by + 5, bw - 16, 30), 0, 3.14, 3)
+            pygame.draw.rect(s, (130, 190, 220), (bx + 8, by + 18, bw - 16, 20))
+            # Satellite dishes
+            for dx_off in [-15, 15]:
+                dish_cx = bx + bw // 2 + dx_off
+                dish_cy = by + 8
+                pygame.draw.arc(s, (170, 210, 240), (dish_cx - 8, dish_cy - 6, 16, 12), 0, 3.14, 2)
+                pygame.draw.line(s, (140, 180, 210), (dish_cx, dish_cy), (dish_cx, dish_cy + 14), 2)
+            # Antenna on top
+            pygame.draw.line(s, (160, 200, 230), (bx + bw // 2, by + 5), (bx + bw // 2, by - 8), 2)
+            pygame.draw.circle(s, (255, 100, 100), (bx + bw // 2, by - 9), 3)
+            # Panel windows
+            for wx in range(bx + 12, bx + bw - 10, 10):
+                pygame.draw.rect(s, (200, 230, 255), (wx, by + 24, 7, 8), border_radius=1)
+            # Base supports
+            pygame.draw.rect(s, (100, 140, 160), (bx + 10, by + bh - 12, bw - 20, 10), border_radius=2)
+
+        elif name == "Big Bang Lab":
+            # Explosion burst from center
+            cx, cy = bx + bw // 2, by + bh // 2 - 2
+            import math
+            # Outer glow
+            glow = pygame.Surface((bw + 10, bh + 10), pygame.SRCALPHA)
+            pygame.draw.circle(glow, (255, 60, 30, 40), (bw // 2 + 5, bh // 2 + 5), bw // 2)
+            s.blit(glow, (bx - 5, by - 5))
+            # Energy rays
+            for i in range(12):
+                a = i * 0.524 + self.tick * 0.04
+                r1, r2 = 8, 22
+                x1 = cx + int(r1 * math.cos(a))
+                y1 = cy + int(r1 * math.sin(a))
+                x2 = cx + int(r2 * math.cos(a))
+                y2 = cy + int(r2 * math.sin(a))
+                c = (255, 200, 100) if i % 2 == 0 else (255, 120, 60)
+                pygame.draw.line(s, c, (x1, y1), (x2, y2), 2)
+            # Central sphere
+            pygame.draw.circle(s, (255, 200, 100), (cx, cy), 10)
+            pygame.draw.circle(s, (255, 255, 200), (cx, cy), 6)
+            pygame.draw.circle(s, (255, 255, 255), (cx - 2, cy - 2), 3)
+            # Containment frame
+            pygame.draw.rect(s, (180, 40, 30), (bx + 2, by + 2, bw - 4, bh - 4), 2, border_radius=4)
+            # Warning corners
+            for corner_x, corner_y in [(bx + 4, by + 4), (bx + bw - 10, by + 4),
+                                        (bx + 4, by + bh - 10), (bx + bw - 10, by + bh - 10)]:
+                pygame.draw.rect(s, (255, 200, 0), (corner_x, corner_y, 6, 6))
+
+        else:
+            # Generic fallback for any other building without an image
+            # Windows
+            for wy in range(by + 8, by + bh - 15, 18):
+                for wx in range(bx + 8, bx + bw - 10, 18):
+                    pygame.draw.rect(s, (180, 210, 240), (wx, wy, 12, 10), border_radius=1)
+                    pygame.draw.rect(s, dark, (wx, wy, 12, 10), 1)
+            # Door
+            pygame.draw.rect(s, dark, (bx + bw // 2 - 8, by + bh - 18, 16, 18))
+            pygame.draw.rect(s, (max(0, dark[0] - 20), max(0, dark[1] - 20), max(0, dark[2] - 20)),
+                             (bx + bw // 2 - 8, by + bh - 18, 16, 18), 1)
+
     def _draw_plot_3d(self, abs_x, abs_y, assignment):
         """Draw a single plot with 3D building or empty lot."""
         if assignment is not None:
@@ -1974,29 +2300,13 @@ class Client:
             if name in self.building_images_3d:
                 self.screen.blit(self.building_images_3d[name], (img_x, img_y))
             else:
-                # Colored box fallback with 3D effect
+                # Colored box fallback with 3D effect + unique details
                 base = BUILDING_COLORS.get(name, (150, 150, 150))
                 dark = (max(0, base[0] - 60), max(0, base[1] - 60), max(0, base[2] - 60))
                 light = (min(255, base[0] + 40), min(255, base[1] + 40), min(255, base[2] + 40))
                 bw, bh = 60, 58
                 bx, by = img_x + 6, img_y + 6
-                # Side face
-                side_pts = [(bx + bw, by), (bx + bw + 8, by - 8), (bx + bw + 8, by + bh - 8), (bx + bw, by + bh)]
-                pygame.draw.polygon(self.screen, dark, side_pts)
-                # Top face
-                top_pts = [(bx, by), (bx + 8, by - 8), (bx + bw + 8, by - 8), (bx + bw, by)]
-                pygame.draw.polygon(self.screen, light, top_pts)
-                # Front face
-                pygame.draw.rect(self.screen, base, (bx, by, bw, bh))
-                pygame.draw.rect(self.screen, dark, (bx, by, bw, bh), 1)
-                # Windows
-                for wy in range(by + 8, by + bh - 15, 18):
-                    for wx in range(bx + 8, bx + bw - 10, 18):
-                        pygame.draw.rect(self.screen, (180, 210, 240), (wx, wy, 12, 10), border_radius=1)
-                        pygame.draw.rect(self.screen, dark, (wx, wy, 12, 10), 1)
-                # Door
-                pygame.draw.rect(self.screen, dark, (bx + bw // 2 - 8, by + bh - 18, 16, 18))
-                pygame.draw.rect(self.screen, (max(0, dark[0] - 20), max(0, dark[1] - 20), max(0, dark[2] - 20)), (bx + bw // 2 - 8, by + bh - 18, 16, 18), 1)
+                self._draw_fallback_building(name, bx, by, bw, bh, base, dark, light)
 
             # Name plate
             plate_cx = abs_x + PLOT_W // 2
