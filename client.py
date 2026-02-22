@@ -4,7 +4,7 @@ import pygame
 import socket
 import threading
 import json
-import sys
+import os
 from shared import BUILDINGS, BUILDING_ORDER, BUILDING_COLORS, PORT
 
 # --- Constants ---
@@ -38,6 +38,24 @@ class Client:
         self.font_med = pygame.font.SysFont("Arial", 28, bold=True)
         self.font_sm = pygame.font.SysFont("Arial", 22)
         self.font_xs = pygame.font.SysFont("Arial", 18)
+
+        # Load building images
+        self.building_images = {}
+        self.building_images_small = {}
+        assets_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+        name_to_file = {
+            "Lemonade Stand": "lemonade_stand.png",
+            "Cookie Shop": "cookie_shop.png",
+            "Toy Store": "toy_store.png",
+            "Arcade": "arcade.png",
+            "Theme Park": "theme_park.png",
+        }
+        for name, filename in name_to_file.items():
+            path = os.path.join(assets_dir, filename)
+            if os.path.exists(path):
+                img = pygame.image.load(path).convert_alpha()
+                self.building_images[name] = pygame.transform.smoothscale(img, (80, 80))
+                self.building_images_small[name] = pygame.transform.smoothscale(img, (55, 55))
 
         # Network
         self.sock = None
@@ -275,7 +293,7 @@ class Client:
         for b in self.buildings:
             counts[b] = counts.get(b, 0) + 1
 
-        x, y = 30, 245
+        x, y = 30, 240
         for name in BUILDING_ORDER:
             if name not in counts:
                 continue
@@ -283,17 +301,32 @@ class Client:
             color = BUILDING_COLORS[name]
             cost, inc = BUILDINGS[name]
 
-            # Building card
-            pygame.draw.rect(self.screen, color, (x, y, 160, 80), border_radius=8)
-            pygame.draw.rect(self.screen, BLACK, (x, y, 160, 80), 2, border_radius=8)
-            self.draw_text(name, self.font_xs, BLACK, x + 80, y + 20, center=True)
-            self.draw_text(f"x{count}", self.font_med, BLACK, x + 80, y + 48, center=True)
-            self.draw_text(f"+{inc * count}/solve", self.font_xs, (0, 100, 0), x + 80, y + 68, center=True)
+            # Building card with image
+            card_w, card_h = 110, 140
+            # Card background
+            card_surf = pygame.Surface((card_w, card_h), pygame.SRCALPHA)
+            pygame.draw.rect(card_surf, (*color, 60), (0, 0, card_w, card_h), border_radius=10)
+            pygame.draw.rect(card_surf, color, (0, 0, card_w, card_h), 2, border_radius=10)
+            self.screen.blit(card_surf, (x, y))
 
-            x += 170
-            if x + 160 > 620:
+            # Building image
+            if name in self.building_images:
+                img = self.building_images[name]
+                self.screen.blit(img, (x + (card_w - 80) // 2, y + 5))
+
+            # Count badge
+            badge_x, badge_y = x + card_w - 24, y + 4
+            pygame.draw.circle(self.screen, HEADER_COLOR, (badge_x, badge_y), 14)
+            self.draw_text(f"x{count}", self.font_xs, WHITE, badge_x, badge_y, center=True)
+
+            # Label and income
+            self.draw_text(name, self.font_xs, BLACK, x + card_w // 2, y + 92, center=True)
+            self.draw_text(f"+{inc * count}/solve", self.font_xs, (0, 100, 0), x + card_w // 2, y + 112, center=True)
+
+            x += card_w + 10
+            if x + card_w > 620:
                 x = 30
-                y += 90
+                y += card_h + 10
 
     def draw_leaderboard(self):
         lx = 630
@@ -355,8 +388,13 @@ class Client:
             self.screen.blit(row_surf, (sx + 20, y))
             pygame.draw.rect(self.screen, color, (sx + 20, y, sw - 40, 70), 2, border_radius=8)
 
-            self.draw_text(name, self.font_med, BLACK, sx + 40, y + 8)
-            self.draw_text(f"Cost: {cost} coins  |  Bonus: +{inc}/solve", self.font_xs, DARK_GRAY, sx + 40, y + 42)
+            # Building image in shop row
+            if name in self.building_images_small:
+                self.screen.blit(self.building_images_small[name], (sx + 28, y + 8))
+
+            text_x = sx + 95
+            self.draw_text(name, self.font_med, BLACK, text_x, y + 8)
+            self.draw_text(f"Cost: {cost} coins  |  Bonus: +{inc}/solve", self.font_xs, DARK_GRAY, text_x, y + 42)
 
             can_afford = self.coins >= cost
             btn_color = GREEN if can_afford else LIGHT_GRAY
