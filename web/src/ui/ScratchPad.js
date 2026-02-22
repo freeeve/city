@@ -12,7 +12,7 @@ export class ScratchPad {
     // Layout — right of the math panel, above the leaderboard
     const lx = 635;
     const spW = WIDTH - lx - 15;
-    const spH = 270;
+    const spH = 135;
     const spY = 55;
     this.lx = lx;
     this.spW = spW;

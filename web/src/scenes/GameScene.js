@@ -39,35 +39,34 @@ export class GameScene extends Phaser.Scene {
     this.setupNetwork();
     this.doConnect();
 
-    // Town camera with viewport — create FIRST so town/UI classes can register
-    this.townCamera = this.cameras.add(
-      TOWN_X, TOWN_Y, TOWN_VIEW_W, HEIGHT - TOWN_Y - 15
-    );
-    this.townCamera.setBackgroundColor(0x69b94b);
-
-    // Background (UI layer — should not render in town camera)
-    const bg = this.add.graphics();
-    bg.fillStyle(0xc8e1ff, 1);
-    bg.fillRect(0, 0, WIDTH, HEIGHT);
-    bg.setScrollFactor(0);
-    bg.setDepth(-100);
-    this.townCamera.ignore(bg);
-
-    // Town renderer (draws in world space)
+    // Town renderer (draws in world space, scrolls with camera)
     this.townRenderer = new TownRenderer(this);
 
     // Player character
     this.player = new PlayerCharacter(this, this.playerName);
 
-    // UI elements (fixed to main camera, not town camera)
+    // Frame overlay — covers areas outside the town viewport so town
+    // objects only show through the viewport window. Depth 750 = above
+    // all town objects but below all UI elements.
+    const frame = this.add.graphics();
+    frame.setScrollFactor(0);
+    frame.setDepth(750);
+    frame.fillStyle(0xc8e1ff, 1);
+    frame.fillRect(0, 0, WIDTH, TOWN_Y);                                              // top
+    frame.fillRect(0, TOWN_Y, TOWN_X, HEIGHT - TOWN_Y);                               // left
+    frame.fillRect(TOWN_X + TOWN_VIEW_W, TOWN_Y, WIDTH - TOWN_X - TOWN_VIEW_W, HEIGHT - TOWN_Y); // right
+    frame.fillRect(TOWN_X, HEIGHT - 15, TOWN_VIEW_W, 15);                             // bottom
+
+    // Town viewport border
+    frame.lineStyle(2, 0x8899aa, 1);
+    frame.strokeRect(TOWN_X, TOWN_Y, TOWN_VIEW_W, HEIGHT - TOWN_Y - 15);
+
+    // UI elements (fixed to screen, above frame)
     this.hud = new HUD(this);
     this.mathPanel = new MathPanel(this);
     this.leaderboard = new Leaderboard(this);
     this.scratchPad = new ScratchPad(this);
     this.shopOverlay = new ShopOverlay(this);
-
-    // Main camera stays fixed at origin for UI
-    this.cameras.main.setScroll(0, 0);
 
     // Key bindings (capture=false so Phaser won't preventDefault, allowing DOM inputs to work)
     this.cursors = {
@@ -84,15 +83,14 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
-  // Register a town-layer object: visible in townCamera, hidden from main camera
+  // Town objects scroll with the camera (default behavior)
   addTownObj(obj) {
-    this.cameras.main.ignore(obj);
     return obj;
   }
 
-  // Register a UI-layer object: visible in main camera, hidden from town camera
+  // UI objects stay fixed on screen
   addUIObj(obj) {
-    this.townCamera.ignore(obj);
+    obj.setScrollFactor(0);
     return obj;
   }
 
@@ -194,13 +192,14 @@ export class GameScene extends Phaser.Scene {
       this.player.handleMovement(this.cursors, this.wasd);
     }
 
-    // Camera follow player in town
+    // Camera follow player — center player in the town viewport area
     const px = this.player.x;
     const py = this.player.y;
-    const cam = this.townCamera;
+    const cam = this.cameras.main;
     const lerp = 0.12;
-    const targetX = px - cam.width / 2;
-    const targetY = py - cam.height / 2;
+    const viewH = HEIGHT - TOWN_Y - 15;
+    const targetX = px - TOWN_X - TOWN_VIEW_W / 2;
+    const targetY = py - TOWN_Y - viewH / 2;
     cam.scrollX += (targetX - cam.scrollX) * lerp;
     cam.scrollY += (targetY - cam.scrollY) * lerp;
 
