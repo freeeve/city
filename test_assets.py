@@ -9,10 +9,15 @@ ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
 EXPECTED_FILES = {
     "Lemonade Stand": "lemonade_stand.png",
+    "Ice Cream Truck": "ice_cream_truck.png",
     "Cookie Shop": "cookie_shop.png",
+    "Pet Shop": "pet_shop.png",
     "Toy Store": "toy_store.png",
+    "Movie Theater": "movie_theater.png",
     "Arcade": "arcade.png",
+    "Water Park": "water_park.png",
     "Theme Park": "theme_park.png",
+    "Space Station": "space_station.png",
 }
 
 

@@ -117,6 +117,70 @@ def draw_lemonade_stand():
     return add_shadow(img)
 
 
+def draw_ice_cream_truck():
+    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+
+    # Ground
+    d.ellipse([15, 275, 345, 325], fill=(130, 195, 80, 100))
+
+    # Truck body
+    d.rounded_rectangle([40, 120, 300, 270], radius=10, fill="#FFB6C8", outline="#E8849E", width=3)
+    # Horizontal stripe
+    d.rectangle([40, 185, 300, 210], fill="#FF8FAA", outline="#E8849E", width=1)
+
+    # Cab section (front)
+    d.rounded_rectangle([255, 145, 330, 270], radius=8, fill="#FF99B5", outline="#E8849E", width=3)
+    # Windshield
+    d.rounded_rectangle([268, 155, 322, 200], radius=5, fill="#C8E8FF", outline="#88AAC8", width=2)
+    # Windshield reflection
+    d.line([(275, 160), (285, 195)], fill=(255, 255, 255, 100), width=2)
+    # Headlight
+    d.ellipse([310, 225, 326, 240], fill="#FFEE88", outline="#DDCC66", width=2)
+
+    # Serving window
+    d.rounded_rectangle([70, 135, 170, 180], radius=6, fill="#FFEEBB", outline="#E8849E", width=3)
+    # Window awning
+    d.polygon([(62, 135), (178, 135), (172, 120), (68, 120)], fill="#FF5588", outline="#DD3366", width=2)
+    # Scallop trim
+    for x in range(68, 175, 16):
+        d.arc([x - 8, 131, x + 8, 142], 0, 180, fill="#DD3366", width=2)
+
+    # Ice cream cone on side
+    d.polygon([(190, 230), (215, 150), (240, 230)], fill="#E8C880", outline="#C8A860", width=2)
+    # Waffle pattern
+    for y in range(165, 228, 10):
+        t = (y - 150) / 80
+        lx = int(190 + (215 - 190) * (1 - t))
+        rx = int(240 - (240 - 215) * (1 - t))
+        d.line([(lx + 3, y), (rx - 3, y)], fill="#D8B870", width=1)
+    # Scoops
+    d.ellipse([195, 128, 235, 168], fill="#FF88AA", outline="#DD6688", width=2)  # strawberry
+    d.ellipse([200, 108, 230, 138], fill="#FFFFCC", outline="#DDDD88", width=2)  # vanilla
+    d.ellipse([205, 90, 230, 118], fill="#885533", outline="#663311", width=2)    # chocolate
+    # Cherry on top
+    d.ellipse([210, 82, 224, 96], fill="#FF2244", outline="#CC0022", width=2)
+    d.line([(217, 82), (220, 72)], fill="#228822", width=2)
+
+    # Wheels
+    for wx in [80, 260]:
+        d.ellipse([wx - 22, 256, wx + 22, 300], fill="#444444", outline="#333333", width=3)
+        d.ellipse([wx - 12, 266, wx + 12, 290], fill="#888888", outline="#666666", width=2)
+        d.ellipse([wx - 4, 274, wx + 4, 282], fill="#AAAAAA")
+
+    # Roof items - soft serve sign
+    d.rounded_rectangle([90, 70, 220, 118], radius=10, fill="#FFFFFF", outline="#E8849E", width=3)
+    d.text((155, 80), "ICE CREAM", fill="#FF5588", font=FONT_SM, anchor="mt")
+    # Mini cone icon on sign
+    d.polygon([(145, 110), (155, 95), (165, 110)], fill="#E8C880")
+    d.ellipse([143, 88, 167, 102], fill="#FF88CC")
+
+    # Menu items in window
+    d.text((120, 150), "$1  $2  $3", fill="#885544", font=FONT_XS, anchor="mm")
+
+    return add_shadow(img)
+
+
 def draw_cookie_shop():
     img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -211,6 +275,112 @@ def draw_cookie_shop():
     d.line([(200, 110), (200, 128)], fill="#886644", width=2)
     d.rounded_rectangle([148, 128, 212, 148], radius=3, fill="#FFF8E0", outline="#C07830", width=1)
     d.text((180, 138), "OPEN", fill="#C07830", font=FONT_XS, anchor="mm")
+
+    return add_shadow(img)
+
+
+def draw_pet_shop():
+    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+
+    # Ground
+    d.ellipse([10, 278, 350, 328], fill=(130, 195, 80, 100))
+
+    # Main building
+    d.rectangle([30, 100, 330, 300], fill="#A8D870", outline="#78A848", width=3)
+    # Horizontal siding
+    for y in range(112, 300, 16):
+        d.line([(33, y), (327, y)], fill="#98C860", width=1)
+
+    # Foundation
+    d.rectangle([26, 290, 334, 305], fill="#998877", outline="#776655", width=2)
+
+    # Roof
+    d.polygon([(18, 104), (180, 28), (342, 104)], fill="#66AA44", outline="#448822", width=3)
+    for y in range(42, 104, 13):
+        t = (y - 28) / (104 - 28)
+        lx = int(18 + (180 - 18) * (1 - t))
+        rx = int(180 + (342 - 180) * t)
+        d.line([(lx + 5, y), (rx - 5, y)], fill="#559933", width=1)
+
+    # Door
+    d.rounded_rectangle([140, 195, 220, 300], radius=6, fill="#885533", outline="#664422", width=3)
+    d.rounded_rectangle([148, 208, 212, 256], radius=4, fill="#FFEEBB", outline="#664422", width=2)
+    d.ellipse([202, 268, 214, 280], fill="#FFD700", outline="#CCA800", width=2)
+    # Paw print on door
+    d.ellipse([165, 265, 180, 278], fill="#AA7744")
+    d.ellipse([160, 256, 170, 264], fill="#AA7744")
+    d.ellipse([175, 256, 185, 264], fill="#AA7744")
+
+    # Display windows with animals
+    for wx1, wx2 in [(40, 126), (234, 320)]:
+        d.rounded_rectangle([wx1, 135, wx2, 190], radius=5, fill="#E8F6FF", outline="#78A848", width=3)
+        mid_x = (wx1 + wx2) // 2
+        d.line([(mid_x, 138), (mid_x, 187)], fill="#78A848", width=2)
+
+    # Cat in left window
+    # Body
+    d.ellipse([52, 156, 80, 186], fill="#FF9944", outline="#DD7722", width=2)
+    # Head
+    d.ellipse([56, 140, 78, 162], fill="#FF9944", outline="#DD7722", width=2)
+    # Ears
+    d.polygon([(58, 143), (55, 132), (64, 140)], fill="#FF9944", outline="#DD7722", width=1)
+    d.polygon([(74, 143), (77, 132), (68, 140)], fill="#FF9944", outline="#DD7722", width=1)
+    d.polygon([(59, 144), (57, 135), (63, 141)], fill="#FFB870")
+    d.polygon([(73, 144), (75, 135), (69, 141)], fill="#FFB870")
+    # Eyes
+    d.ellipse([62, 147, 66, 153], fill="#44AA44")
+    d.ellipse([70, 147, 74, 153], fill="#44AA44")
+    d.ellipse([63, 148, 65, 152], fill="#111111")
+    d.ellipse([71, 148, 73, 152], fill="#111111")
+    # Nose
+    d.polygon([(65, 155), (67, 155), (66, 157)], fill="#FF6688")
+    # Tail
+    d.arc([72, 155, 95, 185], 250, 50, fill="#FF9944", width=3)
+
+    # Dog in left window (right pane)
+    d.ellipse([92, 152, 120, 186], fill="#CC9955", outline="#AA7733", width=2)
+    d.ellipse([96, 136, 120, 160], fill="#CC9955", outline="#AA7733", width=2)
+    # Floppy ears
+    d.ellipse([92, 140, 102, 162], fill="#BB8844", outline="#AA7733", width=1)
+    d.ellipse([114, 140, 124, 162], fill="#BB8844", outline="#AA7733", width=1)
+    # Eyes
+    d.ellipse([102, 146, 107, 151], fill="#332211")
+    d.ellipse([111, 146, 116, 151], fill="#332211")
+    # Nose
+    d.ellipse([106, 152, 112, 157], fill="#332211")
+    # Tongue
+    d.ellipse([106, 157, 112, 166], fill="#FF6688")
+
+    # Fish tank in right window
+    d.rounded_rectangle([240, 148, 280, 186], radius=3, fill="#88CCFF", outline="#5599CC", width=2)
+    # Fish
+    d.polygon([(250, 164), (258, 160), (258, 168)], fill="#FF6633")
+    d.ellipse([256, 158, 270, 172], fill="#FF6633", outline="#DD4411", width=1)
+    d.ellipse([264, 163, 267, 166], fill="#111111")
+    # Bubbles
+    d.ellipse([254, 152, 258, 156], fill=(200, 230, 255, 150))
+    d.ellipse([260, 148, 263, 151], fill=(200, 230, 255, 120))
+
+    # Bird in right window (right pane)
+    d.ellipse([295, 152, 315, 178], fill="#44BB44", outline="#228822", width=2)
+    d.ellipse([298, 138, 316, 158], fill="#44BB44", outline="#228822", width=2)
+    # Beak
+    d.polygon([(316, 146), (324, 148), (316, 150)], fill="#FFAA00")
+    # Eye
+    d.ellipse([308, 143, 313, 148], fill="#111111")
+    d.ellipse([309, 144, 311, 146], fill="#FFFFFF")
+    # Perch
+    d.line([(288, 178), (320, 178)], fill="#AA7744", width=3)
+
+    # Sign
+    d.rounded_rectangle([80, 45, 280, 88], radius=10, fill="#FFFFFF", outline="#78A848", width=3)
+    d.text((180, 58), "PET SHOP", fill="#448822", font=FONT, anchor="mt")
+    # Paw prints on sign
+    for px in [95, 260]:
+        d.ellipse([px - 6, 70, px + 6, 82], fill="#78A848")
+        d.ellipse([px - 9, 64, px - 3, 72], fill="#78A848")
+        d.ellipse([px + 3, 64, px + 9, 72], fill="#78A848")
 
     return add_shadow(img)
 
@@ -327,6 +497,81 @@ def draw_toy_store():
             angle2 = math.radians(i * 72 - 90 + 36)
             points.append((sx + int(4 * math.cos(angle2)), sy + int(4 * math.sin(angle2))))
         d.polygon(points, fill="#FFDD44", outline="#DDAA00", width=1)
+
+    return add_shadow(img)
+
+
+def draw_movie_theater():
+    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+
+    # Ground
+    d.ellipse([5, 280, 355, 330], fill=(130, 195, 80, 100))
+
+    # Main building
+    d.rectangle([20, 80, 340, 300], fill="#3A3A50", outline="#2A2A3A", width=3)
+
+    # Art deco facade top
+    d.rectangle([20, 80, 340, 110], fill="#CC8822", outline="#AA6600", width=2)
+    d.rectangle([20, 105, 340, 115], fill="#FFD700")
+    # Decorative triangles
+    for x in range(30, 340, 30):
+        d.polygon([(x, 80), (x + 15, 68), (x + 30, 80)], fill="#DDaa44", outline="#CC8822", width=1)
+
+    # Marquee - lit up sign
+    d.rounded_rectangle([50, 118, 310, 160], radius=6, fill="#220022", outline="#FFD700", width=3)
+    # Light bulbs around marquee
+    bulb_colors = ["#FF4444", "#FFEE44", "#44FF44", "#44AAFF", "#FF44FF",
+                   "#FFEE44", "#FF4444", "#44FF44", "#44AAFF", "#FF44FF", "#FFEE44"]
+    for i, c in enumerate(bulb_colors):
+        bx = 58 + i * 24
+        d.ellipse([bx - 4, 118, bx + 4, 126], fill=c)
+        d.ellipse([bx - 4, 152, bx + 4, 160], fill=c)
+    # Now showing text
+    d.text((180, 132), "NOW SHOWING", fill="#FF4444", font=FONT_SM, anchor="mm")
+    d.text((180, 148), "MATH HEROES", fill="#FFEE44", font=FONT_XS, anchor="mm")
+
+    # Poster boxes
+    for px, color in [(30, "#FF4455"), (280, "#4488FF")]:
+        d.rounded_rectangle([px, 168, px + 50, 225], radius=3, fill=color, outline="#FFD700", width=2)
+        # Simple poster art
+        d.rectangle([px + 5, 173, px + 45, 200], fill=(0, 0, 0, 80))
+        d.text((px + 25, 212), "RATED", fill="#FFFFFF", font=FONT_XS, anchor="mm")
+        d.text((px + 25, 186), "PG", fill="#FFFFFF", font=FONT_SM, anchor="mm")
+
+    # Double doors
+    d.rounded_rectangle([110, 190, 250, 300], radius=8, fill="#661122", outline="#440011", width=3)
+    d.line([(180, 195), (180, 300)], fill="#440011", width=3)
+    # Door windows
+    d.rounded_rectangle([118, 200, 172, 240], radius=4, fill=(100, 60, 80, 160), outline="#440011", width=2)
+    d.rounded_rectangle([188, 200, 242, 240], radius=4, fill=(100, 60, 80, 160), outline="#440011", width=2)
+    # Door handles
+    d.rounded_rectangle([163, 250, 170, 270], radius=2, fill="#FFD700")
+    d.rounded_rectangle([190, 250, 197, 270], radius=2, fill="#FFD700")
+
+    # "TICKETS" booth on left
+    d.rounded_rectangle([30, 235, 100, 300], radius=4, fill="#FFD700", outline="#CC8822", width=2)
+    d.rounded_rectangle([36, 242, 94, 270], radius=3, fill="#FFEEBB", outline="#CC8822", width=1)
+    d.text((65, 256), "TICKETS", fill="#882200", font=FONT_XS, anchor="mm")
+    d.text((65, 282), "$", fill="#882200", font=FONT, anchor="mm")
+
+    # Carpet / entrance
+    d.rectangle([120, 290, 240, 305], fill="#CC2244")
+    # Rope barriers
+    for rx in [105, 255]:
+        d.rectangle([rx, 265, rx + 6, 300], fill="#FFD700", outline="#CC8822", width=1)
+        d.ellipse([rx - 2, 260, rx + 8, 270], fill="#FFD700")
+    d.line([(108, 268), (258, 268)], fill="#CC2244", width=3)
+
+    # Stars on building
+    for sx, sy in [(160, 56), (200, 52), (180, 40)]:
+        points = []
+        for i in range(5):
+            angle = math.radians(i * 72 - 90)
+            points.append((sx + int(10 * math.cos(angle)), sy + int(10 * math.sin(angle))))
+            angle2 = math.radians(i * 72 - 90 + 36)
+            points.append((sx + int(5 * math.cos(angle2)), sy + int(5 * math.sin(angle2))))
+        d.polygon(points, fill="#FFD700", outline="#CC8822", width=1)
 
     return add_shadow(img)
 
@@ -449,6 +694,88 @@ def draw_arcade():
     for fx in range(115, 245, 16):
         color = "#3B1199" if ((fx - 115) // 16) % 2 == 0 else "#4422BB"
         d.rectangle([fx, 290, fx + 16, 300], fill=color)
+
+    return add_shadow(img)
+
+
+def draw_water_park():
+    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+
+    # Ground
+    d.ellipse([5, 280, 355, 330], fill=(130, 195, 80, 100))
+
+    # Main pool area
+    d.rounded_rectangle([30, 170, 330, 300], radius=20, fill="#33BBDD", outline="#1199BB", width=3)
+    # Water waves
+    for wy in range(180, 295, 15):
+        for wx in range(40, 320, 30):
+            offset = (wy * 3 + wx) % 20 - 10
+            d.arc([wx + offset, wy, wx + 20 + offset, wy + 12], 0, 180, fill=(100, 220, 255, 120), width=2)
+
+    # Entrance building
+    d.rounded_rectangle([100, 110, 260, 180], radius=8, fill="#FF6644", outline="#DD4422", width=3)
+    # Roof
+    d.polygon([(90, 114), (180, 60), (270, 114)], fill="#FF4422", outline="#CC2200", width=3)
+    # Sign
+    d.rounded_rectangle([115, 120, 245, 150], radius=5, fill="#FFFFFF", outline="#DD4422", width=2)
+    d.text((180, 135), "WATER PARK", fill="#1199BB", font=FONT_SM, anchor="mm")
+    # Door
+    d.rounded_rectangle([155, 152, 205, 180], radius=4, fill="#884422", outline="#663311", width=2)
+
+    # Water slide - big curvy one
+    # Slide tower
+    d.rectangle([290, 60, 330, 180], fill="#FF8844", outline="#DD6622", width=2)
+    d.rectangle([286, 55, 334, 66], fill="#FF8844", outline="#DD6622", width=2)
+    # Platform
+    d.rectangle([280, 60, 340, 72], fill="#FFAA66", outline="#DD6622", width=2)
+    # Railing
+    d.line([(285, 60), (285, 45)], fill="#DD6622", width=2)
+    d.line([(335, 60), (335, 45)], fill="#DD6622", width=2)
+    d.line([(285, 45), (335, 45)], fill="#DD6622", width=2)
+    # Slide tube
+    d.line([(295, 72), (260, 100)], fill="#44DDFF", width=14)
+    d.line([(260, 100), (300, 130)], fill="#44DDFF", width=14)
+    d.line([(300, 130), (250, 170)], fill="#44DDFF", width=14)
+    # Slide highlights
+    d.line([(295, 72), (260, 100)], fill=(150, 240, 255, 150), width=6)
+    d.line([(260, 100), (300, 130)], fill=(150, 240, 255, 150), width=6)
+    d.line([(300, 130), (250, 170)], fill=(150, 240, 255, 150), width=6)
+
+    # Second slide (smaller, left side)
+    d.rectangle([30, 90, 60, 180], fill="#FF66AA", outline="#DD4488", width=2)
+    d.rectangle([26, 85, 64, 95], fill="#FF66AA", outline="#DD4488", width=2)
+    d.line([(48, 95), (80, 120)], fill="#FF88CC", width=10)
+    d.line([(80, 120), (50, 150)], fill="#FF88CC", width=10)
+    d.line([(50, 150), (80, 175)], fill="#FF88CC", width=10)
+    d.line([(48, 95), (80, 120)], fill=(255, 180, 220, 150), width=4)
+    d.line([(80, 120), (50, 150)], fill=(255, 180, 220, 150), width=4)
+    d.line([(50, 150), (80, 175)], fill=(255, 180, 220, 150), width=4)
+
+    # Palm trees
+    for tx, ty in [(20, 170), (340, 165)]:
+        # Trunk
+        d.line([(tx, ty), (tx + 5, ty - 50)], fill="#AA8844", width=6)
+        d.line([(tx, ty), (tx + 5, ty - 50)], fill="#BB9955", width=4)
+        # Fronds
+        for angle_deg in [-40, -10, 20, 50, 80]:
+            angle = math.radians(angle_deg)
+            ex = tx + 5 + int(35 * math.cos(angle))
+            ey = ty - 50 + int(25 * math.sin(angle)) - 10
+            d.line([(tx + 5, ty - 50), (ex, ey)], fill="#44AA22", width=3)
+
+    # Splash effects
+    for sx, sy in [(120, 195), (220, 210), (170, 250)]:
+        for i in range(5):
+            angle = math.radians(i * 72 - 90)
+            dx = int(8 * math.cos(angle))
+            dy = int(6 * math.sin(angle))
+            d.ellipse([sx + dx - 3, sy + dy - 3, sx + dx + 3, sy + dy + 3],
+                      fill=(200, 240, 255, 140))
+
+    # Float / inner tube
+    d.ellipse([140, 220, 175, 250], fill="#FF4466", outline="#CC2244", width=3)
+    d.ellipse([148, 228, 167, 242], fill="#33BBDD")
 
     return add_shadow(img)
 
@@ -579,13 +906,109 @@ def draw_theme_park():
     return add_shadow(img)
 
 
+def draw_space_station():
+    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+
+    # Starfield background circle
+    d.ellipse([20, 30, 340, 330], fill=(10, 10, 40, 120))
+    # Stars
+    import random
+    rng = random.Random(42)  # deterministic
+    for _ in range(40):
+        sx = rng.randint(30, 330)
+        sy = rng.randint(40, 320)
+        size = rng.randint(1, 3)
+        d.ellipse([sx, sy, sx + size, sy + size], fill=(255, 255, 255, rng.randint(100, 255)))
+
+    # Main hub (center sphere)
+    d.ellipse([120, 110, 240, 230], fill="#B8C8D8", outline="#8898A8", width=3)
+    # Hub window ring
+    for angle_deg in range(0, 360, 45):
+        angle = math.radians(angle_deg)
+        wx = 180 + int(40 * math.cos(angle))
+        wy = 170 + int(40 * math.sin(angle))
+        d.ellipse([wx - 8, wy - 8, wx + 8, wy + 8], fill="#44AAFF", outline="#2288CC", width=2)
+        d.ellipse([wx - 4, wy - 6, wx + 2, wy - 2], fill=(150, 220, 255, 120))
+
+    # Hub highlight
+    d.ellipse([135, 120, 175, 155], fill=(220, 230, 240, 80))
+
+    # Solar panel arrays - left
+    d.rectangle([20, 155, 115, 185], fill="#2244AA", outline="#113388", width=2)
+    # Panel grid
+    for px in range(24, 112, 12):
+        d.line([(px, 158), (px, 182)], fill="#1133AA", width=1)
+    for py in range(158, 183, 8):
+        d.line([(22, py), (113, py)], fill="#1133AA", width=1)
+    # Connection arm
+    d.rectangle([110, 165, 125, 175], fill="#889098", outline="#667078", width=1)
+
+    # Solar panel arrays - right
+    d.rectangle([245, 155, 340, 185], fill="#2244AA", outline="#113388", width=2)
+    for px in range(249, 337, 12):
+        d.line([(px, 158), (px, 182)], fill="#1133AA", width=1)
+    for py in range(158, 183, 8):
+        d.line([(247, py), (338, py)], fill="#1133AA", width=1)
+    d.rectangle([235, 165, 250, 175], fill="#889098", outline="#667078", width=1)
+
+    # Upper solar panels
+    d.rectangle([40, 75, 130, 100], fill="#2244AA", outline="#113388", width=2)
+    for px in range(44, 127, 12):
+        d.line([(px, 78), (px, 97)], fill="#1133AA", width=1)
+    d.rectangle([125, 88, 140, 115], fill="#889098", outline="#667078", width=1)
+
+    d.rectangle([230, 75, 320, 100], fill="#2244AA", outline="#113388", width=2)
+    for px in range(234, 317, 12):
+        d.line([(px, 78), (px, 97)], fill="#1133AA", width=1)
+    d.rectangle([220, 88, 235, 115], fill="#889098", outline="#667078", width=1)
+
+    # Habitation modules (cylinders)
+    # Top module
+    d.rounded_rectangle([150, 60, 210, 115], radius=8, fill="#C0C8D0", outline="#8898A8", width=2)
+    d.rounded_rectangle([155, 65, 205, 75], radius=3, fill="#44AAFF", outline="#2288CC", width=1)
+    d.line([(180, 75), (180, 110)], fill="#A0A8B0", width=1)
+
+    # Bottom module
+    d.rounded_rectangle([150, 225, 210, 280], radius=8, fill="#C0C8D0", outline="#8898A8", width=2)
+    d.rounded_rectangle([155, 260, 205, 270], radius=3, fill="#44AAFF", outline="#2288CC", width=1)
+    d.line([(180, 230), (180, 260)], fill="#A0A8B0", width=1)
+
+    # Antenna on top
+    d.line([(180, 60), (180, 30)], fill="#889098", width=3)
+    d.ellipse([174, 24, 186, 36], fill="#FF4444", outline="#CC2222", width=2)
+    # Signal waves
+    for r in [14, 22, 30]:
+        d.arc([180 - r, 30 - r // 2, 180 + r, 30 + r // 2], 200, 340, fill=(255, 80, 80, 120), width=2)
+
+    # Docking port at bottom
+    d.rounded_rectangle([165, 280, 195, 310], radius=4, fill="#889098", outline="#667078", width=2)
+    d.ellipse([172, 290, 188, 305], fill="#445566", outline="#334455", width=1)
+
+    # Thruster glow
+    for tx, ty in [(165, 308), (195, 308)]:
+        d.polygon([(tx - 4, ty), (tx, ty + 15), (tx + 4, ty)], fill=(80, 150, 255, 100))
+        d.polygon([(tx - 2, ty), (tx, ty + 10), (tx + 2, ty)], fill=(150, 200, 255, 140))
+
+    # Label
+    d.rounded_rectangle([110, 186, 250, 210], radius=5, fill=(0, 0, 0, 100))
+    d.text((180, 198), "SPACE STATION", fill="#FFFFFF", font=FONT_SM, anchor="mm")
+
+    return add_shadow(img)
+
+
 def main():
     buildings = {
         "lemonade_stand": draw_lemonade_stand,
+        "ice_cream_truck": draw_ice_cream_truck,
         "cookie_shop": draw_cookie_shop,
+        "pet_shop": draw_pet_shop,
         "toy_store": draw_toy_store,
+        "movie_theater": draw_movie_theater,
         "arcade": draw_arcade,
+        "water_park": draw_water_park,
         "theme_park": draw_theme_park,
+        "space_station": draw_space_station,
     }
     for name, draw_fn in buildings.items():
         img = draw_fn()

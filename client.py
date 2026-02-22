@@ -86,10 +86,15 @@ class Client:
         assets_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
         name_to_file = {
             "Lemonade Stand": "lemonade_stand.png",
+            "Ice Cream Truck": "ice_cream_truck.png",
             "Cookie Shop": "cookie_shop.png",
+            "Pet Shop": "pet_shop.png",
             "Toy Store": "toy_store.png",
+            "Movie Theater": "movie_theater.png",
             "Arcade": "arcade.png",
+            "Water Park": "water_park.png",
             "Theme Park": "theme_park.png",
+            "Space Station": "space_station.png",
         }
         for name, filename in name_to_file.items():
             path = os.path.join(assets_dir, filename)
@@ -127,6 +132,9 @@ class Client:
 
         # Town scrolling
         self.town_scroll = 0
+
+        # Shop scrolling
+        self.shop_scroll = 0
 
         self.running = True
 
@@ -686,7 +694,7 @@ class Client:
         self.screen.blit(overlay, (0, 0))
 
         # Shop panel
-        sw, sh = 720, 560
+        sw, sh = 720, 580
         sx = (WIDTH - sw) // 2
         sy = (HEIGHT - sh) // 2
         self.draw_shadow(sx, sy, sw, sh, radius=16, offset=8, alpha=40)
@@ -705,17 +713,34 @@ class Client:
         self.draw_coin_icon(sx + sw // 2 - 60, sy + 73, 10)
         self.draw_text(f"{self.coins:,} coins", self.font_sm, COIN_DARK, sx + sw // 2 - 45, sy + 64)
 
+        # Scrollable building list area
+        list_top = sy + 95
+        list_h = sh - 105
+        row_h = 78
+        row_gap = 8
+        total_content = len(BUILDING_ORDER) * (row_h + row_gap) + 10
+        max_shop_scroll = max(0, total_content - list_h)
+        self.shop_scroll = max(0, min(self.shop_scroll, max_shop_scroll))
+
+        # Clip to list area
+        clip_rect = pygame.Rect(sx, list_top, sw, list_h)
+        self.screen.set_clip(clip_rect)
+
         # Building rows
         self.buy_buttons = []
-        y = sy + 100
-        for name in BUILDING_ORDER:
+        for idx, name in enumerate(BUILDING_ORDER):
             cost, inc = BUILDINGS[name]
             color = BUILDING_COLORS[name]
             can_afford = self.coins >= cost
 
+            y = list_top + idx * (row_h + row_gap) - int(self.shop_scroll)
+
+            # Skip if off screen
+            if y + row_h < list_top - 10 or y > list_top + list_h + 10:
+                continue
+
             # Row card
             row_w = sw - 40
-            row_h = 78
             row_s = pygame.Surface((row_w, row_h), pygame.SRCALPHA)
             pygame.draw.rect(row_s, (*color, 35), (0, 0, row_w, row_h), border_radius=10)
             pygame.draw.rect(row_s, (*color, 120), (0, 0, row_w, row_h), 2, border_radius=10)
@@ -729,8 +754,9 @@ class Client:
             text_x = sx + 92
             self.draw_text(name, self.font_med, BLACK, text_x, y + 10)
             self.draw_coin_icon(text_x, y + 50, 7)
-            self.draw_text(f"{cost}", self.font_xs, COIN_DARK, text_x + 12, y + 42)
-            self.draw_text(f"  +{inc}/solve", self.font_xs, (60, 140, 60), text_x + 12 + len(str(cost)) * 9, y + 42)
+            self.draw_text(f"{cost:,}", self.font_xs, COIN_DARK, text_x + 12, y + 42)
+            cost_w = self.font_xs.size(f"{cost:,}")[0]
+            self.draw_text(f"  +{inc}/solve", self.font_xs, (60, 140, 60), text_x + 12 + cost_w, y + 42)
 
             # Buy button
             btn_color = GREEN if can_afford else LIGHT_GRAY
@@ -739,11 +765,27 @@ class Client:
             btn = self.draw_button(btn_text, sx + sw - 130, y + 19, 95, 40, btn_color, btn_hover)
             self.buy_buttons.append((btn, name, can_afford))
 
-            y += 86
+        self.screen.set_clip(None)
+
+        # Scroll indicator for shop
+        if max_shop_scroll > 0:
+            bar_h = list_h - 20
+            thumb_h = max(30, int(bar_h * (list_h / total_content)))
+            thumb_y = list_top + 10 + int((bar_h - thumb_h) * (self.shop_scroll / max_shop_scroll))
+            bar_x = sx + sw - 14
+            track_s = pygame.Surface((6, bar_h), pygame.SRCALPHA)
+            pygame.draw.rect(track_s, (0, 0, 0, 30), (0, 0, 6, bar_h), border_radius=3)
+            self.screen.blit(track_s, (bar_x, list_top + 10))
+            thumb_s = pygame.Surface((6, thumb_h), pygame.SRCALPHA)
+            pygame.draw.rect(thumb_s, (0, 0, 0, 80), (0, 0, 6, thumb_h), border_radius=3)
+            self.screen.blit(thumb_s, (bar_x, thumb_y))
 
     def handle_game_events(self, event):
-        if event.type == pygame.MOUSEWHEEL and not self.shop_open:
-            self.town_scroll -= event.y * 30
+        if event.type == pygame.MOUSEWHEEL:
+            if self.shop_open:
+                self.shop_scroll -= event.y * 30
+            else:
+                self.town_scroll -= event.y * 30
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if self.shop_open:
                 if self.shop_close_btn.collidepoint(event.pos):
@@ -754,6 +796,7 @@ class Client:
             else:
                 if self.shop_btn.collidepoint(event.pos):
                     self.shop_open = True
+                    self.shop_scroll = 0
                     self.buy_buttons = []
                 elif self.submit_btn.collidepoint(event.pos):
                     self.submit_answer()
