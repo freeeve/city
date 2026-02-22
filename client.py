@@ -249,6 +249,13 @@ class Client:
         self.scratch_draw_btn = pygame.Rect(0, 0, 0, 0)
         self.scratch_focused = False
 
+        # Player character state
+        self.player_x = 80.0   # world position (near first building plot)
+        self.player_y = 140.0
+        self.player_dir = 'right'
+        self.player_moving = False
+        self.player_speed = 3
+
         self.running = True
 
     # --- Networking ---
@@ -1365,6 +1372,39 @@ class Client:
         if self.pedestrian_anims:
             self._update_pedestrian_anims()
 
+        # --- Player movement (continuous key polling) ---
+        if not self.shop_open and not self.viewing_city and not self.scratch_focused:
+            keys = pygame.key.get_pressed()
+            dx = dy = 0
+            if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+                dx -= self.player_speed
+            if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+                dx += self.player_speed
+            if keys[pygame.K_UP] or keys[pygame.K_w]:
+                dy -= self.player_speed
+            if keys[pygame.K_DOWN] or keys[pygame.K_s]:
+                dy += self.player_speed
+            self.player_moving = dx != 0 or dy != 0
+            if dx < 0:
+                self.player_dir = 'left'
+            elif dx > 0:
+                self.player_dir = 'right'
+            self.player_x = max(10, min(self.player_x + dx, total_w - 10))
+            self.player_y = max(10, min(self.player_y + dy, total_h - 10))
+
+        # --- Camera follows player (smooth lerp) ---
+        target_sx = self.player_x - view_w // 2
+        target_sy = self.player_y - view_h // 2
+        target_sx = max(0, min(target_sx, max_scroll_x))
+        target_sy = max(0, min(target_sy, max_scroll_y))
+        self.town_scroll_x += (target_sx - self.town_scroll_x) * 0.12
+        self.town_scroll_y += (target_sy - self.town_scroll_y) * 0.12
+        # Re-clamp and re-assign after lerp
+        self.town_scroll_x = max(0, min(self.town_scroll_x, max_scroll_x))
+        self.town_scroll_y = max(0, min(self.town_scroll_y, max_scroll_y))
+        sx = self.town_scroll_x
+        sy = self.town_scroll_y
+
         # --- Collect all depth-sorted drawables ---
         # Each entry: (sort_y, draw_func)
         drawables = []
@@ -1546,6 +1586,13 @@ class Client:
             ped_dir = 'right' if anim['direction'] in ('right', 'down') else 'left'
             drawables.append((anim['y'], 'pedestrian', ped_screen_x, ped_screen_y, ped_dir, anim['color_seed']))
 
+        # Player character
+        player_screen_x = town_x + self.player_x - sx
+        player_screen_y = town_y + self.player_y - sy
+        if (town_x - 15 < player_screen_x < town_x + view_w + 15 and
+                town_y - 30 < player_screen_y < town_y + view_h + 15):
+            drawables.append((self.player_y, 'player', player_screen_x, player_screen_y))
+
         # Residential neighbourhood label
         if house_positions:
             label_x = house_positions[0][0]
@@ -1624,6 +1671,29 @@ class Client:
             elif kind == 'pedestrian':
                 _, _, px, py, pdir, pseed = item
                 self.draw_pedestrian(self.screen, px, py, direction=pdir, color_seed=pseed)
+            elif kind == 'player':
+                _, _, px, py = item
+                # Draw shadow
+                shadow_s = pygame.Surface((20, 8), pygame.SRCALPHA)
+                pygame.draw.ellipse(shadow_s, (0, 0, 0, 30), shadow_s.get_rect())
+                self.screen.blit(shadow_s, (int(px) - 10, int(py) + 4))
+                # Draw body using pedestrian renderer with a fixed seed
+                self.draw_pedestrian(self.screen, px, py, direction=self.player_dir, color_seed=12345)
+                # Bright downward-pointing triangle indicator above head
+                tri_x = int(px)
+                tri_y = int(py) - 24
+                pygame.draw.polygon(self.screen, (255, 60, 60),
+                                    [(tri_x, tri_y + 7), (tri_x - 5, tri_y), (tri_x + 5, tri_y)])
+                pygame.draw.polygon(self.screen, (255, 255, 255),
+                                    [(tri_x, tri_y + 7), (tri_x - 5, tri_y), (tri_x + 5, tri_y)], 1)
+                # Name label below feet
+                name = self.name_text if self.name_text else "You"
+                label = self.font_tiny.render(name, True, (255, 255, 255))
+                lw, lh = label.get_size()
+                tag_s = pygame.Surface((lw + 6, lh + 2), pygame.SRCALPHA)
+                pygame.draw.rect(tag_s, (0, 0, 0, 140), (0, 0, lw + 6, lh + 2), border_radius=3)
+                tag_s.blit(label, (3, 1))
+                self.screen.blit(tag_s, (int(px) - (lw + 6) // 2, int(py) + 10))
             elif kind == 'plot':
                 _, _, abs_x, abs_y, idx, assignment = item
                 self._draw_plot_3d(abs_x, abs_y, assignment)
@@ -2848,16 +2918,14 @@ class Client:
             if full_name != self.name_text:
                 self.leaderboard_name_rects.append((row_rect, full_name))
 
-            # Rebirth stars + coin amount
+            # Coin amount + rebirths
             rebirths = entry.get("rebirths", 0)
             coins_text = f"{entry['coins']:,}"
-            coin_x = lx + lb_w - 44
+            if rebirths > 0:
+                coins_text += f" \u2605{rebirths}"
+            coin_x = lx + lb_w - 16 - self.font_xs.size(coins_text)[0]
             self.draw_coin_icon(coin_x - 11, y + 9, 7)
             self.draw_text(coins_text, self.font_xs, COIN_DARK, coin_x, y)
-            if rebirths > 0:
-                star_text = f"\u2605{rebirths}"
-                star_w = self.font_tiny.size(star_text)[0]
-                self.draw_text(star_text, self.font_tiny, COIN_GOLD, coin_x - 13 - star_w, y + 2)
 
             y += 34
 
