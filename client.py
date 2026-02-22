@@ -261,6 +261,8 @@ class Client:
         self.view_player_y = 140.0
         self.view_player_dir = 'right'
         self.view_player_moving = False
+        self.city_visitors = []  # list of visitor dicts from server
+        self.visitor_pos_tick = 0  # throttle counter for position sends
 
         self.running = True
 
@@ -328,6 +330,10 @@ class Client:
             self.view_player_y = 140.0
             self.view_player_dir = 'right'
             self.view_player_moving = False
+            self.city_visitors = []
+            self.send({"type": "enter_city", "target": msg["player_name"]})
+        elif msg["type"] == "visitors":
+            self.city_visitors = msg.get("visitors", [])
         elif msg["type"] == "error":
             self.connect_error = msg.get("message", "Error")
 
@@ -1603,6 +1609,18 @@ class Client:
                 town_y - 30 < player_screen_y < town_y + view_h + 15):
             drawables.append((self.player_y, 'player', player_screen_x, player_screen_y))
 
+        # Visitor characters (other players viewing same city)
+        for visitor in self.city_visitors:
+            vx = visitor.get("x", 80)
+            vy = visitor.get("y", 140)
+            v_screen_x = town_x + vx - sx
+            v_screen_y = town_y + vy - sy
+            if (town_x - 15 < v_screen_x < town_x + view_w + 15 and
+                    town_y - 30 < v_screen_y < town_y + view_h + 15):
+                drawables.append((vy, 'visitor', v_screen_x, v_screen_y,
+                                  visitor.get("dir", "right"), visitor.get("name", ""),
+                                  visitor.get("seed", 0)))
+
         # Residential neighbourhood label
         if house_positions:
             label_x = house_positions[0][0]
@@ -1704,6 +1722,28 @@ class Client:
                 pygame.draw.rect(tag_s, (0, 0, 0, 140), (0, 0, lw + 6, lh + 2), border_radius=3)
                 tag_s.blit(label, (3, 1))
                 self.screen.blit(tag_s, (int(px) - (lw + 6) // 2, int(py) + 10))
+            elif kind == 'visitor':
+                _, _, vx, vy, vdir, vname, vseed = item
+                # Shadow
+                shadow_s = pygame.Surface((20, 8), pygame.SRCALPHA)
+                pygame.draw.ellipse(shadow_s, (0, 0, 0, 30), shadow_s.get_rect())
+                self.screen.blit(shadow_s, (int(vx) - 10, int(vy) + 4))
+                # Body
+                self.draw_pedestrian(self.screen, vx, vy, direction=vdir, color_seed=vseed)
+                # Blue triangle indicator
+                tri_x = int(vx)
+                tri_y = int(vy) - 24
+                pygame.draw.polygon(self.screen, (60, 140, 255),
+                                    [(tri_x, tri_y + 7), (tri_x - 5, tri_y), (tri_x + 5, tri_y)])
+                pygame.draw.polygon(self.screen, (255, 255, 255),
+                                    [(tri_x, tri_y + 7), (tri_x - 5, tri_y), (tri_x + 5, tri_y)], 1)
+                # Name label
+                label = self.font_tiny.render(vname, True, (255, 255, 255))
+                lw, lh = label.get_size()
+                tag_s = pygame.Surface((lw + 6, lh + 2), pygame.SRCALPHA)
+                pygame.draw.rect(tag_s, (0, 0, 120, 140), (0, 0, lw + 6, lh + 2), border_radius=3)
+                tag_s.blit(label, (3, 1))
+                self.screen.blit(tag_s, (int(vx) - (lw + 6) // 2, int(vy) + 10))
             elif kind == 'plot':
                 _, _, abs_x, abs_y, idx, assignment = item
                 self._draw_plot_3d(abs_x, abs_y, assignment)
@@ -3013,6 +3053,13 @@ class Client:
         self.view_player_dir = self.player_dir
         self.view_player_moving = self.player_moving
 
+        # Send position updates (~10/sec at 30 FPS = every 3 ticks)
+        self.visitor_pos_tick += 1
+        if self.visitor_pos_tick >= 3:
+            self.visitor_pos_tick = 0
+            self.send({"type": "visitor_pos", "x": self.view_player_x, "y": self.view_player_y,
+                        "dir": self.view_player_dir, "moving": self.view_player_moving})
+
         # Restore
         self.buildings = save_buildings
         self.cars = save_cars
@@ -3251,6 +3298,8 @@ class Client:
             if self.viewing_city:
                 town_rect = pygame.Rect(15, 200, 605, HEIGHT - 215)
                 if self.view_close_btn.collidepoint(event.pos):
+                    self.send({"type": "leave_city"})
+                    self.city_visitors = []
                     self.viewing_city = None
                 elif town_rect.collidepoint(event.pos):
                     # Drag panning in viewed city
@@ -3259,6 +3308,8 @@ class Client:
                     self.drag_scroll_start = (self.view_scroll_x, self.view_scroll_y)
                 else:
                     # Click outside town area closes the view
+                    self.send({"type": "leave_city"})
+                    self.city_visitors = []
                     self.viewing_city = None
             elif self.shop_open:
                 if self.shop_close_btn.collidepoint(event.pos):
@@ -3361,6 +3412,8 @@ class Client:
                 self.town_scroll_y = self.drag_scroll_start[1] + dy
         elif event.type == pygame.KEYDOWN and self.viewing_city:
             if event.key == pygame.K_ESCAPE:
+                self.send({"type": "leave_city"})
+                self.city_visitors = []
                 self.viewing_city = None
         elif event.type == pygame.KEYDOWN and self.scratch_typing and self.scratch_focused and not self.shop_open and not self.viewing_city:
             # Typing into scratch pad

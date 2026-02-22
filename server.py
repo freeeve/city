@@ -20,6 +20,11 @@ class Player:
         self.rebirths = 0
         self.grade = 3
         self.problem = generate_problem()
+        self.viewing_city_of = None  # name of city being viewed, or None
+        self.visitor_x = 80.0
+        self.visitor_y = 140.0
+        self.visitor_dir = 'right'
+        self.visitor_moving = False
 
 
 class GameServer:
@@ -102,6 +107,28 @@ class GameServer:
         for b in player.buildings:
             total += BUILDINGS[b][1]
         return total
+
+    def get_visitors_of(self, city_owner_name, exclude_addr=None):
+        """Return list of visitor dicts for all players viewing the given city."""
+        visitors = []
+        for addr, p in self.players.items():
+            if p.viewing_city_of == city_owner_name and addr != exclude_addr:
+                visitors.append({
+                    "name": p.name,
+                    "x": p.visitor_x,
+                    "y": p.visitor_y,
+                    "dir": p.visitor_dir,
+                    "moving": p.visitor_moving,
+                    "seed": hash(p.name) & 0xFFFF,
+                })
+        return visitors
+
+    def broadcast_visitors(self, city_owner_name):
+        """Send visitor list to each player viewing the given city."""
+        for addr, p in list(self.players.items()):
+            if p.viewing_city_of == city_owner_name:
+                visitors = self.get_visitors_of(city_owner_name, exclude_addr=addr)
+                self.send_to(p, {"type": "visitors", "visitors": visitors})
 
     def build_state_for(self, player):
         pop = self.get_population(player)
@@ -221,6 +248,31 @@ class GameServer:
                                     **target_data,
                                 })
 
+                    elif msg["type"] == "enter_city" and player:
+                        with self.lock:
+                            player.viewing_city_of = msg.get("target")
+                            player.visitor_x = 80.0
+                            player.visitor_y = 140.0
+                            player.visitor_dir = 'right'
+                            player.visitor_moving = False
+                            self.broadcast_visitors(player.viewing_city_of)
+
+                    elif msg["type"] == "leave_city" and player:
+                        with self.lock:
+                            old_city = player.viewing_city_of
+                            player.viewing_city_of = None
+                            if old_city:
+                                self.broadcast_visitors(old_city)
+
+                    elif msg["type"] == "visitor_pos" and player:
+                        with self.lock:
+                            player.visitor_x = msg.get("x", player.visitor_x)
+                            player.visitor_y = msg.get("y", player.visitor_y)
+                            player.visitor_dir = msg.get("dir", player.visitor_dir)
+                            player.visitor_moving = msg.get("moving", player.visitor_moving)
+                            if player.viewing_city_of:
+                                self.broadcast_visitors(player.viewing_city_of)
+
                     elif msg["type"] == "rebirth" and player:
                         with self.lock:
                             if player.coins >= 1_000_000:
@@ -262,9 +314,15 @@ class GameServer:
         finally:
             with self.lock:
                 if addr in self.players:
-                    print(f"{self.players[addr].name} disconnected")
+                    p = self.players[addr]
+                    old_city = p.viewing_city_of
+                    if old_city:
+                        p.viewing_city_of = None
+                    print(f"{p.name} disconnected")
                     self._save()
                     del self.players[addr]
+                    if old_city:
+                        self.broadcast_visitors(old_city)
             conn.close()
             self.broadcast_states()
 
