@@ -29,11 +29,11 @@ class TestAssets(unittest.TestCase):
             img = Image.open(path)
             self.assertEqual(img.format, "PNG")
 
-    def test_images_are_120x120(self):
+    def test_images_are_360x360(self):
         for name, filename in EXPECTED_FILES.items():
             path = os.path.join(ASSETS_DIR, filename)
             img = Image.open(path)
-            self.assertEqual(img.size, (240, 240), f"{name} image should be 240x240")
+            self.assertEqual(img.size, (360, 360), f"{name} image should be 360x360")
 
     def test_images_have_alpha_channel(self):
         for name, filename in EXPECTED_FILES.items():
