@@ -53,15 +53,18 @@ GOLD = (255, 200, 50)
 SILVER = (190, 195, 205)
 BRONZE = (205, 150, 90)
 
-# Town plot positions (x, y) within the town area
-# Plot grid: rows of plots on grass, separated by horizontal roads every 2 rows
-# Each row-pair has plots at these x offsets, roads run between pairs
-PLOT_X_LEFT = [10]             # left of vertical road (fits 1 plot)
-PLOT_X_RIGHT = [200, 355]     # right of vertical road (fits 2 plots)
-ROAD_V_X = 155                 # vertical road x offset within town
+# Town layout
 ROAD_THICK = 36
-ROW_HEIGHT = 175               # height per row-pair (2 plot rows + road)
+ROW_HEIGHT = 175
 PLOT_W, PLOT_H = 135, 130
+
+# Grid: columns of plots separated by vertical roads
+# Column positions (x offsets in world space)
+PLOT_COLS = [10, 155, 340, 485, 670, 815]
+# Vertical road x positions (in world space)
+ROAD_V_POSITIONS = [295, 630]
+# Total town world width
+TOWN_WORLD_W = 960
 
 
 class Client:
@@ -130,8 +133,12 @@ class Client:
         # Game screen input
         self.answer_text = ""
 
-        # Town scrolling
-        self.town_scroll = 0
+        # Town scrolling (2D)
+        self.town_scroll_x = 0
+        self.town_scroll_y = 0
+        self.town_dragging = False
+        self.drag_start = (0, 0)
+        self.drag_scroll_start = (0, 0)
 
         # Shop scrolling
         self.shop_scroll = 0
@@ -426,28 +433,25 @@ class Client:
         pygame.draw.circle(self.screen, (255, 255, 200), (x, y), 2)
 
     def get_plot_positions(self):
-        """Generate plot positions in a grid. Each 'section' has a top row and bottom row
-        separated by a horizontal road. Sections repeat as you scroll down."""
+        """Generate plot positions in a wide grid. Sections stack vertically,
+        each with 2 rows of plots across all columns."""
         positions = []
-        section_h = ROW_HEIGHT * 2 + ROAD_THICK + 16  # two row-pairs + road + gap
-        for section in range(10):  # 10 sections = 30 plots
+        section_h = ROW_HEIGHT * 2 + ROAD_THICK + 16
+        for section in range(6):  # 6 sections
             base_y = section * section_h
-            # Top row of section
-            for x in PLOT_X_LEFT:
+            # Top row
+            for x in PLOT_COLS:
                 positions.append((x, base_y + 10))
-            for x in PLOT_X_RIGHT:
-                positions.append((x, base_y + 10))
-            # Bottom row of section
-            for x in PLOT_X_LEFT:
-                positions.append((x, base_y + ROW_HEIGHT))
-            for x in PLOT_X_RIGHT:
+            # Bottom row
+            for x in PLOT_COLS:
                 positions.append((x, base_y + ROW_HEIGHT))
         return positions
 
     def draw_town(self):
         town_x, town_y = 15, 200
         town_w, town_h = 605, HEIGHT - town_y - 15
-        view_h = town_h  # visible height
+        view_w = town_w
+        view_h = town_h
 
         # Count buildings
         counts = {}
@@ -457,32 +461,31 @@ class Client:
         # Generate all plot positions
         all_plots = self.get_plot_positions()
 
-        # Assign buildings to plots: owned buildings first, then empty slots
-        plot_assignments = []  # list of (name, count) or None for empty
-        building_idx = 0
-        assigned = {}
+        # Assign buildings to plots
+        plot_assignments = []
         for name in BUILDING_ORDER:
             if name in counts:
-                assigned[name] = counts[name]
-        # Fill plots: one entry per building type, then empties
-        for name in BUILDING_ORDER:
-            if name in assigned:
-                plot_assignments.append((name, assigned[name]))
-        # Fill remaining with empty
+                plot_assignments.append((name, counts[name]))
         while len(plot_assignments) < len(all_plots):
             plot_assignments.append(None)
 
-        # Calculate total town content height
+        # Total content size
         if all_plots:
-            max_y = max(py for _, py in all_plots) + PLOT_H + 40
+            max_content_y = max(py for _, py in all_plots) + PLOT_H + 40
+            max_content_x = max(px for px, _ in all_plots) + PLOT_W + 20
         else:
-            max_y = view_h
-        total_h = max(max_y, view_h)
+            max_content_y = view_h
+            max_content_x = view_w
+        total_h = max(max_content_y, view_h)
+        total_w = max(max_content_x, view_w)
 
         # Clamp scroll
-        max_scroll = max(0, total_h - view_h)
-        self.town_scroll = max(0, min(self.town_scroll, max_scroll))
-        scroll = self.town_scroll
+        max_scroll_y = max(0, total_h - view_h)
+        max_scroll_x = max(0, total_w - view_w)
+        self.town_scroll_y = max(0, min(self.town_scroll_y, max_scroll_y))
+        self.town_scroll_x = max(0, min(self.town_scroll_x, max_scroll_x))
+        sx = self.town_scroll_x
+        sy = self.town_scroll_y
 
         # Clip region for town
         clip_rect = pygame.Rect(town_x, town_y, town_w, view_h)
@@ -491,71 +494,92 @@ class Client:
         # Grass background
         pygame.draw.rect(self.screen, GRASS_1, (town_x, town_y, town_w, view_h), border_radius=14)
 
-        # Grass patches (tile them with scroll)
+        # Grass patches (tile with both scrolls)
         patch_templates = [(40, 80, 60, 40), (200, 50, 50, 30), (400, 90, 70, 35),
-                           (80, 300, 55, 30), (350, 320, 65, 35), (500, 250, 45, 25)]
+                           (80, 300, 55, 30), (350, 320, 65, 35), (500, 250, 45, 25),
+                           (700, 150, 55, 35), (850, 220, 45, 30)]
         for px, py, pw, ph in patch_templates:
-            draw_y = town_y + py - (scroll % 400)
-            while draw_y < town_y + view_h:
-                if draw_y + ph > town_y - ph:
-                    s = pygame.Surface((pw, ph), pygame.SRCALPHA)
-                    pygame.draw.ellipse(s, (*GRASS_2, 90), (0, 0, pw, ph))
-                    self.screen.blit(s, (town_x + px, draw_y))
-                draw_y += 400
+            draw_x = town_x + px - (sx % 500)
+            while draw_x < town_x + view_w:
+                draw_y = town_y + py - (sy % 400)
+                while draw_y < town_y + view_h:
+                    if draw_y + ph > town_y - ph and draw_x + pw > town_x - pw:
+                        s = pygame.Surface((pw, ph), pygame.SRCALPHA)
+                        pygame.draw.ellipse(s, (*GRASS_2, 90), (0, 0, pw, ph))
+                        self.screen.blit(s, (draw_x, draw_y))
+                    draw_y += 400
+                draw_x += 500
 
-        # --- Vertical road (runs full height) ---
-        vx = town_x + ROAD_V_X
-        pygame.draw.rect(self.screen, SIDEWALK, (vx - 4, town_y, ROAD_THICK + 8, view_h))
-        pygame.draw.rect(self.screen, ROAD_FILL, (vx, town_y, ROAD_THICK, view_h))
-        pygame.draw.line(self.screen, ROAD_EDGE, (vx, town_y), (vx, town_y + view_h), 2)
-        pygame.draw.line(self.screen, ROAD_EDGE, (vx + ROAD_THICK, town_y), (vx + ROAD_THICK, town_y + view_h), 2)
-        dash_start = -(scroll % 44)
-        for ry_off in range(int(dash_start), view_h + 44, 44):
-            pygame.draw.rect(self.screen, ROAD_DASH, (vx + ROAD_THICK // 2 - 2, town_y + ry_off, 4, 24), border_radius=2)
+        # --- Vertical roads ---
+        for road_vx in ROAD_V_POSITIONS:
+            vx = town_x + road_vx - sx
+            if vx + ROAD_THICK + 8 < town_x or vx - 4 > town_x + view_w:
+                continue
+            pygame.draw.rect(self.screen, SIDEWALK, (vx - 4, town_y, ROAD_THICK + 8, view_h))
+            pygame.draw.rect(self.screen, ROAD_FILL, (vx, town_y, ROAD_THICK, view_h))
+            pygame.draw.line(self.screen, ROAD_EDGE, (vx, town_y), (vx, town_y + view_h), 2)
+            pygame.draw.line(self.screen, ROAD_EDGE, (vx + ROAD_THICK, town_y), (vx + ROAD_THICK, town_y + view_h), 2)
+            dash_start = -(sy % 44)
+            for ry_off in range(int(dash_start), view_h + 44, 44):
+                pygame.draw.rect(self.screen, ROAD_DASH, (vx + ROAD_THICK // 2 - 2, town_y + ry_off, 4, 24), border_radius=2)
 
         # --- Horizontal roads between sections ---
         section_h = ROW_HEIGHT * 2 + ROAD_THICK + 16
-        for section in range(12):
+        for section in range(8):
             road_local_y = section * section_h + ROW_HEIGHT * 2 - 15
-            hy = town_y + road_local_y - scroll
+            hy = town_y + road_local_y - sy
             if hy > town_y + view_h + 10 or hy + ROAD_THICK < town_y - 10:
                 continue
-            pygame.draw.rect(self.screen, SIDEWALK, (town_x, hy - 4, town_w, ROAD_THICK + 8))
-            pygame.draw.rect(self.screen, ROAD_FILL, (town_x, hy, town_w, ROAD_THICK))
-            pygame.draw.line(self.screen, ROAD_EDGE, (town_x, hy), (town_x + town_w, hy), 2)
-            pygame.draw.line(self.screen, ROAD_EDGE, (town_x, hy + ROAD_THICK), (town_x + town_w, hy + ROAD_THICK), 2)
-            for rx in range(town_x + 20, town_x + town_w - 20, 44):
-                pygame.draw.rect(self.screen, ROAD_DASH, (rx, hy + ROAD_THICK // 2 - 2, 24, 4), border_radius=2)
-            # Intersection
-            pygame.draw.rect(self.screen, ROAD_FILL, (vx, hy, ROAD_THICK, ROAD_THICK))
+            road_draw_x = town_x - sx
+            road_draw_w = total_w + 40
+            pygame.draw.rect(self.screen, SIDEWALK, (road_draw_x, hy - 4, road_draw_w, ROAD_THICK + 8))
+            pygame.draw.rect(self.screen, ROAD_FILL, (road_draw_x, hy, road_draw_w, ROAD_THICK))
+            pygame.draw.line(self.screen, ROAD_EDGE, (road_draw_x, hy), (road_draw_x + road_draw_w, hy), 2)
+            pygame.draw.line(self.screen, ROAD_EDGE, (road_draw_x, hy + ROAD_THICK), (road_draw_x + road_draw_w, hy + ROAD_THICK), 2)
+            dash_sx = -(sx % 44)
+            for rx_off in range(int(dash_sx), view_w + 44, 44):
+                pygame.draw.rect(self.screen, ROAD_DASH, (town_x + rx_off, hy + ROAD_THICK // 2 - 2, 24, 4), border_radius=2)
+            # Intersections
+            for road_vx in ROAD_V_POSITIONS:
+                ivx = town_x + road_vx - sx
+                pygame.draw.rect(self.screen, ROAD_FILL, (ivx, hy, ROAD_THICK, ROAD_THICK))
 
-        # --- Trees (scattered, tiled with scroll) ---
-        tree_templates = [(510, 50, 0.9), (550, 120, 1.1), (40, 300, 1.0),
-                          (520, 280, 0.85), (480, 200, 1.05), (130, 320, 0.7)]
+        # --- Trees (scattered, tiled with both scrolls) ---
+        tree_templates = [(130, 50, 0.9), (270, 120, 1.1), (40, 300, 1.0),
+                          (520, 280, 0.85), (750, 200, 1.05), (900, 100, 0.7),
+                          (450, 50, 0.95), (180, 350, 0.8)]
         for tx, ty, ts in tree_templates:
-            draw_y = town_y + ty - (scroll % 500)
+            draw_x = town_x + tx - sx
+            if draw_x < town_x - 40 or draw_x > town_x + view_w + 40:
+                continue
+            draw_y = town_y + ty - (sy % 500)
             while draw_y < town_y + view_h + 40:
                 if draw_y > town_y - 40:
-                    self.draw_tree(town_x + tx, draw_y, ts)
+                    self.draw_tree(draw_x, draw_y, ts)
                 draw_y += 500
 
-        # --- Flowers (tiled) ---
+        # --- Flowers (tiled with both scrolls) ---
         flower_templates = [(30, 130, (255, 100, 120)), (500, 80, (180, 120, 255)),
-                            (545, 300, (255, 130, 80)), (100, 140, (120, 200, 255))]
+                            (545, 300, (255, 130, 80)), (100, 140, (120, 200, 255)),
+                            (700, 180, (255, 200, 100)), (850, 260, (200, 100, 255))]
         for fx, fy, fc in flower_templates:
-            draw_y = town_y + fy - (scroll % 400)
+            draw_x = town_x + fx - sx
+            if draw_x < town_x - 10 or draw_x > town_x + view_w + 10:
+                continue
+            draw_y = town_y + fy - (sy % 400)
             while draw_y < town_y + view_h + 10:
                 if draw_y > town_y - 10:
-                    self.draw_flower(town_x + fx, draw_y, fc)
+                    self.draw_flower(draw_x, draw_y, fc)
                 draw_y += 400
 
         # --- Building plots ---
         for i, (px, py) in enumerate(all_plots):
-            abs_x = town_x + px
-            abs_y = town_y + py - scroll
+            abs_x = town_x + px - sx
+            abs_y = town_y + py - sy
 
             # Skip if off screen
-            if abs_y > town_y + view_h + 20 or abs_y + PLOT_H < town_y - 20:
+            if (abs_y > town_y + view_h + 20 or abs_y + PLOT_H < town_y - 20 or
+                    abs_x > town_x + view_w + 20 or abs_x + PLOT_W < town_x - 20):
                 continue
 
             if i < len(plot_assignments) and plot_assignments[i] is not None:
@@ -599,12 +623,12 @@ class Client:
                 eh = PLOT_H - 10
                 ps = pygame.Surface((PLOT_W, eh), pygame.SRCALPHA)
                 pygame.draw.rect(ps, (0, 0, 0, 18), (0, 0, PLOT_W, eh), border_radius=10)
-                for sx in range(0, PLOT_W, 12):
-                    pygame.draw.rect(ps, (255, 255, 255, 50), (sx, 0, 6, 2))
-                    pygame.draw.rect(ps, (255, 255, 255, 50), (sx, eh - 2, 6, 2))
-                for sy in range(0, eh, 12):
-                    pygame.draw.rect(ps, (255, 255, 255, 50), (0, sy, 2, 6))
-                    pygame.draw.rect(ps, (255, 255, 255, 50), (PLOT_W - 2, sy, 2, 6))
+                for ssx in range(0, PLOT_W, 12):
+                    pygame.draw.rect(ps, (255, 255, 255, 50), (ssx, 0, 6, 2))
+                    pygame.draw.rect(ps, (255, 255, 255, 50), (ssx, eh - 2, 6, 2))
+                for ssy in range(0, eh, 12):
+                    pygame.draw.rect(ps, (255, 255, 255, 50), (0, ssy, 2, 6))
+                    pygame.draw.rect(ps, (255, 255, 255, 50), (PLOT_W - 2, ssy, 2, 6))
                 self.screen.blit(ps, (abs_x, abs_y))
 
                 sign_cx = abs_x + PLOT_W // 2
@@ -625,20 +649,31 @@ class Client:
         self.screen.blit(ls, (town_x + 6, town_y + 6))
         self.draw_text("Your Town", self.font_sm, GRASS_3, town_x + 71, town_y + 20, center=True)
 
-        # Scroll indicator
-        if max_scroll > 0:
+        # Vertical scrollbar
+        if max_scroll_y > 0:
             bar_h = view_h - 20
             thumb_h = max(30, int(bar_h * (view_h / total_h)))
-            thumb_y = town_y + 10 + int((bar_h - thumb_h) * (scroll / max_scroll))
+            thumb_y = town_y + 10 + int((bar_h - thumb_h) * (sy / max_scroll_y))
             bar_x = town_x + town_w - 10
-            # Track
             track_s = pygame.Surface((6, bar_h), pygame.SRCALPHA)
             pygame.draw.rect(track_s, (0, 0, 0, 30), (0, 0, 6, bar_h), border_radius=3)
             self.screen.blit(track_s, (bar_x, town_y + 10))
-            # Thumb
             thumb_s = pygame.Surface((6, thumb_h), pygame.SRCALPHA)
             pygame.draw.rect(thumb_s, (0, 0, 0, 80), (0, 0, 6, thumb_h), border_radius=3)
             self.screen.blit(thumb_s, (bar_x, thumb_y))
+
+        # Horizontal scrollbar
+        if max_scroll_x > 0:
+            bar_w = view_w - 20
+            thumb_w = max(30, int(bar_w * (view_w / total_w)))
+            thumb_x = town_x + 10 + int((bar_w - thumb_w) * (sx / max_scroll_x))
+            bar_y = town_y + view_h - 10
+            track_s = pygame.Surface((bar_w, 6), pygame.SRCALPHA)
+            pygame.draw.rect(track_s, (0, 0, 0, 30), (0, 0, bar_w, 6), border_radius=3)
+            self.screen.blit(track_s, (town_x + 10, bar_y))
+            thumb_s = pygame.Surface((thumb_w, 6), pygame.SRCALPHA)
+            pygame.draw.rect(thumb_s, (0, 0, 0, 80), (0, 0, thumb_w, 6), border_radius=3)
+            self.screen.blit(thumb_s, (thumb_x, bar_y))
 
     # --- Leaderboard ---
     def draw_leaderboard(self):
@@ -785,7 +820,13 @@ class Client:
             if self.shop_open:
                 self.shop_scroll -= event.y * 30
             else:
-                self.town_scroll -= event.y * 30
+                mods = pygame.key.get_mods()
+                if mods & pygame.KMOD_SHIFT:
+                    self.town_scroll_x -= event.y * 30
+                else:
+                    self.town_scroll_y -= event.y * 30
+                    if event.x != 0:
+                        self.town_scroll_x -= event.x * 30
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if self.shop_open:
                 if self.shop_close_btn.collidepoint(event.pos):
@@ -800,6 +841,21 @@ class Client:
                     self.buy_buttons = []
                 elif self.submit_btn.collidepoint(event.pos):
                     self.submit_answer()
+                elif event.button == 1:
+                    # Start drag panning in town area
+                    town_rect = pygame.Rect(15, 200, 605, HEIGHT - 215)
+                    if town_rect.collidepoint(event.pos):
+                        self.town_dragging = True
+                        self.drag_start = event.pos
+                        self.drag_scroll_start = (self.town_scroll_x, self.town_scroll_y)
+        elif event.type == pygame.MOUSEBUTTONUP:
+            self.town_dragging = False
+        elif event.type == pygame.MOUSEMOTION:
+            if self.town_dragging and not self.shop_open:
+                dx = self.drag_start[0] - event.pos[0]
+                dy = self.drag_start[1] - event.pos[1]
+                self.town_scroll_x = self.drag_scroll_start[0] + dx
+                self.town_scroll_y = self.drag_scroll_start[1] + dy
         elif event.type == pygame.KEYDOWN and not self.shop_open:
             if event.key == pygame.K_RETURN:
                 self.submit_answer()
