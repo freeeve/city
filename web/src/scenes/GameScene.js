@@ -68,18 +68,26 @@ export class GameScene extends Phaser.Scene {
     this.scratchPad = new ScratchPad(this);
     this.shopOverlay = new ShopOverlay(this);
 
-    // Key bindings (capture=false so Phaser won't preventDefault, allowing DOM inputs to work)
-    this.cursors = {
-      up: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP, false),
-      down: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN, false),
-      left: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT, false),
-      right: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT, false),
-    };
+    // Make canvas focusable so clicking it blurs DOM inputs
+    this.game.canvas.setAttribute('tabindex', '0');
+    this.game.canvas.style.outline = 'none';
+
+    // Click on game area → blur any focused DOM input so movement keys work
+    this.input.on('pointerdown', () => {
+      const el = document.activeElement;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) {
+        el.blur();
+      }
+    });
+
+    // Key bindings (default capture so Phaser reliably tracks key state;
+    // DOM inputs use stopPropagation so Phaser won't interfere with typing)
+    this.cursors = this.input.keyboard.createCursorKeys();
     this.wasd = {
-      W: this.input.keyboard.addKey('W', false),
-      A: this.input.keyboard.addKey('A', false),
-      S: this.input.keyboard.addKey('S', false),
-      D: this.input.keyboard.addKey('D', false),
+      W: this.input.keyboard.addKey('W'),
+      A: this.input.keyboard.addKey('A'),
+      S: this.input.keyboard.addKey('S'),
+      D: this.input.keyboard.addKey('D'),
     };
   }
 

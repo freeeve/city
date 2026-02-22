@@ -39,9 +39,9 @@ export class MathPanel {
     // DOM input for answer
     const formHTML = `
       <div style="display: flex; gap: 8px; align-items: center;">
-        <input id="answer-input" type="text" inputmode="numeric" class="game-input"
+        <input id="answer-input" type="number" class="game-input"
           style="width: 160px; font-size: 22px; padding: 8px 12px;"
-          placeholder="Answer" autocomplete="off" />
+          placeholder="Answer" />
         <button id="submit-btn" class="game-btn game-btn-green"
           style="font-size: 18px; padding: 10px 24px;">
           Submit
@@ -72,7 +72,7 @@ export class MathPanel {
     answerInput.addEventListener('keyup', (e) => e.stopPropagation());
     answerInput.addEventListener('keypress', (e) => e.stopPropagation());
 
-    scene.time.delayedCall(300, () => answerInput.focus());
+    // Don't auto-focus — let user click input when ready (avoids blocking WASD movement)
   }
 
   updateProblem(text) {
