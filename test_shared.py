@@ -1,7 +1,9 @@
 """Tests for shared.py - building data and math problem generator."""
 
 import unittest
-from shared import BUILDINGS, BUILDING_ORDER, BUILDING_COLORS, generate_problem
+from shared import (BUILDINGS, BUILDING_ORDER, BUILDING_COLORS,
+                    CARS, CAR_ORDER, BUILDING_POPULATION, UNLOCK_REQUIREMENTS,
+                    generate_problem)
 
 
 class TestBuildingData(unittest.TestCase):
@@ -40,6 +42,51 @@ class TestBuildingData(unittest.TestCase):
             for c in color:
                 self.assertGreaterEqual(c, 0)
                 self.assertLessEqual(c, 255)
+
+
+class TestCarData(unittest.TestCase):
+    def test_all_cars_in_order(self):
+        for name in CAR_ORDER:
+            self.assertIn(name, CARS)
+
+    def test_order_covers_all_cars(self):
+        self.assertEqual(set(CAR_ORDER), set(CARS.keys()))
+
+    def test_car_costs_are_positive(self):
+        for name, (cost, pop_boost, color) in CARS.items():
+            self.assertGreater(cost, 0, f"{name} cost should be positive")
+
+    def test_car_pop_boost_positive(self):
+        for name, (cost, pop_boost, color) in CARS.items():
+            self.assertGreater(pop_boost, 0, f"{name} pop boost should be positive")
+
+    def test_car_colors_are_rgb(self):
+        for name, (cost, pop_boost, color) in CARS.items():
+            self.assertEqual(len(color), 3)
+            for c in color:
+                self.assertGreaterEqual(c, 0)
+                self.assertLessEqual(c, 255)
+
+
+class TestBuildingPopulation(unittest.TestCase):
+    def test_all_buildings_have_population(self):
+        for name in BUILDINGS:
+            self.assertIn(name, BUILDING_POPULATION, f"{name} missing from BUILDING_POPULATION")
+
+    def test_population_values_positive(self):
+        for name, pop in BUILDING_POPULATION.items():
+            self.assertGreater(pop, 0, f"{name} population should be positive")
+
+
+class TestUnlockRequirements(unittest.TestCase):
+    def test_unlock_items_exist(self):
+        for name in UNLOCK_REQUIREMENTS:
+            self.assertTrue(name in BUILDINGS or name in CARS,
+                            f"{name} in UNLOCK_REQUIREMENTS not found in BUILDINGS or CARS")
+
+    def test_unlock_values_positive(self):
+        for name, req in UNLOCK_REQUIREMENTS.items():
+            self.assertGreater(req, 0)
 
 
 class TestGenerateProblem(unittest.TestCase):

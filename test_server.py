@@ -3,10 +3,10 @@
 import unittest
 from unittest.mock import MagicMock
 from server import Player, GameServer
-from shared import BUILDINGS
+from shared import BUILDINGS, CARS
 
 
-def make_player(name="TestPlayer", coins=0, buildings=None):
+def make_player(name="TestPlayer", coins=0, buildings=None, cars=None):
     """Create a Player with a mock connection."""
     conn = MagicMock()
     addr = ("127.0.0.1", 9999)
@@ -14,6 +14,8 @@ def make_player(name="TestPlayer", coins=0, buildings=None):
     p.coins = coins
     if buildings:
         p.buildings = buildings
+    if cars:
+        p.cars = cars
     return p
 
 
@@ -34,6 +36,44 @@ class TestPlayer(unittest.TestCase):
     def test_player_stores_name(self):
         p = make_player("Alice")
         self.assertEqual(p.name, "Alice")
+
+    def test_player_starts_with_no_cars(self):
+        p = make_player()
+        self.assertEqual(p.cars, [])
+
+
+class TestPopulation(unittest.TestCase):
+    def test_no_buildings_zero_pop(self):
+        gs = GameServer()
+        p = make_player()
+        self.assertEqual(gs.get_population(p), 0)
+
+    def test_building_adds_population(self):
+        gs = GameServer()
+        p = make_player(buildings=["Lemonade Stand"])
+        self.assertEqual(gs.get_population(p), 2)
+
+    def test_car_adds_population(self):
+        gs = GameServer()
+        p = make_player(cars=["Bicycle"])
+        self.assertEqual(gs.get_population(p), 1)
+
+    def test_mixed_population(self):
+        gs = GameServer()
+        p = make_player(buildings=["Cookie Shop"], cars=["Sedan"])
+        self.assertEqual(gs.get_population(p), 15)  # 10 + 5
+
+    def test_pop_multiplier_under_100(self):
+        gs = GameServer()
+        p = make_player()
+        self.assertEqual(gs.get_pop_multiplier(p), 1.0)
+
+    def test_pop_multiplier_at_100(self):
+        gs = GameServer()
+        # Cookie Shop (10) + Arcade (80) + Lemonade Stand (2) + Sedan (5) + Taxi (8) = 105
+        p = make_player(buildings=["Cookie Shop", "Arcade"], cars=["Sedan", "Taxi"])
+        # pop = 10 + 80 + 5 + 8 = 103
+        self.assertAlmostEqual(gs.get_pop_multiplier(p), 1.1)
 
 
 class TestGetIncome(unittest.TestCase):
@@ -105,8 +145,11 @@ class TestBuildStateFor(unittest.TestCase):
         self.assertEqual(state["type"], "state")
         self.assertEqual(state["coins"], 42)
         self.assertIsInstance(state["buildings"], list)
+        self.assertIsInstance(state["cars"], list)
         self.assertIn("text", state["problem"])
         self.assertIsInstance(state["income"], int)
+        self.assertIsInstance(state["population"], int)
+        self.assertIsInstance(state["pop_bonus"], float)
         self.assertIsInstance(state["leaderboard"], list)
 
     def test_state_income_matches_buildings(self):
@@ -115,6 +158,14 @@ class TestBuildStateFor(unittest.TestCase):
         gs.players[p.addr] = p
         state = gs.build_state_for(p)
         self.assertEqual(state["income"], 70)  # 20 + 50
+
+    def test_state_includes_cars(self):
+        gs = GameServer()
+        p = make_player(cars=["Bicycle", "Sedan"])
+        gs.players[p.addr] = p
+        state = gs.build_state_for(p)
+        self.assertEqual(state["cars"], ["Bicycle", "Sedan"])
+        self.assertEqual(state["population"], 6)  # 1 + 5
 
 
 class TestBuyLogic(unittest.TestCase):
@@ -140,6 +191,31 @@ class TestBuyLogic(unittest.TestCase):
             p.buildings.append("Lemonade Stand")
         self.assertEqual(len(p.buildings), 2)
         self.assertEqual(p.coins, 80)
+
+
+class TestBuyCarLogic(unittest.TestCase):
+    def test_can_buy_car(self):
+        p = make_player(coins=15)
+        cost = CARS["Bicycle"][0]
+        self.assertGreaterEqual(p.coins, cost)
+        p.coins -= cost
+        p.cars.append("Bicycle")
+        self.assertEqual(p.coins, 0)
+        self.assertIn("Bicycle", p.cars)
+
+    def test_cannot_buy_car_without_coins(self):
+        p = make_player(coins=5)
+        cost = CARS["Bicycle"][0]
+        self.assertLess(p.coins, cost)
+
+    def test_can_buy_multiple_cars(self):
+        p = make_player(coins=200)
+        for _ in range(3):
+            cost = CARS["Bicycle"][0]
+            p.coins -= cost
+            p.cars.append("Bicycle")
+        self.assertEqual(len(p.cars), 3)
+        self.assertEqual(p.coins, 155)
 
 
 class TestAnswerLogic(unittest.TestCase):
