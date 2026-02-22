@@ -2,9 +2,9 @@
  * Hybrid chiptune: cheerful city-builder meets Pigstep groove.
  * Part A (8 bars): Bright Bb major — upbeat, bouncy city vibes
  * Part B (8 bars): Dark G minor — Pigstep-inspired syncopated groove
- * Both share the same key signature (Bb major / G minor are relatives)
- * so transitions are seamless. 113 BPM throughout.
- * Uses Web Audio API — no external files needed.
+ * Smooth crossfade transitions: instrument tones, drums, and arps
+ * gradually morph over the last 2 bars of each section.
+ * 113 BPM throughout. Uses Web Audio API.
  */
 
 const N = {
@@ -16,135 +16,94 @@ const N = {
   G5: 783.99,
 };
 
+const lerp = (a, b, t) => a + (b - a) * t;
+
 // ═══════════════════════════════════════════════════
 // PART A — BRIGHT CITY BUILDER (Bb major feel, 8 bars)
-// Cheerful, bouncy, upbeat — building your city!
 // ═══════════════════════════════════════════════════
 
 const MELODY_A = [
-  // Bar 1: bright opening — cheerful ascending riff
   ['D4',2],['F4',2],['Bb4',2],['A4',2],['G4',2],['F4',2],['G4',2],['F4',2],
-  // Bar 2: playful answer
   ['Eb4',2],['G4',2],['Bb4',2],['A4',2],['F4',4],['D4',2],[null,2],
-  // Bar 3: ascending energy
   ['D4',2],['F4',2],['G4',2],['Bb4',2],['C5',2],['Bb4',2],['A4',2],['G4',2],
-  // Bar 4: resolve with a little bounce
   ['F4',2],['D4',2],['Eb4',2],['D4',2],['Bb3',4],[null,4],
-  // Bar 5: repeat with variation — higher
   ['F4',2],['G4',2],['Bb4',2],['C5',2],['D5',2],['C5',2],['Bb4',2],['A4',2],
-  // Bar 6: call and response
   ['G4',2],[null,2],['Bb4',2],['A4',1],['G4',1],['F4',2],['G4',2],[null,2],['F4',2],
-  // Bar 7: build up to transition
+  // Bars 7-8: transition — melody gradually gets darker/sparser
   ['Bb4',2],['C5',2],['D5',2],[null,2],['C5',2],['Bb4',2],['A4',2],['G4',2],
-  // Bar 8: tension — leading into the dark section
   ['A4',2],['Bb4',2],['A4',2],['G4',2],['F#4',2],['G4',2],[null,4],
 ];
 
 const BASS_A = [
-  // Bar 1: Bb — bouncy root-fifth
   ['Bb2',2],[null,1],['Bb2',1],['F3',2],[null,2],['Bb2',2],['F3',1],[null,1],['Bb2',2],[null,2],
-  // Bar 2: Eb — walking
   ['Eb3',2],[null,1],['Eb3',1],['Bb2',2],[null,2],['Eb3',2],['G3',1],[null,1],['Eb3',2],[null,2],
-  // Bar 3: F — climbing
   ['F3',2],[null,1],['F3',1],['C3',2],[null,2],['F3',2],['A3',1],[null,1],['F3',2],[null,2],
-  // Bar 4: Bb resolve
   ['Bb2',2],[null,1],['Bb2',1],['D3',2],['F3',2],['Bb2',2],[null,2],[null,2],[null,2],
-  // Bar 5: Bb — variation
   ['Bb2',2],['Bb2',1],[null,1],['D3',2],['F3',2],[null,2],['Bb2',1],[null,1],['D3',2],['F3',2],
-  // Bar 6: Eb
   ['Eb3',2],[null,1],['G3',1],['Eb3',2],[null,2],['Bb2',2],['Eb3',1],[null,1],['G3',2],[null,2],
-  // Bar 7: F — building
+  // Bars 7-8: transition bass — getting heavier, syncopation creeping in
   ['F3',2],['F3',1],[null,1],['A3',2],['F3',2],[null,1],['C4',1],['A3',2],['F3',2],[null,2],
-  // Bar 8: transition — chromatic walk down to G minor
   ['Bb2',2],['A2',1],['Bb2',1],['A2',2],['G2',2],['G2',2],['G3',3],[null,1],[null,2],
 ];
 
 const CHORDS_A = [
-  // Bar 1: Bb
   [null,3],[['Bb3','D4','F4'],2],[null,3],[null,3],[['Bb3','D4','F4'],2],[null,3],
-  // Bar 2: Eb
   [null,3],[['Eb4','G4','Bb4'],2],[null,3],[null,3],[['Eb4','G4','Bb4'],2],[null,3],
-  // Bar 3: F
   [null,3],[['F3','A3','C4'],2],[null,3],[null,3],[['F4','A4','C5'],2],[null,3],
-  // Bar 4: Bb
   [['Bb3','D4','F4'],2],[null,2],[['Bb3','D4','F4'],2],[null,2],[null,4],[null,4],
-  // Bar 5: Bb — brighter stabs
   [null,2],[['Bb3','D4','F4'],1],[null,1],[['Bb3','D4','F4'],2],[null,2],[null,2],[['Bb4','D5','F5'],2],[null,2],[null,2],
-  // Bar 6: Eb
   [null,2],[['Eb4','G4','Bb4'],1],[null,1],[['Eb4','G4','Bb4'],2],[null,2],[null,4],[null,4],
-  // Bar 7: F
+  // Bars 7-8: shared chords that work in both Bb and Gm
   [null,2],[['F3','A3','C4'],1],[null,1],[['F4','A4','C5'],2],[null,2],[null,4],[null,4],
-  // Bar 8: Gm transition
   [['G3','Bb3','D4'],4],[null,4],[['G3','Bb3','D4'],4],[null,4],
 ];
 
 // ═══════════════════════════════════════════════════
 // PART B — DARK PIGSTEP (G minor feel, 8 bars)
-// Syncopated, bass-driven, mysterious groove
 // ═══════════════════════════════════════════════════
 
 const MELODY_B = [
-  // Bar 1: iconic Pigstep opening
+  // Bars 1-2: transition in — melody emerges from the bright section
   [null,4],['D5',1],['Eb5',1],['D5',2],['Bb4',2],[null,2],['A4',2],['G4',2],
-  // Bar 2: answer phrase
   [null,2],['Bb4',2],['G4',1],[null,1],['F4',2],[null,2],['D4',2],['Eb4',2],[null,2],
-  // Bar 3: climb with chromatic color
   ['F4',2],[null,1],['G4',1],['A4',2],['Bb4',2],['C5',2],[null,1],['Bb4',1],['A4',2],[null,2],
-  // Bar 4: resolve with the characteristic drop
   ['G4',3],[null,1],[null,4],['D5',1],['C5',1],['Bb4',2],['A4',2],[null,2],
-  // Bar 5: second section — higher energy
   ['Bb4',2],['D5',2],[null,2],['C5',1],['Bb4',1],['G4',2],['A4',2],[null,2],['Bb4',2],
-  // Bar 6: chromatic passing tones
   ['A4',1],['Bb4',1],['C5',2],['Bb4',2],[null,2],['A4',1],['G4',1],['F#4',2],['G4',2],[null,2],
-  // Bar 7: rising tension
-  ['Eb5',2],[null,1],['D5',1],['C5',2],['Bb4',2],['A4',2],['C5',2],[null,2],[null,2],
-  // Bar 8: chromatic run leading back to bright section
+  // Bars 7-8: transition out — melody brightens, lifts back up
+  ['Eb5',2],[null,1],['D5',1],['C5',2],['Bb4',2],['C5',2],['D5',2],[null,2],[null,2],
   ['D5',2],['C5',1],['Bb4',1],['A4',2],['Bb4',2],['C5',2],['D5',2],[null,4],
 ];
 
 const BASS_B = [
-  // Bar 1: Gm — the signature bounce
+  // Bars 1-2: transition in — bass gets heavier
   ['G2',2],[null,1],['G2',1],['G3',2],[null,2],['G2',1],['G2',1],['G3',2],['D3',2],[null,2],
-  // Bar 2: Eb — walking up
   ['Eb3',2],[null,1],['Eb3',1],['Eb3',2],[null,2],['F3',1],['F3',1],['G3',2],['Eb3',2],[null,2],
-  // Bar 3: F — push
   ['F3',2],[null,1],['F3',1],['F3',2],['A3',2],['G3',1],['F3',1],['D3',2],[null,2],[null,2],
-  // Bar 4: Gm — chromatic slide
   ['G2',2],[null,1],['G2',1],['Bb2',2],['A2',2],['G2',2],['G3',2],[null,2],[null,2],
-  // Bar 5: deeper bounce variation
   ['G2',2],['G2',1],[null,1],['D3',2],['G3',2],[null,2],['G2',1],[null,1],['Bb2',2],['D3',2],
-  // Bar 6: syncopated climb
   ['Eb3',2],[null,1],['G3',1],['Eb3',2],[null,2],['Bb2',2],['Eb3',1],[null,1],['G3',2],[null,2],
-  // Bar 7: tension builder
+  // Bars 7-8: transition out — bass lightens, walks up to Bb
   ['F3',2],['F3',1],[null,1],['A3',2],['F3',2],[null,1],['C4',1],['A3',2],['F3',2],[null,2],
-  // Bar 8: slide up to Bb for transition back
-  ['G3',2],['F#3',1],['F3',1],['Eb3',2],['F3',2],['A3',2],['Bb3',3],[null,1],[null,2],
+  ['G3',2],['A3',1],['Bb3',1],['A3',2],['Bb2',2],['D3',2],['F3',3],[null,1],[null,2],
 ];
 
 const CHORDS_B = [
-  // Bar 1: Gm
   [null,3],[['G3','Bb3','D4'],2],[null,3],[null,3],[['G3','Bb3','D4'],2],[null,3],
-  // Bar 2: Eb
   [null,3],[['Eb3','G3','Bb3'],2],[null,3],[null,3],[['Eb3','G3','Bb3'],2],[null,3],
-  // Bar 3: F
   [null,3],[['F3','A3','C4'],2],[null,3],[null,3],[['F3','A3','C4'],2],[null,3],
-  // Bar 4: Gm
   [['G3','Bb3','D4'],2],[null,2],[['G3','Bb3','D4'],2],[null,2],[null,4],[null,4],
-  // Bar 5: Gm — aggressive stabs
   [null,2],[['G3','Bb3','D4'],1],[null,1],[['G3','Bb3','D4'],2],[null,2],[null,2],[['G4','Bb4','D5'],2],[null,2],[null,2],
-  // Bar 6: Eb
   [null,2],[['Eb3','G3','Bb3'],1],[null,1],[['Eb3','G3','Bb3'],2],[null,2],[null,2],[['Eb4','G4','Bb4'],2],[null,2],[null,2],
-  // Bar 7: F
-  [null,2],[['F3','A3','C4'],1],[null,1],[['F3','A3','C4'],2],[null,2],[null,2],[['F4','A4','C5'],2],[null,2],[null,2],
-  // Bar 8: Bb resolve — smooth transition
+  // Bars 7-8: transition out — chords brighten toward Bb
+  [null,2],[['F3','A3','C4'],1],[null,1],[['F4','A4','C5'],2],[null,2],[null,4],[null,4],
   [['Bb3','D4','F4'],4],[null,4],[['Bb3','D4','F4'],4],[null,4],
 ];
 
 // ═══════════════════════════════════════════════════
-// DRUMS — lighter in Part A, heavier in Part B
+// DRUMS
 // ═══════════════════════════════════════════════════
 
-// Part A drums: lighter, more hi-hat driven, bouncy city feel
 const DRUMS_LIGHT_A = [
   ['k',0],['h',0],['h',2],['h',4],['s',4],['h',6],
   ['h',8],['k',8],['h',10],['s',12],['h',12],['h',14],
@@ -153,8 +112,11 @@ const DRUMS_LIGHT_B = [
   ['k',0],['h',0],['h',2],['k',4],['s',4],['h',6],
   ['h',8],['k',10],['h',10],['s',12],['h',12],['oh',14],
 ];
-
-// Part B drums: heavy Pigstep trap bounce
+// Medium drums — bridge between light and heavy
+const DRUMS_MID = [
+  ['k',0],['h',0],['h',2],['k',3],['s',4],['h',4],['h',6],
+  ['h',8],['k',8],['h',10],['s',12],['h',12],['oh',14],
+];
 const DRUMS_HEAVY_A = [
   ['k',0],['h',0],['h',2],['k',3],['s',4],['h',4],['h',6],
   ['k',7],['h',8],['k',10],['h',10],['s',12],['h',12],['k',13],['h',14],['oh',15],
@@ -168,23 +130,19 @@ const DRUMS_FILL = [
   ['k',8],['s',9],['s',10],['s',11],['k',12],['s',13],['s',14],['k',15],
 ];
 
-// Part A: 8 bars light drums
+// Part A: bars 1-6 light, bar 7 medium (transition), bar 8 fill
 const DRUMS_PART_A = [
   DRUMS_LIGHT_A, DRUMS_LIGHT_A, DRUMS_LIGHT_B, DRUMS_LIGHT_A,
-  DRUMS_LIGHT_A, DRUMS_LIGHT_B, DRUMS_LIGHT_A, DRUMS_FILL,
+  DRUMS_LIGHT_A, DRUMS_LIGHT_B, DRUMS_MID, DRUMS_FILL,
 ];
-// Part B: 8 bars heavy drums
+// Part B: bar 1 medium (transition in), bars 2-7 heavy, bar 8 fill
 const DRUMS_PART_B = [
-  DRUMS_HEAVY_A, DRUMS_HEAVY_A, DRUMS_HEAVY_B, DRUMS_HEAVY_A,
-  DRUMS_HEAVY_A, DRUMS_HEAVY_B, DRUMS_HEAVY_A, DRUMS_FILL,
+  DRUMS_MID, DRUMS_HEAVY_A, DRUMS_HEAVY_B, DRUMS_HEAVY_A,
+  DRUMS_HEAVY_A, DRUMS_HEAVY_B, DRUMS_MID, DRUMS_FILL,
 ];
 
-// ═══════════════════════════════════════════════════
-// ARPEGGIOS — bright in A, dark in B
-// ═══════════════════════════════════════════════════
-
-const ARP_A = ['Bb4','D5','F5','D5','Bb4','F4','A4','F4']; // Bb major arp
-const ARP_B = ['G4','Bb4','D5','Bb4','G4','D4','F4','D4']; // G minor arp
+const ARP_A = ['Bb4','D5','F5','D5','Bb4','F4','A4','F4'];
+const ARP_B = ['G4','Bb4','D5','Bb4','G4','D4','F4','D4'];
 
 export class MusicPlayer {
   constructor() {
@@ -249,49 +207,83 @@ export class MusicPlayer {
     }
   }
 
-  _scheduleSection(melody, bass, chords, drums, arpNotes, now, sixteenth, bright) {
+  // Get blend value (0=bright, 1=dark) based on position in a section
+  // Bars 1-6: hold at base value, bars 7-8: crossfade toward target
+  _getBlend(sixteenthPos, sectionSixteenths, fromBlend, toBlend) {
+    const transitionStart = sectionSixteenths - 32; // last 2 bars
+    if (sixteenthPos < transitionStart) return fromBlend;
+    const t = (sixteenthPos - transitionStart) / 32;
+    return lerp(fromBlend, toBlend, Math.min(1, t));
+  }
+
+  _scheduleSection(melody, bass, chords, drums, arpNotes, arpNotesNext, now, sixteenth, fromBlend, toBlend) {
+    // Calculate total section duration from bass
+    let totalSixteenths = 0;
+    for (const [, dur] of bass) totalSixteenths += dur;
+    const sectionDuration = totalSixteenths * sixteenth;
+
     // Bass
-    let t = now;
+    let pos = 0;
     for (const [note, dur] of bass) {
-      if (note) this._playBass(note, t, sixteenth * dur * 0.8, bright);
-      t += sixteenth * dur;
+      if (note) {
+        const blend = this._getBlend(pos, totalSixteenths, fromBlend, toBlend);
+        this._playBass(note, now + pos * sixteenth, sixteenth * dur * 0.8, blend);
+      }
+      pos += dur;
     }
-    const sectionDuration = t - now;
 
     // Melody
-    t = now;
+    pos = 0;
     for (const [note, dur] of melody) {
-      if (note) this._playLead(note, t, sixteenth * dur * 0.7, bright);
-      t += sixteenth * dur;
+      if (note) {
+        const blend = this._getBlend(pos, totalSixteenths, fromBlend, toBlend);
+        this._playLead(note, now + pos * sixteenth, sixteenth * dur * 0.7, blend);
+      }
+      pos += dur;
     }
 
     // Chords
-    t = now;
+    pos = 0;
     for (const entry of chords) {
       const [notes, dur] = entry;
       if (notes) {
-        for (const note of notes) this._playStab(note, t, sixteenth * dur * 0.5);
+        for (const note of notes) {
+          this._playStab(note, now + pos * sixteenth, sixteenth * dur * 0.5);
+        }
       }
-      t += sixteenth * dur;
+      pos += dur;
     }
 
-    // Drums (8 bars)
+    // Drums (8 bars) — blend affects kick/snare intensity
     for (let bar = 0; bar < 8; bar++) {
       const barStart = now + bar * 16 * sixteenth;
-      for (const [type, pos] of drums[bar]) {
-        const time = barStart + pos * sixteenth;
-        if (type === 'k') this._playKick(time, bright);
-        else if (type === 's') this._playSnare(time, bright);
+      const barBlend = this._getBlend(bar * 16, totalSixteenths, fromBlend, toBlend);
+      for (const [type, drumPos] of drums[bar]) {
+        const time = barStart + drumPos * sixteenth;
+        if (type === 'k') this._playKick(time, barBlend);
+        else if (type === 's') this._playSnare(time, barBlend);
         else if (type === 'h') this._playHiHat(time, false);
         else if (type === 'oh') this._playHiHat(time, true);
       }
     }
 
-    // Arpeggio texture
+    // Arpeggio — crossfade between bright and dark arp notes
     const totalSteps = Math.floor(sectionDuration / (sixteenth * 2));
     for (let i = 0; i < totalSteps; i++) {
-      const note = arpNotes[i % arpNotes.length];
-      this._playArp(note, now + i * sixteenth * 2, sixteenth * 1.5, bright);
+      const stepPos = i * 2; // position in sixteenths
+      const blend = this._getBlend(stepPos, totalSixteenths, fromBlend, toBlend);
+      const time = now + i * sixteenth * 2;
+      const dur = sixteenth * 1.5;
+
+      // Main arp
+      const noteA = arpNotes[i % arpNotes.length];
+      const noteB = arpNotesNext[i % arpNotesNext.length];
+
+      // Crossfade: play both arps with complementary volumes
+      this._playArp(noteA, time, dur, 1 - blend);
+      if (blend > 0.05) {
+        this._playArp(noteB, time, dur, blend);
+      }
     }
 
     return sectionDuration;
@@ -304,16 +296,16 @@ export class MusicPlayer {
     const sixteenth = 60 / bpm / 4;
     const now = this.ctx.currentTime + 0.08;
 
-    // ── PART A: Bright city builder ──
+    // Part A: bright (0.0) → crossfades toward dark (0.5) in last 2 bars
     const durA = this._scheduleSection(
-      MELODY_A, BASS_A, CHORDS_A, DRUMS_PART_A, ARP_A,
-      now, sixteenth, true
+      MELODY_A, BASS_A, CHORDS_A, DRUMS_PART_A, ARP_A, ARP_B,
+      now, sixteenth, 0.0, 0.5
     );
 
-    // ── PART B: Dark Pigstep groove ──
+    // Part B: picks up at 0.5 → goes fully dark (1.0) then crossfades back to 0.5 in last 2 bars
     const durB = this._scheduleSection(
-      MELODY_B, BASS_B, CHORDS_B, DRUMS_PART_B, ARP_B,
-      now + durA, sixteenth, false
+      MELODY_B, BASS_B, CHORDS_B, DRUMS_PART_B, ARP_B, ARP_A,
+      now + durA, sixteenth, 0.5, 0.0
     );
 
     const totalDuration = durA + durB;
@@ -321,11 +313,10 @@ export class MusicPlayer {
   }
 
   // ═══════════════════════════════════════════════════
-  // INSTRUMENTS — adapt tone based on bright/dark mode
+  // INSTRUMENTS — all use blend (0=bright, 1=dark)
   // ═══════════════════════════════════════════════════
 
-  // Lead — brighter square in Part A, grittier detuned in Part B
-  _playLead(noteName, startTime, duration, bright) {
+  _playLead(noteName, startTime, duration, blend) {
     const freq = N[noteName];
     if (!freq) return;
 
@@ -337,13 +328,13 @@ export class MusicPlayer {
     osc1.type = 'square';
     osc1.frequency.value = freq;
     osc2.type = 'square';
-    osc2.frequency.value = freq * (bright ? 1.002 : 1.005);
+    osc2.frequency.value = freq * lerp(1.002, 1.006, blend);
 
     filter.type = 'lowpass';
-    filter.frequency.value = bright ? freq * 6 : freq * 3.5;
-    filter.Q.value = bright ? 0.5 : 1.2;
+    filter.frequency.value = freq * lerp(6, 3, blend);
+    filter.Q.value = lerp(0.5, 1.3, blend);
 
-    const vol = bright ? 0.055 : 0.065;
+    const vol = lerp(0.055, 0.065, blend);
     gain.gain.setValueAtTime(0, startTime);
     gain.gain.linearRampToValueAtTime(vol, startTime + 0.008);
     gain.gain.setValueAtTime(vol * 0.85, startTime + duration * 0.4);
@@ -360,8 +351,7 @@ export class MusicPlayer {
     osc2.stop(startTime + duration + 0.02);
   }
 
-  // Bass — clean bounce in Part A, distorted thump in Part B
-  _playBass(noteName, startTime, duration, bright) {
+  _playBass(noteName, startTime, duration, blend) {
     const freq = N[noteName];
     if (!freq) return;
 
@@ -374,45 +364,32 @@ export class MusicPlayer {
     osc2.type = 'sine';
     osc2.frequency.value = freq * 0.5;
 
-    const vol = bright ? 0.14 : 0.2;
+    const vol = lerp(0.14, 0.2, blend);
+    const attackTime = lerp(0.01, 0.006, blend);
 
-    if (bright) {
-      // Clean, rounder bass for Part A
-      gain.gain.setValueAtTime(0, startTime);
-      gain.gain.linearRampToValueAtTime(vol, startTime + 0.01);
-      gain.gain.setValueAtTime(vol * 0.8, startTime + duration * 0.4);
-      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(vol, startTime + attackTime);
+    gain.gain.setValueAtTime(vol * 0.8, startTime + 0.03);
+    gain.gain.setValueAtTime(vol * lerp(0.7, 0.55, blend), startTime + duration * 0.5);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
 
-      const merge = this.ctx.createGain();
-      merge.gain.value = 1;
-      osc.connect(merge);
-      osc2.connect(merge);
-      merge.connect(gain);
-      gain.connect(this.masterGain);
-    } else {
-      // Distorted, punchy bass for Part B
-      const shaper = this.ctx.createWaveShaper();
-      const curve = new Float32Array(256);
-      for (let i = 0; i < 256; i++) {
-        const x = (i / 128) - 1;
-        curve[i] = Math.tanh(x * 2.5);
-      }
-      shaper.curve = curve;
-
-      gain.gain.setValueAtTime(0, startTime);
-      gain.gain.linearRampToValueAtTime(vol, startTime + 0.006);
-      gain.gain.setValueAtTime(vol * 0.8, startTime + 0.03);
-      gain.gain.setValueAtTime(vol * 0.6, startTime + duration * 0.5);
-      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-
-      const merge = this.ctx.createGain();
-      merge.gain.value = 1;
-      osc.connect(merge);
-      osc2.connect(merge);
-      merge.connect(shaper);
-      shaper.connect(gain);
-      gain.connect(this.masterGain);
+    // Waveshaper with blend-controlled drive
+    const shaper = this.ctx.createWaveShaper();
+    const drive = lerp(0.8, 2.5, blend);
+    const curve = new Float32Array(256);
+    for (let i = 0; i < 256; i++) {
+      const x = (i / 128) - 1;
+      curve[i] = Math.tanh(x * drive);
     }
+    shaper.curve = curve;
+
+    const merge = this.ctx.createGain();
+    merge.gain.value = 1;
+    osc.connect(merge);
+    osc2.connect(merge);
+    merge.connect(shaper);
+    shaper.connect(gain);
+    gain.connect(this.masterGain);
 
     osc.start(startTime);
     osc.stop(startTime + duration + 0.02);
@@ -420,7 +397,6 @@ export class MusicPlayer {
     osc2.stop(startTime + duration + 0.02);
   }
 
-  // Chord stab
   _playStab(noteName, startTime, duration) {
     const freq = N[noteName];
     if (!freq) return;
@@ -440,17 +416,19 @@ export class MusicPlayer {
     osc.stop(startTime + duration + 0.01);
   }
 
-  // Arp — sine in Part A (sparkly), quieter in Part B (atmospheric)
-  _playArp(noteName, startTime, duration, bright) {
+  // Arp with blend-controlled volume and waveform
+  _playArp(noteName, startTime, duration, amount) {
+    if (amount < 0.02) return;
     const freq = N[noteName];
     if (!freq) return;
 
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
-    osc.type = bright ? 'triangle' : 'sine';
+    // Brighter arps use triangle, darker use sine
+    osc.type = amount > 0.5 ? 'triangle' : 'sine';
     osc.frequency.value = freq;
 
-    const vol = bright ? 0.022 : 0.012;
+    const vol = 0.02 * amount;
     gain.gain.setValueAtTime(0, startTime);
     gain.gain.linearRampToValueAtTime(vol, startTime + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
@@ -461,25 +439,29 @@ export class MusicPlayer {
     osc.stop(startTime + duration + 0.01);
   }
 
-  // Kick — softer in Part A, deep thump in Part B
-  _playKick(startTime, bright) {
+  _playKick(startTime, blend) {
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(bright ? 140 : 160, startTime);
-    osc.frequency.exponentialRampToValueAtTime(bright ? 40 : 30, startTime + (bright ? 0.06 : 0.08));
 
-    const vol = bright ? 0.2 : 0.3;
+    const startFreq = lerp(140, 165, blend);
+    const endFreq = lerp(42, 28, blend);
+    const sweepTime = lerp(0.06, 0.09, blend);
+    osc.frequency.setValueAtTime(startFreq, startTime);
+    osc.frequency.exponentialRampToValueAtTime(endFreq, startTime + sweepTime);
+
+    const vol = lerp(0.2, 0.3, blend);
+    const decayTime = lerp(0.14, 0.22, blend);
     gain.gain.setValueAtTime(vol, startTime);
     gain.gain.setValueAtTime(vol * 0.9, startTime + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, startTime + (bright ? 0.15 : 0.2));
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + decayTime);
 
-    // Click transient
+    // Click transient — louder when darker
     const click = this.ctx.createOscillator();
     const clickGain = this.ctx.createGain();
     click.type = 'square';
-    click.frequency.value = bright ? 600 : 800;
-    clickGain.gain.setValueAtTime(bright ? 0.04 : 0.06, startTime);
+    click.frequency.value = lerp(600, 850, blend);
+    clickGain.gain.setValueAtTime(lerp(0.03, 0.06, blend), startTime);
     clickGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.015);
     click.connect(clickGain);
     clickGain.connect(this.masterGain);
@@ -492,20 +474,20 @@ export class MusicPlayer {
     osc.stop(startTime + 0.25);
   }
 
-  // Snare — lighter snap in Part A, heavier crack in Part B
-  _playSnare(startTime, bright) {
+  _playSnare(startTime, blend) {
     const source = this.ctx.createBufferSource();
     source.buffer = this._noiseBuffer;
 
     const noiseFilter = this.ctx.createBiquadFilter();
-    noiseFilter.type = bright ? 'highpass' : 'bandpass';
-    noiseFilter.frequency.value = bright ? 4000 : 5000;
-    noiseFilter.Q.value = bright ? 0.5 : 0.8;
+    noiseFilter.type = blend > 0.5 ? 'bandpass' : 'highpass';
+    noiseFilter.frequency.value = lerp(4000, 5200, blend);
+    noiseFilter.Q.value = lerp(0.4, 0.9, blend);
 
     const noiseGain = this.ctx.createGain();
-    const noiseVol = bright ? 0.09 : 0.14;
+    const noiseVol = lerp(0.08, 0.15, blend);
+    const noiseDecay = lerp(0.06, 0.11, blend);
     noiseGain.gain.setValueAtTime(noiseVol, startTime);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, startTime + (bright ? 0.07 : 0.1));
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, startTime + noiseDecay);
 
     source.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
@@ -513,13 +495,12 @@ export class MusicPlayer {
     source.start(startTime);
     source.stop(startTime + 0.12);
 
-    // Body tone
     const osc = this.ctx.createOscillator();
     const oscGain = this.ctx.createGain();
     osc.type = 'triangle';
-    osc.frequency.setValueAtTime(bright ? 180 : 220, startTime);
-    osc.frequency.exponentialRampToValueAtTime(bright ? 90 : 100, startTime + 0.04);
-    oscGain.gain.setValueAtTime(bright ? 0.08 : 0.12, startTime);
+    osc.frequency.setValueAtTime(lerp(175, 225, blend), startTime);
+    osc.frequency.exponentialRampToValueAtTime(lerp(85, 100, blend), startTime + 0.04);
+    oscGain.gain.setValueAtTime(lerp(0.07, 0.13, blend), startTime);
     oscGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.07);
 
     osc.connect(oscGain);
@@ -528,7 +509,6 @@ export class MusicPlayer {
     osc.stop(startTime + 0.1);
   }
 
-  // Hi-hat
   _playHiHat(startTime, open = false) {
     const source = this.ctx.createBufferSource();
     source.buffer = this._noiseBuffer;
