@@ -12,6 +12,7 @@ export class ShopOverlay {
   }
 
   toggle() {
+    console.log('[Shop] toggle called, visible:', this.visible);
     if (this.visible) {
       this.hide();
     } else {
@@ -20,8 +21,13 @@ export class ShopOverlay {
   }
 
   show() {
+    console.log('[Shop] show called');
     this.visible = true;
-    this.render();
+    try {
+      this.render();
+    } catch (e) {
+      console.error('[Shop] render error:', e);
+    }
   }
 
   hide() {

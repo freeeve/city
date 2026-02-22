@@ -68,7 +68,11 @@ export class HUD {
     this.shopBtnDOM.setScrollFactor(0);
     this.shopBtnDOM.setDepth(902);
     const shopBtnEl = this.shopBtnDOM.getChildByID('hud-shop-btn');
-    shopBtnEl.addEventListener('click', () => scene.shopOverlay.toggle());
+    console.log('[HUD] Shop button element:', shopBtnEl);
+    shopBtnEl.addEventListener('click', () => {
+      console.log('[HUD] Shop button clicked');
+      scene.shopOverlay.toggle();
+    });
     shopBtnEl.addEventListener('mouseenter', () => { shopBtnEl.style.background = '#2da048'; });
     shopBtnEl.addEventListener('mouseleave', () => { shopBtnEl.style.background = '#3cbe5a'; });
 
