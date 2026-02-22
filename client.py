@@ -2273,6 +2273,310 @@ class Client:
                                         (bx + 4, by + bh - 10), (bx + bw - 10, by + bh - 10)]:
                 pygame.draw.rect(s, (255, 200, 0), (corner_x, corner_y, 6, 6))
 
+        elif name == "Underwater Base":
+            # Water tint overlay
+            water = pygame.Surface((bw, bh), pygame.SRCALPHA)
+            pygame.draw.rect(water, (20, 80, 140, 60), (0, 0, bw, bh))
+            s.blit(water, (bx, by))
+            # Dome top
+            pygame.draw.arc(s, (80, 180, 220), (bx + 5, by - 5, bw - 10, 24), 0, 3.14, 3)
+            # Porthole windows
+            for px, py_off in [(bx + 12, by + 14), (bx + bw - 22, by + 14),
+                                (bx + 12, by + 34), (bx + bw - 22, by + 34)]:
+                pygame.draw.circle(s, (40, 100, 150), (px + 5, py_off + 5), 8)
+                pygame.draw.circle(s, (80, 170, 220), (px + 5, py_off + 5), 6)
+                pygame.draw.circle(s, (100, 190, 240), (px + 3, py_off + 3), 2)
+                pygame.draw.circle(s, (60, 120, 170), (px + 5, py_off + 5), 8, 2)
+            # Bubbles rising
+            import math
+            for i in range(4):
+                bub_x = bx + 10 + (i * 15 + self.tick * 2) % (bw - 20)
+                bub_y = by - 3 - (self.tick + i * 20) % 20
+                bub_r = 2 + i % 2
+                pygame.draw.circle(s, (140, 200, 240), (bub_x, bub_y), bub_r)
+                pygame.draw.circle(s, (180, 230, 255), (bub_x - 1, bub_y - 1), 1)
+            # Airlock door
+            pygame.draw.rect(s, (50, 90, 130), (bx + bw // 2 - 7, by + bh - 16, 14, 16), border_radius=3)
+            pygame.draw.rect(s, (70, 130, 180), (bx + bw // 2 - 7, by + bh - 16, 14, 16), 1, border_radius=3)
+
+        elif name == "Sky Castle":
+            # Cloud base
+            for cx_off in [-8, 8, 0, -14, 14]:
+                pygame.draw.ellipse(s, (230, 240, 255), (bx + bw // 2 + cx_off - 10, by + bh - 8, 20, 12))
+            # Castle towers
+            tw = 14
+            for tx in [bx + 6, bx + bw - 20]:
+                pygame.draw.rect(s, (180, 200, 240), (tx, by + 8, tw, bh - 20))
+                # Battlements
+                for batt_x in range(tx, tx + tw, 5):
+                    pygame.draw.rect(s, (160, 180, 220), (batt_x, by + 5, 3, 6))
+                # Tower window
+                pygame.draw.rect(s, (120, 160, 220), (tx + 3, by + 20, 8, 10), border_radius=4)
+                pygame.draw.rect(s, (100, 140, 200), (tx + 3, by + 20, 8, 10), 1, border_radius=4)
+            # Center wall
+            pygame.draw.rect(s, (190, 210, 245), (bx + 18, by + 14, bw - 36, bh - 26))
+            # Gate
+            pygame.draw.rect(s, (140, 160, 200), (bx + bw // 2 - 8, by + bh - 22, 16, 14), border_radius=8)
+            pygame.draw.rect(s, (120, 140, 180), (bx + bw // 2 - 8, by + bh - 22, 16, 14), 1, border_radius=8)
+            # Flag
+            pygame.draw.line(s, (160, 170, 190), (bx + bw // 2, by + 2), (bx + bw // 2, by + 16), 2)
+            pygame.draw.polygon(s, (220, 100, 100), [
+                (bx + bw // 2 + 2, by + 2), (bx + bw // 2 + 12, by + 6), (bx + bw // 2 + 2, by + 10)])
+
+        elif name == "Robot Factory":
+            # Conveyor belt at bottom
+            pygame.draw.rect(s, (80, 80, 90), (bx + 4, by + bh - 10, bw - 8, 8), border_radius=2)
+            belt_offset = (self.tick * 2) % 12
+            for cx in range(bx + 4 + belt_offset, bx + bw - 4, 12):
+                pygame.draw.line(s, (60, 60, 70), (cx, by + bh - 10), (cx, by + bh - 2), 1)
+            # Smoke stack
+            pygame.draw.rect(s, (120, 125, 135), (bx + bw - 16, by - 8, 10, 14))
+            # Smoke puffs
+            for i in range(3):
+                smoke_y = by - 10 - i * 6 - (self.tick // 4 + i * 3) % 8
+                smoke_r = 4 + i
+                smoke_s = pygame.Surface((smoke_r * 2 + 4, smoke_r * 2 + 4), pygame.SRCALPHA)
+                pygame.draw.circle(smoke_s, (180, 180, 190, max(0, 100 - i * 30)), (smoke_r + 2, smoke_r + 2), smoke_r)
+                s.blit(smoke_s, (bx + bw - 14 - smoke_r, smoke_y - smoke_r))
+            # Robot arm (animated)
+            import math
+            arm_angle = math.sin(self.tick * 0.08) * 0.4
+            arm_x = bx + 18
+            arm_y = by + 14
+            end_x = arm_x + int(18 * math.cos(arm_angle - 0.3))
+            end_y = arm_y + int(18 * math.sin(arm_angle + 0.8))
+            pygame.draw.line(s, (100, 105, 115), (arm_x, arm_y), (end_x, end_y), 3)
+            pygame.draw.circle(s, (130, 135, 145), (arm_x, arm_y), 4)
+            pygame.draw.circle(s, (255, 200, 50), (end_x, end_y), 3)
+            # Gear
+            gear_cx, gear_cy = bx + bw // 2 + 8, by + 20
+            for i in range(6):
+                a = i * 1.047 + self.tick * 0.05
+                gx = gear_cx + int(8 * math.cos(a))
+                gy = gear_cy + int(8 * math.sin(a))
+                pygame.draw.rect(s, (120, 125, 135), (gx - 2, gy - 2, 4, 4))
+            pygame.draw.circle(s, (140, 145, 155), (gear_cx, gear_cy), 5)
+            pygame.draw.circle(s, (100, 105, 115), (gear_cx, gear_cy), 3)
+
+        elif name == "Volcano Lair":
+            # Volcano shape (triangle mountain)
+            pygame.draw.polygon(s, (120, 40, 15), [
+                (bx + bw // 2, by + 2), (bx + 2, by + bh), (bx + bw - 2, by + bh)])
+            pygame.draw.polygon(s, (100, 30, 10), [
+                (bx + bw // 2, by + 2), (bx + 2, by + bh), (bx + bw - 2, by + bh)], 2)
+            # Lava streaks
+            for lx_off in [-10, 0, 12]:
+                lx_s = bx + bw // 2 + lx_off
+                pygame.draw.line(s, (255, 120, 20), (lx_s, by + 15), (lx_s + lx_off // 2, by + bh - 5), 2)
+                pygame.draw.line(s, (255, 180, 40), (lx_s + 1, by + 18), (lx_s + lx_off // 2 + 1, by + bh - 8), 1)
+            # Crater glow at top
+            glow = pygame.Surface((20, 12), pygame.SRCALPHA)
+            pygame.draw.ellipse(glow, (255, 100, 0, 120), (0, 0, 20, 12))
+            s.blit(glow, (bx + bw // 2 - 10, by - 2))
+            pygame.draw.ellipse(s, (255, 200, 50), (bx + bw // 2 - 6, by + 1, 12, 6))
+            # Eruption sparks
+            import math
+            for i in range(5):
+                a = self.tick * 0.1 + i * 1.26
+                r = 8 + (self.tick + i * 7) % 10
+                sx_s = bx + bw // 2 + int(r * math.cos(a))
+                sy_s = by - 2 - abs(int(r * math.sin(a)))
+                pygame.draw.circle(s, (255, 200, 50), (sx_s, sy_s), 1)
+            # Evil door carved into rock
+            pygame.draw.rect(s, (60, 15, 5), (bx + bw // 2 - 6, by + bh - 16, 12, 16), border_radius=6)
+            pygame.draw.circle(s, (255, 60, 20), (bx + bw // 2 + 3, by + bh - 9), 2)
+
+        elif name == "Crystal Palace":
+            # Large crystals
+            crystal_data = [
+                (bx + 8, by + 12, 10, 38, (200, 180, 255)),
+                (bx + 22, by + 6, 12, 44, (220, 200, 255)),
+                (bx + 38, by + 10, 10, 40, (190, 170, 255)),
+                (bx + bw - 18, by + 14, 9, 36, (210, 190, 255)),
+            ]
+            for cx, cy, cw, ch, cc in crystal_data:
+                # Crystal body
+                pts = [(cx + cw // 2, cy), (cx, cy + ch // 2), (cx + cw // 2, cy + ch), (cx + cw, cy + ch // 2)]
+                pygame.draw.polygon(s, cc, pts)
+                # Lighter facet
+                light_cc = (min(255, cc[0] + 30), min(255, cc[1] + 30), min(255, cc[2] + 20))
+                pts_l = [(cx + cw // 2, cy), (cx + cw, cy + ch // 2), (cx + cw // 2, cy + ch * 2 // 3)]
+                pygame.draw.polygon(s, light_cc, pts_l)
+                # Outline
+                pygame.draw.polygon(s, (160, 140, 200), pts, 1)
+            # Sparkle highlights
+            import random
+            sparkle_rng = random.Random(self.tick // 8)
+            for _ in range(4):
+                sp_x = bx + sparkle_rng.randint(5, bw - 5)
+                sp_y = by + sparkle_rng.randint(5, bh - 5)
+                pygame.draw.circle(s, (255, 255, 255), (sp_x, sp_y), 2)
+                pygame.draw.circle(s, (230, 220, 255), (sp_x, sp_y), 1)
+
+        elif name == "Time Machine":
+            # Clock face
+            cx, cy = bx + bw // 2, by + bh // 2 - 6
+            pygame.draw.circle(s, (80, 180, 165), (cx, cy), 22)
+            pygame.draw.circle(s, (120, 220, 200), (cx, cy), 20)
+            pygame.draw.circle(s, (80, 180, 160), (cx, cy), 20, 2)
+            # Hour marks
+            import math
+            for i in range(12):
+                a = i * 0.524 - 1.57
+                x1 = cx + int(16 * math.cos(a))
+                y1 = cy + int(16 * math.sin(a))
+                x2 = cx + int(18 * math.cos(a))
+                y2 = cy + int(18 * math.sin(a))
+                pygame.draw.line(s, (50, 120, 110), (x1, y1), (x2, y2), 2)
+            # Spinning hands
+            hour_a = (self.tick * 0.01) - 1.57
+            min_a = (self.tick * 0.08) - 1.57
+            pygame.draw.line(s, (40, 100, 90), (cx, cy),
+                             (cx + int(10 * math.cos(hour_a)), cy + int(10 * math.sin(hour_a))), 3)
+            pygame.draw.line(s, (50, 130, 120), (cx, cy),
+                             (cx + int(14 * math.cos(min_a)), cy + int(14 * math.sin(min_a))), 2)
+            pygame.draw.circle(s, (60, 150, 140), (cx, cy), 3)
+            # Time vortex swirl at top/bottom
+            for i in range(4):
+                a = self.tick * 0.06 + i * 1.57
+                r = 24 + i
+                vx = cx + int(r * math.cos(a))
+                vy = cy + int(r * math.sin(a) * 0.4)
+                pygame.draw.circle(s, (80, 200, 180), (vx, vy), 2)
+            # Base panel
+            pygame.draw.rect(s, (70, 160, 150), (bx + 8, by + bh - 10, bw - 16, 8), border_radius=2)
+
+        elif name == "Dragon Tower":
+            # Stone tower body
+            pygame.draw.rect(s, (140, 35, 50), (bx + 14, by + 4, bw - 28, bh - 6))
+            # Stone brick pattern
+            for row in range(by + 6, by + bh - 8, 8):
+                offset = 4 if ((row - by) // 8) % 2 == 0 else 0
+                for col in range(bx + 16 + offset, bx + bw - 16, 14):
+                    pygame.draw.rect(s, (120, 25, 40), (col, row, 12, 6), 1)
+            # Battlements on top
+            for batt_x in range(bx + 12, bx + bw - 12, 8):
+                pygame.draw.rect(s, (150, 40, 55), (batt_x, by, 5, 8))
+            # Dragon fire breath
+            import math
+            fire_x = bx + bw // 2
+            fire_y = by - 2
+            for i in range(6):
+                a = -1.57 + math.sin(self.tick * 0.15 + i * 0.5) * 0.6
+                r = 4 + i * 3
+                fx = fire_x + int(r * math.cos(a))
+                fy = fire_y - int(r * abs(math.sin(a))) - i * 2
+                fc = (255, max(0, 200 - i * 30), 0) if i < 4 else (255, 100, 0)
+                pygame.draw.circle(s, fc, (fx, fy), max(1, 4 - i // 2))
+            # Dragon eye window
+            pygame.draw.ellipse(s, (255, 200, 0), (bx + bw // 2 - 6, by + 14, 12, 8))
+            pygame.draw.ellipse(s, (200, 50, 20), (bx + bw // 2 - 2, by + 15, 4, 6))
+            # Arched door
+            pygame.draw.rect(s, (80, 15, 20), (bx + bw // 2 - 7, by + bh - 18, 14, 18))
+            pygame.draw.arc(s, (100, 20, 30), (bx + bw // 2 - 7, by + bh - 26, 14, 16), 0, 3.14, 2)
+
+        elif name == "Moon Colony":
+            # Lunar surface at bottom
+            pygame.draw.rect(s, (190, 190, 180), (bx + 2, by + bh - 12, bw - 4, 12))
+            # Craters
+            for crater_x, crater_r in [(bx + 12, 5), (bx + bw - 15, 4), (bx + bw // 2 + 5, 3)]:
+                pygame.draw.circle(s, (170, 170, 160), (crater_x, by + bh - 6), crater_r)
+                pygame.draw.circle(s, (180, 180, 170), (crater_x, by + bh - 6), crater_r, 1)
+            # Main dome
+            pygame.draw.arc(s, (220, 220, 210), (bx + 8, by + 8, bw - 16, 30), 0, 3.14, 3)
+            pygame.draw.ellipse(s, (200, 200, 190, 100), (bx + 10, by + 16, bw - 20, 18))
+            # Dome glass reflection
+            pygame.draw.arc(s, (240, 240, 235), (bx + 14, by + 10, bw - 28, 20), 0.3, 2.5, 2)
+            # Habitat modules
+            pygame.draw.rect(s, (200, 200, 190), (bx + 6, by + 28, 18, 16), border_radius=4)
+            pygame.draw.rect(s, (200, 200, 190), (bx + bw - 24, by + 28, 18, 16), border_radius=4)
+            # Module windows
+            pygame.draw.rect(s, (150, 200, 230), (bx + 10, by + 31, 8, 6), border_radius=1)
+            pygame.draw.rect(s, (150, 200, 230), (bx + bw - 20, by + 31, 8, 6), border_radius=1)
+            # Flag
+            pygame.draw.line(s, (180, 180, 175), (bx + bw // 2, by + 5), (bx + bw // 2, by + 18), 2)
+            pygame.draw.polygon(s, (220, 220, 240), [
+                (bx + bw // 2 + 2, by + 5), (bx + bw // 2 + 10, by + 8), (bx + bw // 2 + 2, by + 11)])
+            # Stars in background (above dome)
+            import random
+            star_rng = random.Random(55)
+            for _ in range(5):
+                sx_s = bx + star_rng.randint(3, bw - 3)
+                sy_s = by + star_rng.randint(1, 10)
+                pygame.draw.circle(s, (255, 255, 240), (sx_s, sy_s), 1)
+
+        elif name == "Galactic Hub":
+            # Space background tint
+            space = pygame.Surface((bw, bh), pygame.SRCALPHA)
+            pygame.draw.rect(space, (20, 15, 50, 80), (0, 0, bw, bh))
+            s.blit(space, (bx, by))
+            # Central ring station
+            cx, cy = bx + bw // 2, by + bh // 2
+            pygame.draw.circle(s, (100, 80, 170), (cx, cy), 18, 3)
+            pygame.draw.circle(s, (120, 100, 190), (cx, cy), 14, 2)
+            # Station core
+            pygame.draw.circle(s, (130, 110, 200), (cx, cy), 8)
+            pygame.draw.circle(s, (160, 140, 220), (cx, cy), 5)
+            # Docking arms
+            import math
+            for i in range(4):
+                a = i * 1.57 + self.tick * 0.02
+                x1 = cx + int(18 * math.cos(a))
+                y1 = cy + int(18 * math.sin(a))
+                x2 = cx + int(25 * math.cos(a))
+                y2 = cy + int(25 * math.sin(a))
+                pygame.draw.line(s, (90, 70, 160), (x1, y1), (x2, y2), 2)
+                pygame.draw.circle(s, (140, 120, 200), (x2, y2), 3)
+            # Stars
+            import random
+            star_rng = random.Random(88)
+            for _ in range(8):
+                sx_s = bx + star_rng.randint(2, bw - 2)
+                sy_s = by + star_rng.randint(2, bh - 2)
+                pygame.draw.circle(s, (200, 190, 240), (sx_s, sy_s), 1)
+            # Blinking nav lights
+            for nav_a in [0, 1.57, 3.14, 4.71]:
+                nx = cx + int(20 * math.cos(nav_a + self.tick * 0.02))
+                ny = cy + int(20 * math.sin(nav_a + self.tick * 0.02))
+                c = (255, 100, 100) if (self.tick // 10 + int(nav_a)) % 2 == 0 else (100, 100, 255)
+                pygame.draw.circle(s, c, (nx, ny), 2)
+
+        elif name == "Dyson Sphere":
+            # Central sun
+            cx, cy = bx + bw // 2, by + bh // 2
+            # Sun glow
+            glow = pygame.Surface((36, 36), pygame.SRCALPHA)
+            pygame.draw.circle(glow, (255, 200, 50, 50), (18, 18), 18)
+            s.blit(glow, (cx - 18, cy - 18))
+            pygame.draw.circle(s, (255, 220, 80), (cx, cy), 10)
+            pygame.draw.circle(s, (255, 240, 150), (cx, cy), 6)
+            pygame.draw.circle(s, (255, 255, 220), (cx - 2, cy - 2), 3)
+            # Energy collection rings
+            import math
+            for ring_i, r in enumerate([18, 22]):
+                ring_c = (200, 160, 40) if ring_i == 0 else (180, 140, 30)
+                for i in range(12):
+                    a = i * 0.524 + self.tick * (0.03 if ring_i == 0 else -0.02)
+                    px = cx + int(r * math.cos(a))
+                    py = cy + int(r * math.sin(a) * 0.6)
+                    pygame.draw.circle(s, ring_c, (px, py), 2)
+            # Solar panels (rectangles orbiting)
+            for i in range(4):
+                a = i * 1.57 + self.tick * 0.025
+                px = cx + int(24 * math.cos(a))
+                py = cy + int(24 * math.sin(a) * 0.5)
+                panel = pygame.Surface((8, 4), pygame.SRCALPHA)
+                pygame.draw.rect(panel, (100, 80, 180), (0, 0, 8, 4))
+                pygame.draw.rect(panel, (140, 120, 220), (1, 1, 6, 2))
+                s.blit(panel, (px - 4, py - 2))
+            # Energy beams to sun
+            for i in range(3):
+                a = self.tick * 0.04 + i * 2.09
+                ox = cx + int(22 * math.cos(a))
+                oy = cy + int(22 * math.sin(a) * 0.5)
+                beam = pygame.Surface((abs(ox - cx) + 4, abs(oy - cy) + 4), pygame.SRCALPHA)
+                pygame.draw.line(s, (255, 220, 80, 80), (ox, oy), (cx, cy), 1)
+
         else:
             # Generic fallback for any other building without an image
             # Windows
