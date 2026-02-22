@@ -273,42 +273,166 @@ class Client:
 
     # --- Connect Screen ---
     def draw_connect_screen(self):
-        # Gradient background
-        self.draw_gradient_rect(0, 0, WIDTH, HEIGHT, BG_TOP, BG_BOT)
+        # Sky gradient - warm sunset
+        sky_top = (40, 60, 120)
+        sky_mid = (130, 100, 160)
+        sky_bot = (240, 150, 100)
+        for row in range(HEIGHT):
+            t = row / HEIGHT
+            if t < 0.5:
+                t2 = t / 0.5
+                r = int(sky_top[0] + (sky_mid[0] - sky_top[0]) * t2)
+                g = int(sky_top[1] + (sky_mid[1] - sky_top[1]) * t2)
+                b = int(sky_top[2] + (sky_mid[2] - sky_top[2]) * t2)
+            else:
+                t2 = (t - 0.5) / 0.5
+                r = int(sky_mid[0] + (sky_bot[0] - sky_mid[0]) * t2)
+                g = int(sky_mid[1] + (sky_bot[1] - sky_mid[1]) * t2)
+                b = int(sky_mid[2] + (sky_bot[2] - sky_mid[2]) * t2)
+            pygame.draw.line(self.screen, (r, g, b), (0, row), (WIDTH, row))
 
-        # Decorative circles
-        for i, (cx, cy, r, a) in enumerate([(80, 650, 120, 15), (920, 100, 80, 12),
-                                             (150, 120, 40, 18), (850, 600, 60, 14)]):
-            s = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
-            pygame.draw.circle(s, (ACCENT[0], ACCENT[1], ACCENT[2], a), (r, r), r)
-            self.screen.blit(s, (cx - r, cy - r))
+        # Stars
+        import random
+        rng = random.Random(99)
+        for _ in range(60):
+            sx = rng.randint(0, WIDTH)
+            sy = rng.randint(0, HEIGHT // 3)
+            brightness = rng.randint(120, 255)
+            twinkle = abs(math.sin(self.tick * 0.05 + sx * 0.1)) * 80
+            alpha = min(255, int(brightness * 0.5 + twinkle))
+            sz = rng.choice([1, 1, 1, 2])
+            star_s = pygame.Surface((sz * 2, sz * 2), pygame.SRCALPHA)
+            pygame.draw.circle(star_s, (255, 255, 240, alpha), (sz, sz), sz)
+            self.screen.blit(star_s, (sx - sz, sy - sz))
 
-        # Center card
-        card_w, card_h = 460, 380
+        # Moon
+        moon_s = pygame.Surface((60, 60), pygame.SRCALPHA)
+        pygame.draw.circle(moon_s, (255, 250, 220, 200), (30, 30), 25)
+        pygame.draw.circle(moon_s, (255, 255, 240, 60), (30, 30), 30)
+        pygame.draw.circle(moon_s, (220, 210, 190, 80), (24, 26), 6)
+        pygame.draw.circle(moon_s, (220, 210, 190, 60), (34, 20), 4)
+        pygame.draw.circle(moon_s, (220, 210, 190, 50), (30, 34), 3)
+        self.screen.blit(moon_s, (780, 40))
+
+        # City skyline silhouette
+        ground_y = HEIGHT - 160
+        buildings_data = [
+            (0, 80, 60, (50, 55, 70)),
+            (55, 130, 50, (45, 50, 65)),
+            (100, 100, 70, (55, 60, 75)),
+            (165, 160, 55, (40, 45, 60)),
+            (215, 90, 65, (50, 55, 70)),
+            (275, 140, 50, (45, 48, 63)),
+            (320, 110, 75, (52, 57, 72)),
+            (390, 170, 45, (42, 47, 62)),
+            (430, 95, 60, (48, 53, 68)),
+            (485, 125, 70, (44, 49, 64)),
+            (550, 85, 55, (50, 55, 70)),
+            (600, 150, 60, (46, 51, 66)),
+            (655, 105, 80, (52, 57, 72)),
+            (730, 135, 50, (43, 48, 63)),
+            (775, 115, 65, (49, 54, 69)),
+            (835, 155, 55, (45, 50, 65)),
+            (885, 90, 70, (51, 56, 71)),
+            (950, 120, 55, (47, 52, 67)),
+        ]
+        for bx, bh, bw, color in buildings_data:
+            by = ground_y - bh
+            pygame.draw.rect(self.screen, color, (bx, by, bw, bh + 200))
+            # Windows - lit up yellow/warm
+            for wy in range(by + 8, ground_y - 10, 18):
+                for wx in range(bx + 6, bx + bw - 8, 14):
+                    lit = rng.random() > 0.35
+                    if lit:
+                        wc = rng.choice([(255, 230, 130, 200), (255, 210, 100, 180),
+                                         (200, 220, 255, 150), (255, 200, 80, 160)])
+                        ws = pygame.Surface((8, 10), pygame.SRCALPHA)
+                        pygame.draw.rect(ws, wc, (0, 0, 8, 10), border_radius=1)
+                        self.screen.blit(ws, (wx, wy))
+                    else:
+                        ws = pygame.Surface((8, 10), pygame.SRCALPHA)
+                        pygame.draw.rect(ws, (30, 35, 50, 120), (0, 0, 8, 10), border_radius=1)
+                        self.screen.blit(ws, (wx, wy))
+            # Roof details
+            if bw > 50:
+                pygame.draw.rect(self.screen, (max(0, color[0] - 10), max(0, color[1] - 10), max(0, color[2] - 10)),
+                                 (bx + bw // 3, by - 12, bw // 4, 12))
+
+        # Ground
+        pygame.draw.rect(self.screen, (30, 35, 45), (0, ground_y, WIDTH, HEIGHT - ground_y))
+        # Road on ground
+        pygame.draw.rect(self.screen, (55, 55, 60), (0, ground_y + 10, WIDTH, 30))
+        pygame.draw.line(self.screen, (180, 170, 80), (0, ground_y + 25), (WIDTH, ground_y + 25), 2)
+        # Sidewalk
+        pygame.draw.rect(self.screen, (70, 70, 80), (0, ground_y, WIDTH, 12))
+
+        # Street lights
+        for lx in [150, 400, 650, 900]:
+            pygame.draw.rect(self.screen, (80, 80, 90), (lx, ground_y - 50, 4, 55))
+            pygame.draw.ellipse(self.screen, (80, 80, 90), (lx - 8, ground_y - 55, 20, 8))
+            # Light glow
+            glow = pygame.Surface((40, 60), pygame.SRCALPHA)
+            pygame.draw.ellipse(glow, (255, 230, 130, 25), (0, 0, 40, 60))
+            self.screen.blit(glow, (lx - 18, ground_y - 30))
+
+        # Center card with glass effect
+        card_w, card_h = 460, 400
         card_x = (WIDTH - card_w) // 2
-        card_y = (HEIGHT - card_h) // 2 + 30
-        self.draw_shadow(card_x, card_y, card_w, card_h, radius=16, offset=6, alpha=35)
-        pygame.draw.rect(self.screen, WHITE, (card_x, card_y, card_w, card_h), border_radius=16)
+        card_y = 140
+        # Card glow
+        glow_s = pygame.Surface((card_w + 30, card_h + 30), pygame.SRCALPHA)
+        pygame.draw.rect(glow_s, (255, 255, 255, 10), (0, 0, card_w + 30, card_h + 30), border_radius=22)
+        self.screen.blit(glow_s, (card_x - 15, card_y - 15))
+        # Card background
+        card_s = pygame.Surface((card_w, card_h), pygame.SRCALPHA)
+        pygame.draw.rect(card_s, (20, 25, 45, 210), (0, 0, card_w, card_h), border_radius=18)
+        self.screen.blit(card_s, (card_x, card_y))
+        # Card border
+        pygame.draw.rect(self.screen, (100, 110, 140), (card_x, card_y, card_w, card_h), 1, border_radius=18)
 
-        # Title above card
-        self.draw_text("City", self.font_title, ACCENT, WIDTH // 2, card_y - 60, center=True, shadow=True)
-        self.draw_text("Solve math, earn coins, build your town!", self.font_sm, MID_GRAY, WIDTH // 2, card_y - 15, center=True)
+        # Title
+        title_font = self.font_title
+        # Title glow
+        tglow = title_font.render("City", True, (255, 210, 60))
+        tglow.set_alpha(40)
+        tr = tglow.get_rect(center=(WIDTH // 2 + 1, card_y + 46))
+        self.screen.blit(tglow, tr)
+        self.draw_text("City", title_font, COIN_GOLD, WIDTH // 2, card_y + 45, center=True)
+        self.draw_text("Solve math, earn coins, build your city!", self.font_xs, (180, 185, 200), WIDTH // 2, card_y + 80, center=True)
+
+        # Divider line
+        div_s = pygame.Surface((card_w - 80, 1), pygame.SRCALPHA)
+        for dx in range(card_w - 80):
+            alpha = int(60 * (1 - abs(dx / (card_w - 80) - 0.5) * 2))
+            div_s.set_at((dx, 0), (200, 200, 220, alpha))
+        self.screen.blit(div_s, (card_x + 40, card_y + 100))
 
         # Form inside card
-        fx = card_x + 40
-        fw = card_w - 80
+        fx = card_x + 50
+        fw = card_w - 100
 
-        self.draw_text("Your Name", self.font_xs, DARK_GRAY, fx, card_y + 30)
-        self.name_rect = self.draw_input(self.name_text, fx, card_y + 52, fw, 42, self.active_field == "name")
+        self.draw_text("Your Name", self.font_xs, (170, 175, 195), fx, card_y + 115)
+        self.name_rect = self._draw_dark_input(self.name_text, fx, card_y + 138, fw, 42, self.active_field == "name")
 
-        self.draw_text("Server IP", self.font_xs, DARK_GRAY, fx, card_y + 115)
-        self.ip_rect = self.draw_input(self.ip_text, fx, card_y + 137, fw, 42, self.active_field == "ip")
+        self.draw_text("Server IP", self.font_xs, (170, 175, 195), fx, card_y + 200)
+        self.ip_rect = self._draw_dark_input(self.ip_text, fx, card_y + 223, fw, 42, self.active_field == "ip")
 
-        self.connect_btn = self.draw_button("Connect", fx + 40, card_y + 220, fw - 80, 50, GREEN, GREEN_HOVER, self.font_med)
+        self.connect_btn = self.draw_button("Play", fx + 50, card_y + 300, fw - 100, 52, GREEN, GREEN_HOVER, self.font_med)
 
         if self.connect_error:
-            color = MID_GRAY if self.connect_error == "Connecting..." else RED
-            self.draw_text(self.connect_error, self.font_xs, color, WIDTH // 2, card_y + 300, center=True)
+            color = (170, 175, 195) if self.connect_error == "Connecting..." else (255, 100, 100)
+            self.draw_text(self.connect_error, self.font_xs, color, WIDTH // 2, card_y + 370, center=True)
+
+    def _draw_dark_input(self, text, x, y, w, h, active=False):
+        """Dark-themed input field for connect screen."""
+        s = pygame.Surface((w, h), pygame.SRCALPHA)
+        pygame.draw.rect(s, (15, 18, 35, 200), (0, 0, w, h), border_radius=8)
+        self.screen.blit(s, (x, y))
+        border_color = COIN_GOLD if active else (70, 75, 95)
+        pygame.draw.rect(self.screen, border_color, (x, y, w, h), 2, border_radius=8)
+        cursor = "|" if active and (self.tick // 15) % 2 == 0 else ""
+        self.draw_text(text + cursor, self.font_sm, (230, 235, 245), x + 14, y + h // 2 - 10)
+        return pygame.Rect(x, y, w, h)
 
     def handle_connect_events(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -417,20 +541,47 @@ class Client:
     # --- Town ---
     def draw_tree(self, x, y, size=1.0):
         s = size
-        # Trunk
         tw = int(6 * s)
-        th = int(14 * s)
-        pygame.draw.rect(self.screen, TREE_TRUNK, (x - tw // 2, y - th, tw, th), border_radius=2)
-        # Foliage layers
-        r1 = int(16 * s)
-        r2 = int(12 * s)
-        pygame.draw.circle(self.screen, TREE_GREEN, (x, y - th - r1 // 2), r1)
-        pygame.draw.circle(self.screen, TREE_LIGHT, (x - int(4 * s), y - th - r1 // 2 - int(4 * s)), r2)
-        pygame.draw.circle(self.screen, TREE_GREEN, (x + int(5 * s), y - th - r1 // 2 - int(2 * s)), int(10 * s))
+        th = int(16 * s)
+        # Shadow
+        shadow_s = pygame.Surface((int(28 * s), int(10 * s)), pygame.SRCALPHA)
+        pygame.draw.ellipse(shadow_s, (0, 0, 0, 30), shadow_s.get_rect())
+        self.screen.blit(shadow_s, (x - int(14 * s), y - int(2 * s)))
+        # Trunk with bark texture
+        pygame.draw.rect(self.screen, (100, 70, 40), (x - tw // 2, y - th, tw, th), border_radius=2)
+        pygame.draw.rect(self.screen, TREE_TRUNK, (x - tw // 2 + 1, y - th, tw - 2, th), border_radius=2)
+        # Foliage - multiple overlapping circles for fuller look
+        r1 = int(18 * s)
+        dark_green = (45, 130, 45)
+        mid_green = (60, 155, 55)
+        light_green = (85, 180, 70)
+        highlight = (110, 200, 90)
+        pygame.draw.circle(self.screen, dark_green, (x + int(3 * s), y - th - r1 // 2 + int(3 * s)), int(14 * s))
+        pygame.draw.circle(self.screen, mid_green, (x, y - th - r1 // 2), r1)
+        pygame.draw.circle(self.screen, TREE_GREEN, (x - int(6 * s), y - th - r1 // 2 - int(2 * s)), int(13 * s))
+        pygame.draw.circle(self.screen, light_green, (x + int(5 * s), y - th - r1 // 2 - int(4 * s)), int(11 * s))
+        pygame.draw.circle(self.screen, highlight, (x - int(3 * s), y - th - r1 // 2 - int(6 * s)), int(7 * s))
+
+    def draw_bush(self, x, y, size=1.0):
+        s = size
+        shadow_s = pygame.Surface((int(22 * s), int(8 * s)), pygame.SRCALPHA)
+        pygame.draw.ellipse(shadow_s, (0, 0, 0, 25), shadow_s.get_rect())
+        self.screen.blit(shadow_s, (x - int(11 * s), y - int(1 * s)))
+        pygame.draw.ellipse(self.screen, (50, 140, 50), (x - int(10 * s), y - int(8 * s), int(20 * s), int(12 * s)))
+        pygame.draw.ellipse(self.screen, (65, 160, 60), (x - int(7 * s), y - int(10 * s), int(14 * s), int(10 * s)))
+        pygame.draw.ellipse(self.screen, (80, 175, 70), (x - int(4 * s), y - int(11 * s), int(9 * s), int(7 * s)))
 
     def draw_flower(self, x, y, color):
-        pygame.draw.circle(self.screen, color, (x, y), 4)
-        pygame.draw.circle(self.screen, (255, 255, 200), (x, y), 2)
+        # Stem
+        pygame.draw.line(self.screen, (60, 140, 50), (x, y), (x, y + 6), 1)
+        # Petals
+        for angle_deg in range(0, 360, 72):
+            angle = math.radians(angle_deg)
+            px = x + int(3 * math.cos(angle))
+            py = y + int(3 * math.sin(angle))
+            pygame.draw.circle(self.screen, color, (px, py), 3)
+        # Center
+        pygame.draw.circle(self.screen, (255, 240, 150), (x, y), 2)
 
     def get_plot_positions(self):
         """Generate plot positions in a wide grid. Sections stack vertically,
@@ -491,63 +642,132 @@ class Client:
         clip_rect = pygame.Rect(town_x, town_y, town_w, view_h)
         self.screen.set_clip(clip_rect)
 
-        # Grass background
-        pygame.draw.rect(self.screen, GRASS_1, (town_x, town_y, town_w, view_h), border_radius=14)
+        # Grass background - base color
+        pygame.draw.rect(self.screen, (95, 175, 65), (town_x, town_y, town_w, view_h), border_radius=14)
 
-        # Grass patches (tile with both scrolls)
-        patch_templates = [(40, 80, 60, 40), (200, 50, 50, 30), (400, 90, 70, 35),
-                           (80, 300, 55, 30), (350, 320, 65, 35), (500, 250, 45, 25),
-                           (700, 150, 55, 35), (850, 220, 45, 30)]
-        for px, py, pw, ph in patch_templates:
-            draw_x = town_x + px - (sx % 500)
-            while draw_x < town_x + view_w:
-                draw_y = town_y + py - (sy % 400)
-                while draw_y < town_y + view_h:
-                    if draw_y + ph > town_y - ph and draw_x + pw > town_x - pw:
-                        s = pygame.Surface((pw, ph), pygame.SRCALPHA)
-                        pygame.draw.ellipse(s, (*GRASS_2, 90), (0, 0, pw, ph))
-                        self.screen.blit(s, (draw_x, draw_y))
-                    draw_y += 400
-                draw_x += 500
+        # Grass shade variation - large soft patches for natural look
+        grass_shades = [
+            (40, 80, 70, 50, (110, 190, 78, 70)),
+            (200, 50, 60, 40, (100, 180, 68, 60)),
+            (400, 90, 80, 45, (118, 198, 82, 65)),
+            (80, 300, 65, 35, (90, 170, 60, 55)),
+            (350, 320, 75, 40, (108, 188, 74, 60)),
+            (500, 250, 55, 30, (120, 200, 85, 50)),
+            (700, 150, 65, 40, (105, 185, 72, 60)),
+            (850, 220, 50, 35, (98, 178, 66, 55)),
+            (150, 200, 90, 55, (115, 195, 80, 50)),
+            (600, 100, 70, 45, (108, 186, 75, 55)),
+        ]
+        for gpx, gpy, gpw, gph, gc in grass_shades:
+            draw_x = town_x + gpx - (sx % 520)
+            while draw_x < town_x + view_w + gpw:
+                draw_y = town_y + gpy - (sy % 420)
+                while draw_y < town_y + view_h + gph:
+                    if draw_y + gph > town_y - gph and draw_x + gpw > town_x - gpw:
+                        gs = pygame.Surface((gpw, gph), pygame.SRCALPHA)
+                        pygame.draw.ellipse(gs, gc, (0, 0, gpw, gph))
+                        self.screen.blit(gs, (draw_x, draw_y))
+                    draw_y += 420
+                draw_x += 520
+
+        # Grass blade tufts - small lines for texture
+        import random
+        rng = random.Random(42)
+        tuft_positions = [(rng.randint(0, 960), rng.randint(0, 960)) for _ in range(80)]
+        for tpx, tpy in tuft_positions:
+            draw_x = town_x + tpx - (sx % 480)
+            draw_y = town_y + tpy - (sy % 480)
+            if draw_x < town_x - 10 or draw_x > town_x + view_w + 10:
+                continue
+            if draw_y < town_y - 10 or draw_y > town_y + view_h + 10:
+                continue
+            blade_col = rng.choice([(80, 165, 55), (100, 185, 70), (70, 155, 50)])
+            for _ in range(3):
+                bx = rng.randint(-3, 3)
+                pygame.draw.line(self.screen, blade_col, (draw_x + bx, draw_y), (draw_x + bx + rng.randint(-2, 2), draw_y - rng.randint(3, 7)), 1)
 
         # --- Vertical roads ---
         for road_vx in ROAD_V_POSITIONS:
             vx = town_x + road_vx - sx
-            if vx + ROAD_THICK + 8 < town_x or vx - 4 > town_x + view_w:
+            if vx + ROAD_THICK + 12 < town_x or vx - 8 > town_x + view_w:
                 continue
-            pygame.draw.rect(self.screen, SIDEWALK, (vx - 4, town_y, ROAD_THICK + 8, view_h))
+            # Sidewalk with curb
+            pygame.draw.rect(self.screen, (185, 180, 170), (vx - 7, town_y, ROAD_THICK + 14, view_h))
+            pygame.draw.rect(self.screen, SIDEWALK, (vx - 5, town_y, ROAD_THICK + 10, view_h))
+            # Road surface
             pygame.draw.rect(self.screen, ROAD_FILL, (vx, town_y, ROAD_THICK, view_h))
-            pygame.draw.line(self.screen, ROAD_EDGE, (vx, town_y), (vx, town_y + view_h), 2)
-            pygame.draw.line(self.screen, ROAD_EDGE, (vx + ROAD_THICK, town_y), (vx + ROAD_THICK, town_y + view_h), 2)
-            dash_start = -(sy % 44)
-            for ry_off in range(int(dash_start), view_h + 44, 44):
-                pygame.draw.rect(self.screen, ROAD_DASH, (vx + ROAD_THICK // 2 - 2, town_y + ry_off, 4, 24), border_radius=2)
+            # Subtle road texture
+            for ry_off in range(-(int(sy) % 8), view_h + 8, 8):
+                shade = 135 + (ry_off % 16 < 8) * 5
+                pygame.draw.line(self.screen, (shade, shade - 2, shade - 6),
+                                 (vx + 1, town_y + ry_off), (vx + ROAD_THICK - 1, town_y + ry_off), 1)
+            # Curb edges
+            pygame.draw.line(self.screen, (170, 165, 155), (vx - 1, town_y), (vx - 1, town_y + view_h), 2)
+            pygame.draw.line(self.screen, (170, 165, 155), (vx + ROAD_THICK + 1, town_y), (vx + ROAD_THICK + 1, town_y + view_h), 2)
+            # Center line - double yellow
+            cx = vx + ROAD_THICK // 2
+            pygame.draw.line(self.screen, (220, 200, 80), (cx - 2, town_y), (cx - 2, town_y + view_h), 2)
+            pygame.draw.line(self.screen, (220, 200, 80), (cx + 2, town_y), (cx + 2, town_y + view_h), 2)
 
         # --- Horizontal roads between sections ---
         section_h = ROW_HEIGHT * 2 + ROAD_THICK + 16
         for section in range(8):
             road_local_y = section * section_h + ROW_HEIGHT * 2 - 15
             hy = town_y + road_local_y - sy
-            if hy > town_y + view_h + 10 or hy + ROAD_THICK < town_y - 10:
+            if hy > town_y + view_h + 15 or hy + ROAD_THICK < town_y - 15:
                 continue
-            road_draw_x = town_x - sx
-            road_draw_w = total_w + 40
-            pygame.draw.rect(self.screen, SIDEWALK, (road_draw_x, hy - 4, road_draw_w, ROAD_THICK + 8))
+            road_draw_x = town_x - sx - 10
+            road_draw_w = total_w + 60
+            # Sidewalk with curb
+            pygame.draw.rect(self.screen, (185, 180, 170), (road_draw_x, hy - 7, road_draw_w, ROAD_THICK + 14))
+            pygame.draw.rect(self.screen, SIDEWALK, (road_draw_x, hy - 5, road_draw_w, ROAD_THICK + 10))
+            # Road surface
             pygame.draw.rect(self.screen, ROAD_FILL, (road_draw_x, hy, road_draw_w, ROAD_THICK))
-            pygame.draw.line(self.screen, ROAD_EDGE, (road_draw_x, hy), (road_draw_x + road_draw_w, hy), 2)
-            pygame.draw.line(self.screen, ROAD_EDGE, (road_draw_x, hy + ROAD_THICK), (road_draw_x + road_draw_w, hy + ROAD_THICK), 2)
-            dash_sx = -(sx % 44)
-            for rx_off in range(int(dash_sx), view_w + 44, 44):
-                pygame.draw.rect(self.screen, ROAD_DASH, (town_x + rx_off, hy + ROAD_THICK // 2 - 2, 24, 4), border_radius=2)
-            # Intersections
+            # Road texture
+            for rx_off in range(0, road_draw_w, 8):
+                shade = 135 + (rx_off % 16 < 8) * 5
+                pygame.draw.line(self.screen, (shade, shade - 2, shade - 6),
+                                 (road_draw_x + rx_off, hy + 1), (road_draw_x + rx_off, hy + ROAD_THICK - 1), 1)
+            # Curb edges
+            pygame.draw.line(self.screen, (170, 165, 155), (road_draw_x, hy - 1), (road_draw_x + road_draw_w, hy - 1), 2)
+            pygame.draw.line(self.screen, (170, 165, 155), (road_draw_x, hy + ROAD_THICK + 1), (road_draw_x + road_draw_w, hy + ROAD_THICK + 1), 2)
+            # Center line - double yellow
+            cy = hy + ROAD_THICK // 2
+            pygame.draw.line(self.screen, (220, 200, 80), (road_draw_x, cy - 2), (road_draw_x + road_draw_w, cy - 2), 2)
+            pygame.draw.line(self.screen, (220, 200, 80), (road_draw_x, cy + 2), (road_draw_x + road_draw_w, cy + 2), 2)
+            # Crosswalks at intersections
             for road_vx in ROAD_V_POSITIONS:
                 ivx = town_x + road_vx - sx
-                pygame.draw.rect(self.screen, ROAD_FILL, (ivx, hy, ROAD_THICK, ROAD_THICK))
+                # Fill intersection
+                pygame.draw.rect(self.screen, ROAD_FILL, (ivx - 5, hy - 5, ROAD_THICK + 10, ROAD_THICK + 10))
+                # Crosswalk stripes (white bars)
+                # Across vertical road (above and below intersection)
+                for cwy in [hy - 14, hy + ROAD_THICK + 3]:
+                    for cwx in range(ivx + 2, ivx + ROAD_THICK - 2, 7):
+                        pygame.draw.rect(self.screen, (230, 225, 215), (cwx, cwy, 5, 10), border_radius=1)
+                # Across horizontal road (left and right of intersection)
+                for cwx in [ivx - 14, ivx + ROAD_THICK + 3]:
+                    for cwy in range(hy + 2, hy + ROAD_THICK - 2, 7):
+                        pygame.draw.rect(self.screen, (230, 225, 215), (cwx, cwy, 10, 5), border_radius=1)
+
+        # --- Bushes along roads ---
+        bush_templates = [(280, 60, 0.7), (620, 90, 0.8), (280, 200, 0.6), (620, 250, 0.75),
+                          (280, 340, 0.65), (620, 380, 0.7)]
+        for bx, by, bs in bush_templates:
+            draw_x = town_x + bx - sx
+            if draw_x < town_x - 20 or draw_x > town_x + view_w + 20:
+                continue
+            draw_y = town_y + by - (sy % 450)
+            while draw_y < town_y + view_h + 20:
+                if draw_y > town_y - 20:
+                    self.draw_bush(draw_x, draw_y, bs)
+                draw_y += 450
 
         # --- Trees (scattered, tiled with both scrolls) ---
-        tree_templates = [(130, 50, 0.9), (270, 120, 1.1), (40, 300, 1.0),
-                          (520, 280, 0.85), (750, 200, 1.05), (900, 100, 0.7),
-                          (450, 50, 0.95), (180, 350, 0.8)]
+        tree_templates = [(130, 50, 0.9), (260, 120, 1.15), (40, 300, 1.0),
+                          (520, 280, 0.9), (750, 200, 1.1), (900, 100, 0.75),
+                          (450, 50, 1.0), (180, 350, 0.85), (370, 200, 0.95),
+                          (810, 320, 0.8)]
         for tx, ty, ts in tree_templates:
             draw_x = town_x + tx - sx
             if draw_x < town_x - 40 or draw_x > town_x + view_w + 40:
@@ -561,7 +781,9 @@ class Client:
         # --- Flowers (tiled with both scrolls) ---
         flower_templates = [(30, 130, (255, 100, 120)), (500, 80, (180, 120, 255)),
                             (545, 300, (255, 130, 80)), (100, 140, (120, 200, 255)),
-                            (700, 180, (255, 200, 100)), (850, 260, (200, 100, 255))]
+                            (700, 180, (255, 200, 100)), (850, 260, (200, 100, 255)),
+                            (60, 250, (255, 180, 200)), (420, 160, (255, 255, 100)),
+                            (780, 300, (255, 140, 160)), (200, 80, (200, 160, 255))]
         for fx, fy, fc in flower_templates:
             draw_x = town_x + fx - sx
             if draw_x < town_x - 10 or draw_x > town_x + view_w + 10:
