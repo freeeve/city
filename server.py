@@ -77,10 +77,10 @@ class GameServer:
         entries = {}
         # Include saved (offline) players
         for name, data in self.saved_data.items():
-            entries[name] = {"name": name, "coins": data.get("coins", 0)}
+            entries[name] = {"name": name, "coins": data.get("coins", 0), "rebirths": data.get("rebirths", 0)}
         # Override with live player data
         for p in self.players.values():
-            entries[p.name] = {"name": p.name, "coins": p.coins}
+            entries[p.name] = {"name": p.name, "coins": p.coins, "rebirths": p.rebirths}
         result = list(entries.values())
         result.sort(key=lambda e: e["coins"], reverse=True)
         return result

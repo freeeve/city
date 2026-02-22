@@ -2478,10 +2478,16 @@ class Client:
             if full_name != self.name_text:
                 self.leaderboard_name_rects.append((row_rect, full_name))
 
-            # Coin amount
+            # Rebirth stars + coin amount
+            rebirths = entry.get("rebirths", 0)
             coins_text = f"{entry['coins']:,}"
-            self.draw_coin_icon(lx + lb_w - 55, y + 9, 7)
-            self.draw_text(coins_text, self.font_xs, COIN_DARK, lx + lb_w - 44, y)
+            coin_x = lx + lb_w - 44
+            self.draw_coin_icon(coin_x - 11, y + 9, 7)
+            self.draw_text(coins_text, self.font_xs, COIN_DARK, coin_x, y)
+            if rebirths > 0:
+                star_text = f"\u2605{rebirths}"
+                star_w = self.font_tiny.size(star_text)[0]
+                self.draw_text(star_text, self.font_tiny, COIN_GOLD, coin_x - 13 - star_w, y + 2)
 
             y += 34
 
