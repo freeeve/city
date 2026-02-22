@@ -55,11 +55,11 @@ BRONZE = (205, 150, 90)
 
 # Town plot positions (x, y) within the town area
 TOWN_PLOTS = {
-    "Lemonade Stand": (20, 25),
-    "Cookie Shop": (170, 25),
-    "Toy Store": (360, 25),
-    "Arcade": (70, 230),
-    "Theme Park": (280, 230),
+    "Lemonade Stand": (10, 15),       # top-left quadrant
+    "Cookie Shop": (200, 15),         # top-right near
+    "Toy Store": (355, 15),           # top-right far
+    "Arcade": (10, 235),              # bottom-left quadrant
+    "Theme Park": (250, 245),         # bottom-right quadrant
 }
 
 
