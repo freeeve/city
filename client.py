@@ -983,9 +983,9 @@ class Client:
         return False
 
     def get_house_positions(self):
-        """Generate house positions in the residential neighbourhood — 1 per 5 population.
+        """Generate house positions in the residential neighbourhood — 1 per 20 population.
         Neighbourhood is to the right of the commercial area."""
-        num_houses = max(1, self.population // 5) if self.population >= 5 else 0
+        num_houses = max(1, self.population // 20) if self.population >= 20 else 0
         if num_houses == 0:
             return []
 
