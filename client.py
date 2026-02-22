@@ -227,6 +227,8 @@ class Client:
         self.scratch_last_pos = None
         self.scratch_rect = pygame.Rect(0, 0, 0, 0)
         self.scratch_clear_btn = pygame.Rect(0, 0, 0, 0)
+        self.scratch_scroll_x = 0
+        self.scratch_pad_w = 0  # visible width, set during draw
 
         self.running = True
 
@@ -2033,13 +2035,34 @@ class Client:
         self.screen.blit(btn_s, (clr_x, clr_y))
         self.draw_text("Clear", self.font_tiny, (220, 225, 240), clr_x + 24, clr_y + 4, center=True)
 
-        # Drawing area
-        if self.scratch_surface is None or self.scratch_surface.get_size() != (pad_w, pad_h):
-            self.scratch_surface = pygame.Surface((pad_w, pad_h))
+        # Drawing area — surface is 3x wider than visible for scrolling
+        self.scratch_pad_w = pad_w
+        total_w = pad_w * 3
+        if self.scratch_surface is None or self.scratch_surface.get_height() != pad_h:
+            self.scratch_surface = pygame.Surface((total_w, pad_h))
             self.scratch_surface.fill((245, 245, 240))
+            self.scratch_scroll_x = 0
         self.scratch_rect = pygame.Rect(pad_x, pad_y, pad_w, pad_h)
-        self.screen.blit(self.scratch_surface, (pad_x, pad_y))
+        # Clamp scroll
+        max_scroll = total_w - pad_w
+        self.scratch_scroll_x = max(0, min(self.scratch_scroll_x, max_scroll))
+        # Blit visible portion
+        self.screen.blit(self.scratch_surface, (pad_x, pad_y),
+                         area=pygame.Rect(self.scratch_scroll_x, 0, pad_w, pad_h))
         pygame.draw.rect(self.screen, (200, 200, 195), (pad_x, pad_y, pad_w, pad_h), 1, border_radius=2)
+
+        # Scroll indicator
+        if total_w > pad_w:
+            bar_y = pad_y + pad_h - 5
+            bar_w = pad_w - 10
+            thumb_w = max(20, int(bar_w * pad_w / total_w))
+            thumb_x = pad_x + 5 + int((bar_w - thumb_w) * self.scratch_scroll_x / max_scroll) if max_scroll > 0 else pad_x + 5
+            track_s = pygame.Surface((bar_w, 4), pygame.SRCALPHA)
+            pygame.draw.rect(track_s, (0, 0, 0, 25), (0, 0, bar_w, 4), border_radius=2)
+            self.screen.blit(track_s, (pad_x + 5, bar_y))
+            thumb_s = pygame.Surface((thumb_w, 4), pygame.SRCALPHA)
+            pygame.draw.rect(thumb_s, (0, 0, 0, 60), (0, 0, thumb_w, 4), border_radius=2)
+            self.screen.blit(thumb_s, (thumb_x, bar_y))
 
     # --- Leaderboard ---
     def draw_leaderboard(self):
@@ -2274,6 +2297,8 @@ class Client:
         if event.type == pygame.MOUSEWHEEL:
             if self.shop_open:
                 self.shop_scroll -= event.y * 30
+            elif self.scratch_rect.collidepoint(pygame.mouse.get_pos()):
+                self.scratch_scroll_x -= event.y * 30
             else:
                 mods = pygame.key.get_mods()
                 if mods & pygame.KMOD_SHIFT:
@@ -2297,11 +2322,12 @@ class Client:
                 elif self.scratch_clear_btn.collidepoint(event.pos):
                     if self.scratch_surface:
                         self.scratch_surface.fill((245, 245, 240))
+                        self.scratch_scroll_x = 0
                 elif self.submit_btn.collidepoint(event.pos):
                     self.submit_answer()
                 elif event.button == 1 and self.scratch_rect.collidepoint(event.pos):
                     self.scratch_drawing = True
-                    self.scratch_last_pos = (event.pos[0] - self.scratch_rect.x,
+                    self.scratch_last_pos = (event.pos[0] - self.scratch_rect.x + self.scratch_scroll_x,
                                              event.pos[1] - self.scratch_rect.y)
                 elif event.button == 1:
                     # Start drag panning in town area
@@ -2317,7 +2343,7 @@ class Client:
         elif event.type == pygame.MOUSEMOTION:
             if self.scratch_drawing and self.scratch_surface and not self.shop_open:
                 if self.scratch_rect.collidepoint(event.pos):
-                    cur = (event.pos[0] - self.scratch_rect.x,
+                    cur = (event.pos[0] - self.scratch_rect.x + self.scratch_scroll_x,
                            event.pos[1] - self.scratch_rect.y)
                     if self.scratch_last_pos:
                         pygame.draw.line(self.scratch_surface, (50, 50, 60),
