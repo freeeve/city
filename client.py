@@ -262,7 +262,8 @@ class Client:
         self.view_player_dir = 'right'
         self.view_player_moving = False
         self.city_visitors = []  # list of visitor dicts from server
-        self.visitor_pos_tick = 0  # throttle counter for position sends
+        self.visitor_pos_tick = 0  # throttle counter for visitor position sends
+        self.own_pos_tick = 0  # throttle counter for own position sends
 
         self.running = True
 
@@ -874,12 +875,13 @@ class Client:
         # --- Town area ---
         self.draw_town()
 
-        # Send own position to server for visitors viewing our city
-        self.visitor_pos_tick += 1
-        if self.visitor_pos_tick >= 3:
-            self.visitor_pos_tick = 0
-            self.send({"type": "own_pos", "x": self.player_x, "y": self.player_y,
-                        "dir": self.player_dir, "moving": self.player_moving})
+        # Send own position to server for visitors viewing our city (only when in own city)
+        if not self.viewing_city:
+            self.own_pos_tick += 1
+            if self.own_pos_tick >= 3:
+                self.own_pos_tick = 0
+                self.send({"type": "own_pos", "x": self.player_x, "y": self.player_y,
+                            "dir": self.player_dir, "moving": self.player_moving})
 
         # --- Shop button ---
         self.shop_btn = self.draw_button("Shop", prob_x + prob_w - 105, prob_y + 8, 95, 36, PURPLE, PURPLE_HOVER)
