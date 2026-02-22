@@ -901,13 +901,18 @@ class Client:
         return False
 
     def get_house_positions(self):
-        """Generate house positions in the residential neighbourhood — one per person."""
+        """Generate house positions in the residential neighbourhood — one per person.
+        Neighbourhood is at the bottom, below all 6 commercial sections."""
         num_houses = max(1, self.population) if self.population > 0 else 0
+        if num_houses == 0:
+            return []
+
+        res_start = RESIDENTIAL_Y_START
+
         positions = []
-        cols = 15  # columns across town width
+        cols = 15
         col_spacing = TOWN_WORLD_W // cols
         row_spacing = HOUSE_H + 30
-        # Pre-compute all valid grid slots (skip road overlaps)
         seed_idx = 0
         placed = 0
         row = 0
@@ -916,13 +921,13 @@ class Client:
                 if placed >= num_houses:
                     break
                 x = col * col_spacing + 10
-                y = RESIDENTIAL_Y_START + row * row_spacing + 30
+                y = res_start + row * row_spacing + 30
                 if not self._overlaps_road(x, y, HOUSE_W + 10, HOUSE_H):
                     positions.append((x, y, seed_idx))
                     placed += 1
                 seed_idx += 1
             row += 1
-            if row > 200:  # safety limit
+            if row > 200:
                 break
         return positions
 
@@ -1100,11 +1105,8 @@ class Client:
         # Generate all plot positions
         all_plots = self.get_plot_positions()
 
-        # Assign buildings to plots
-        plot_assignments = []
-        for name in BUILDING_ORDER:
-            if name in counts:
-                plot_assignments.append((name, counts[name]))
+        # Assign buildings to plots — one per plot, in purchase order
+        plot_assignments = list(self.buildings)
         while len(plot_assignments) < len(all_plots):
             plot_assignments.append(None)
 
@@ -1397,7 +1399,7 @@ class Client:
 
         # Residential neighbourhood label
         if house_positions:
-            label_y = RESIDENTIAL_Y_START - 5
+            label_y = house_positions[0][1] - 25
             label_screen_y = town_y + label_y - sy
             if town_y - 20 < label_screen_y < town_y + view_h + 20:
                 drawables.append((label_y, 'res_label', town_x - sx, label_screen_y))
@@ -1834,7 +1836,7 @@ class Client:
     def _draw_plot_3d(self, abs_x, abs_y, assignment):
         """Draw a single plot with 3D building or empty lot."""
         if assignment is not None:
-            name, count = assignment
+            name = assignment
             inc = BUILDINGS[name][1]
 
             # 3D Building image
@@ -1849,12 +1851,6 @@ class Client:
                 self.screen.blit(shadow, (img_x + 2, img_y + 80))
                 self.screen.blit(img3d, (img_x, img_y))
 
-            # Count badge
-            bx, by = abs_x + PLOT_W - 12, abs_y + 6
-            pygame.draw.circle(self.screen, ACCENT, (bx, by), 14)
-            pygame.draw.circle(self.screen, WHITE, (bx, by), 14, 2)
-            self.draw_text(f"x{count}", self.font_xs, WHITE, bx, by, center=True)
-
             # Name plate
             plate_cx = abs_x + PLOT_W // 2
             plate_y = abs_y + 96
@@ -1865,7 +1861,7 @@ class Client:
             self.draw_text(name, self.font_xs, DARK_GRAY, plate_cx, plate_y + 10, center=True)
 
             # Income label
-            inc_text = f"+{inc * count}/solve"
+            inc_text = f"+{inc}/solve"
             iw = self.font_tiny.size(inc_text)[0] + 10
             inc_s = pygame.Surface((iw, 16), pygame.SRCALPHA)
             pygame.draw.rect(inc_s, (60, 150, 60, 160), (0, 0, iw, 16), border_radius=4)
