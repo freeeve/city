@@ -60,16 +60,16 @@ BRONZE = (205, 150, 90)
 
 # Town layout
 ROAD_THICK = 36
-ROW_HEIGHT = 190
-PLOT_W, PLOT_H = 150, 140
+ROW_HEIGHT = 160
+PLOT_W, PLOT_H = 120, 115
 
 # Grid: columns of plots separated by vertical roads
 # Column positions (x offsets in world space)
-PLOT_COLS = [10, 200, 440, 630, 870, 1060]
+PLOT_COLS = [10, 170, 380, 540, 750, 910]
 # Vertical road x positions (in world space)
-ROAD_V_POSITIONS = [385, 820]
+ROAD_V_POSITIONS = [330, 700]
 # Total town world width
-TOWN_WORLD_W = 1250
+TOWN_WORLD_W = 1070
 
 # Residential neighbourhood
 HOUSE_W, HOUSE_H = 40, 45
@@ -982,6 +982,15 @@ class Client:
                 return True
         return False
 
+    def _overlaps_plot(self, x, y, w, h):
+        """Check if a rectangle overlaps any building plot."""
+        pad = 8
+        for px, py in self.get_plot_positions():
+            if (x + w > px - pad and x < px + PLOT_W + pad and
+                    y + h > py - pad and y < py + PLOT_H + pad):
+                return True
+        return False
+
     def get_house_positions(self):
         """Generate house positions in the residential neighbourhood — 1 per 100 population.
         Neighbourhood is to the right of the commercial area."""
@@ -1327,7 +1336,7 @@ class Client:
             while dy < town_y + view_h + 20:
                 if dy > town_y - 20:
                     world_y = dy - town_y + sy
-                    if not self._overlaps_road(btx, world_y - 10, 20, 12):
+                    if not self._overlaps_road(btx, world_y - 10, 20, 12) and not self._overlaps_plot(btx, world_y - 10, 20, 12):
                         drawables.append((world_y, 'bush', draw_x, dy, bs))
                 dy += 450
 
@@ -1344,7 +1353,7 @@ class Client:
             while dy < town_y + view_h + 40:
                 if dy > town_y - 40:
                     world_y = dy - town_y + sy
-                    if not self._overlaps_road(ttx, world_y - 30, 30, 30):
+                    if not self._overlaps_road(ttx, world_y - 30, 30, 30) and not self._overlaps_plot(ttx, world_y - 30, 30, 30):
                         drawables.append((world_y, 'tree', draw_x, dy, ts))
                 dy += 500
 
@@ -1362,7 +1371,7 @@ class Client:
             while dy < town_y + view_h + 10:
                 if dy > town_y - 10:
                     world_y = dy - town_y + sy
-                    if not self._overlaps_road(ffx, world_y - 5, 10, 10):
+                    if not self._overlaps_road(ffx, world_y - 5, 10, 10) and not self._overlaps_plot(ffx, world_y - 5, 10, 10):
                         drawables.append((world_y, 'flower', draw_x, dy, fc))
                 dy += 400
 
@@ -1386,6 +1395,8 @@ class Client:
         pond_positions = [(70, 80, 36, 20), (470, 300, 30, 18), (170, 550, 34, 20),
                           (560, 700, 32, 18), (100, 900, 36, 22)]
         for ppx, ppy, pw, ph in pond_positions:
+            if self._overlaps_plot(ppx, ppy, pw, ph):
+                continue
             pdx = town_x + ppx - sx
             pdy = town_y + ppy - sy
             if pdx < town_x - 40 or pdx > town_x + view_w + 10:
@@ -1411,6 +1422,8 @@ class Client:
                             (685, 140), (830, 140),
                             (25, 325), (170, 325), (500, 525), (685, 525)]
         for gi, (gx, gy) in enumerate(garden_positions):
+            if self._overlaps_plot(gx, gy, 30, 20):
+                continue
             gdx = town_x + gx - sx
             gdy = town_y + gy - sy
             if gdx < town_x - 15 or gdx > town_x + view_w + 15:
@@ -1916,11 +1929,11 @@ class Client:
             inc = BUILDINGS[name][1]
 
             # 3D Building image (or colored fallback)
-            img_x = abs_x + (PLOT_W - 96) // 2
-            img_y = abs_y + 4
-            shadow = pygame.Surface((104, 18), pygame.SRCALPHA)
-            pygame.draw.ellipse(shadow, (0, 0, 0, 30), (0, 0, 104, 18))
-            self.screen.blit(shadow, (img_x - 2, img_y + 86))
+            img_x = abs_x + (PLOT_W - 72) // 2
+            img_y = abs_y + 2
+            shadow = pygame.Surface((80, 16), pygame.SRCALPHA)
+            pygame.draw.ellipse(shadow, (0, 0, 0, 30), (0, 0, 80, 16))
+            self.screen.blit(shadow, (img_x - 2, img_y + 64))
             if name in self.building_images_3d:
                 self.screen.blit(self.building_images_3d[name], (img_x, img_y))
             else:
@@ -1928,29 +1941,29 @@ class Client:
                 base = BUILDING_COLORS.get(name, (150, 150, 150))
                 dark = (max(0, base[0] - 60), max(0, base[1] - 60), max(0, base[2] - 60))
                 light = (min(255, base[0] + 40), min(255, base[1] + 40), min(255, base[2] + 40))
-                bw, bh = 80, 78
-                bx, by = img_x + 8, img_y + 8
+                bw, bh = 60, 58
+                bx, by = img_x + 6, img_y + 6
                 # Side face
-                side_pts = [(bx + bw, by), (bx + bw + 10, by - 10), (bx + bw + 10, by + bh - 10), (bx + bw, by + bh)]
+                side_pts = [(bx + bw, by), (bx + bw + 8, by - 8), (bx + bw + 8, by + bh - 8), (bx + bw, by + bh)]
                 pygame.draw.polygon(self.screen, dark, side_pts)
                 # Top face
-                top_pts = [(bx, by), (bx + 10, by - 10), (bx + bw + 10, by - 10), (bx + bw, by)]
+                top_pts = [(bx, by), (bx + 8, by - 8), (bx + bw + 8, by - 8), (bx + bw, by)]
                 pygame.draw.polygon(self.screen, light, top_pts)
                 # Front face
                 pygame.draw.rect(self.screen, base, (bx, by, bw, bh))
                 pygame.draw.rect(self.screen, dark, (bx, by, bw, bh), 1)
                 # Windows
-                for wy in range(by + 10, by + bh - 18, 20):
-                    for wx in range(bx + 10, bx + bw - 12, 20):
-                        pygame.draw.rect(self.screen, (180, 210, 240), (wx, wy, 14, 12), border_radius=1)
-                        pygame.draw.rect(self.screen, dark, (wx, wy, 14, 12), 1)
+                for wy in range(by + 8, by + bh - 15, 18):
+                    for wx in range(bx + 8, bx + bw - 10, 18):
+                        pygame.draw.rect(self.screen, (180, 210, 240), (wx, wy, 12, 10), border_radius=1)
+                        pygame.draw.rect(self.screen, dark, (wx, wy, 12, 10), 1)
                 # Door
-                pygame.draw.rect(self.screen, dark, (bx + bw // 2 - 10, by + bh - 22, 20, 22))
-                pygame.draw.rect(self.screen, (max(0, dark[0] - 20), max(0, dark[1] - 20), max(0, dark[2] - 20)), (bx + bw // 2 - 10, by + bh - 22, 20, 22), 1)
+                pygame.draw.rect(self.screen, dark, (bx + bw // 2 - 8, by + bh - 18, 16, 18))
+                pygame.draw.rect(self.screen, (max(0, dark[0] - 20), max(0, dark[1] - 20), max(0, dark[2] - 20)), (bx + bw // 2 - 8, by + bh - 18, 16, 18), 1)
 
             # Name plate
             plate_cx = abs_x + PLOT_W // 2
-            plate_y = abs_y + 104
+            plate_y = abs_y + 80
             tw = self.font_xs.size(name)[0] + 14
             ps = pygame.Surface((tw, 20), pygame.SRCALPHA)
             pygame.draw.rect(ps, (255, 255, 255, 210), (0, 0, tw, 20), border_radius=5)
