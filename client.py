@@ -350,55 +350,61 @@ class Client:
         pygame.draw.rect(self.screen, WHITE, (x + size // 20, y + size // 3, size // 5, size // 3))
 
     def draw_car(self, surf, x, y, car_type, direction='right', scale=1.0):
-        """Draw a car on the given surface at (x, y)."""
+        """Draw a car on the given surface at (x, y), facing its direction of travel."""
         color = CARS[car_type][2]
         dark = (max(0, color[0] - 40), max(0, color[1] - 40), max(0, color[2] - 40))
-        light = (min(255, color[0] + 60), min(255, color[1] + 60), min(255, color[2] + 60))
         window_color = (180, 210, 240)
 
+        # Determine temp surface size for drawing car facing right
         if car_type == "Bicycle":
-            # Small bicycle
-            w, h = int(16 * scale), int(10 * scale)
-            # Wheels
-            pygame.draw.circle(surf, (50, 50, 50), (x - w // 3, y + h // 3), int(3 * scale))
-            pygame.draw.circle(surf, (50, 50, 50), (x + w // 3, y + h // 3), int(3 * scale))
-            # Frame
-            pygame.draw.line(surf, color, (x - w // 3, y + h // 3), (x, y - h // 3), max(1, int(scale)))
-            pygame.draw.line(surf, color, (x + w // 3, y + h // 3), (x, y - h // 3), max(1, int(scale)))
-            pygame.draw.line(surf, color, (x - w // 3, y + h // 3), (x + w // 6, y), max(1, int(scale)))
-            # Seat
-            pygame.draw.rect(surf, dark, (x - int(2 * scale), y - h // 3 - int(2 * scale), int(4 * scale), int(2 * scale)))
+            tw, th = int(20 * scale), int(16 * scale)
         elif car_type == "Bus":
-            # Large bus
-            w, h = int(40 * scale), int(16 * scale)
-            bx = x - w // 2 if direction == 'right' else x - w // 2
-            # Body
-            pygame.draw.rect(surf, color, (bx, y - h // 2, w, h), border_radius=int(3 * scale))
-            # Windows
-            for wx in range(bx + int(4 * scale), bx + w - int(6 * scale), int(8 * scale)):
-                pygame.draw.rect(surf, window_color, (wx, y - h // 2 + int(2 * scale), int(5 * scale), int(5 * scale)), border_radius=1)
-            # Wheels
-            pygame.draw.circle(surf, (40, 40, 40), (bx + int(8 * scale), y + h // 2 - int(1 * scale)), int(3 * scale))
-            pygame.draw.circle(surf, (40, 40, 40), (bx + w - int(8 * scale), y + h // 2 - int(1 * scale)), int(3 * scale))
-            # Stripe
-            pygame.draw.rect(surf, dark, (bx, y + int(2 * scale), w, int(2 * scale)))
+            tw, th = int(46 * scale), int(22 * scale)
         elif car_type == "Fire Truck":
-            # Long fire truck
+            tw, th = int(44 * scale), int(20 * scale)
+        elif car_type == "Scooter":
+            tw, th = int(24 * scale), int(16 * scale)
+        elif car_type == "Sports Car":
+            tw, th = int(34 * scale), int(16 * scale)
+        elif car_type == "Ice Cream Van":
+            tw, th = int(36 * scale), int(22 * scale)
+        else:
+            tw, th = int(30 * scale), int(18 * scale)
+
+        tmp = pygame.Surface((tw, th), pygame.SRCALPHA)
+        cx, cy = tw // 2, th // 2  # center of temp surface
+
+        if car_type == "Bicycle":
+            w, h = int(16 * scale), int(10 * scale)
+            pygame.draw.circle(tmp, (50, 50, 50), (cx - w // 3, cy + h // 3), int(3 * scale))
+            pygame.draw.circle(tmp, (50, 50, 50), (cx + w // 3, cy + h // 3), int(3 * scale))
+            pygame.draw.line(tmp, color, (cx - w // 3, cy + h // 3), (cx, cy - h // 3), max(1, int(scale)))
+            pygame.draw.line(tmp, color, (cx + w // 3, cy + h // 3), (cx, cy - h // 3), max(1, int(scale)))
+            pygame.draw.line(tmp, color, (cx - w // 3, cy + h // 3), (cx + w // 6, cy), max(1, int(scale)))
+            pygame.draw.rect(tmp, dark, (cx - int(2 * scale), cy - h // 3 - int(2 * scale), int(4 * scale), int(2 * scale)))
+        elif car_type == "Bus":
+            w, h = int(40 * scale), int(16 * scale)
+            bx = cx - w // 2
+            pygame.draw.rect(tmp, color, (bx, cy - h // 2, w, h), border_radius=int(3 * scale))
+            for wx in range(bx + int(4 * scale), bx + w - int(6 * scale), int(8 * scale)):
+                pygame.draw.rect(tmp, window_color, (wx, cy - h // 2 + int(2 * scale), int(5 * scale), int(5 * scale)), border_radius=1)
+            pygame.draw.circle(tmp, (40, 40, 40), (bx + int(8 * scale), cy + h // 2 - int(1 * scale)), int(3 * scale))
+            pygame.draw.circle(tmp, (40, 40, 40), (bx + w - int(8 * scale), cy + h // 2 - int(1 * scale)), int(3 * scale))
+            pygame.draw.rect(tmp, dark, (bx, cy + int(2 * scale), w, int(2 * scale)))
+            # Front windshield (right side = front)
+            pygame.draw.rect(tmp, (200, 225, 250), (bx + w - int(6 * scale), cy - h // 2 + int(2 * scale), int(5 * scale), int(8 * scale)), border_radius=1)
+        elif car_type == "Fire Truck":
             w, h = int(38 * scale), int(14 * scale)
-            bx = x - w // 2
-            pygame.draw.rect(surf, color, (bx, y - h // 2, w, h), border_radius=int(2 * scale))
-            # Cab window
-            cab_side = bx + w - int(10 * scale) if direction == 'right' else bx
-            pygame.draw.rect(surf, window_color, (cab_side, y - h // 2 + int(2 * scale), int(8 * scale), int(5 * scale)), border_radius=1)
-            # Ladder on top
-            pygame.draw.rect(surf, (180, 170, 130), (bx + int(4 * scale), y - h // 2 - int(2 * scale), int(20 * scale), int(2 * scale)))
-            # Light on top
+            bx = cx - w // 2
+            pygame.draw.rect(tmp, color, (bx, cy - h // 2, w, h), border_radius=int(2 * scale))
+            # Cab window at front (right side)
+            pygame.draw.rect(tmp, window_color, (bx + w - int(10 * scale), cy - h // 2 + int(2 * scale), int(8 * scale), int(5 * scale)), border_radius=1)
+            pygame.draw.rect(tmp, (180, 170, 130), (bx + int(4 * scale), cy - h // 2 - int(2 * scale), int(20 * scale), int(2 * scale)))
             blink = (self.tick // 8) % 2
             light_c = (255, 50, 50) if blink else (255, 150, 150)
-            pygame.draw.circle(surf, light_c, (bx + w - int(6 * scale), y - h // 2 - int(1 * scale)), int(2 * scale))
-            # Wheels
-            pygame.draw.circle(surf, (40, 40, 40), (bx + int(8 * scale), y + h // 2 - int(1 * scale)), int(3 * scale))
-            pygame.draw.circle(surf, (40, 40, 40), (bx + w - int(8 * scale), y + h // 2 - int(1 * scale)), int(3 * scale))
+            pygame.draw.circle(tmp, light_c, (bx + w - int(6 * scale), cy - h // 2 - int(1 * scale)), int(2 * scale))
+            pygame.draw.circle(tmp, (40, 40, 40), (bx + int(8 * scale), cy + h // 2 - int(1 * scale)), int(3 * scale))
+            pygame.draw.circle(tmp, (40, 40, 40), (bx + w - int(8 * scale), cy + h // 2 - int(1 * scale)), int(3 * scale))
         else:
             # Generic car shape (Scooter, Sedan, Taxi, Sports Car, Ice Cream Van)
             if car_type == "Scooter":
@@ -409,27 +415,38 @@ class Client:
                 w, h = int(30 * scale), int(14 * scale)
             else:
                 w, h = int(24 * scale), int(12 * scale)
-            bx = x - w // 2
-            # Body
-            pygame.draw.rect(surf, color, (bx, y - h // 2, w, h), border_radius=int(3 * scale))
-            # Roof / window
-            roof_w = int(w * 0.5)
-            roof_x = bx + int(w * 0.25) if direction == 'right' else bx + int(w * 0.25)
-            pygame.draw.rect(surf, window_color, (roof_x, y - h // 2 + int(1 * scale), roof_w, int(h * 0.4)), border_radius=int(2 * scale))
+            bx = cx - w // 2
+            pygame.draw.rect(tmp, color, (bx, cy - h // 2, w, h), border_radius=int(3 * scale))
+            # Roof / window (slightly toward back)
+            roof_w = int(w * 0.4)
+            roof_x = bx + int(w * 0.2)
+            pygame.draw.rect(tmp, window_color, (roof_x, cy - h // 2 + int(1 * scale), roof_w, int(h * 0.4)), border_radius=int(2 * scale))
             # Wheels
-            pygame.draw.circle(surf, (40, 40, 40), (bx + int(5 * scale), y + h // 2 - int(1 * scale)), int(2.5 * scale))
-            pygame.draw.circle(surf, (40, 40, 40), (bx + w - int(5 * scale), y + h // 2 - int(1 * scale)), int(2.5 * scale))
-            # Headlight
-            hl_x = bx + w - int(2 * scale) if direction == 'right' else bx + int(2 * scale)
-            pygame.draw.circle(surf, (255, 255, 200), (hl_x, y), int(1.5 * scale))
-            # Ice cream van cone on top
+            pygame.draw.circle(tmp, (40, 40, 40), (bx + int(5 * scale), cy + h // 2 - int(1 * scale)), int(2.5 * scale))
+            pygame.draw.circle(tmp, (40, 40, 40), (bx + w - int(5 * scale), cy + h // 2 - int(1 * scale)), int(2.5 * scale))
+            # Front headlight (right side)
+            pygame.draw.circle(tmp, (255, 255, 200), (bx + w - int(2 * scale), cy), int(1.5 * scale))
+            # Rear taillight (left side)
+            pygame.draw.circle(tmp, (255, 50, 50), (bx + int(2 * scale), cy), int(1 * scale))
             if car_type == "Ice Cream Van":
-                pygame.draw.circle(surf, (255, 220, 180), (bx + w // 2, y - h // 2 - int(3 * scale)), int(3 * scale))
-                pygame.draw.polygon(surf, (200, 160, 100), [
-                    (bx + w // 2 - int(2 * scale), y - h // 2 - int(1 * scale)),
-                    (bx + w // 2, y - h // 2 + int(2 * scale)),
-                    (bx + w // 2 + int(2 * scale), y - h // 2 - int(1 * scale)),
+                pygame.draw.circle(tmp, (255, 220, 180), (bx + w // 2, cy - h // 2 - int(3 * scale)), int(3 * scale))
+                pygame.draw.polygon(tmp, (200, 160, 100), [
+                    (bx + w // 2 - int(2 * scale), cy - h // 2 - int(1 * scale)),
+                    (bx + w // 2, cy - h // 2 + int(2 * scale)),
+                    (bx + w // 2 + int(2 * scale), cy - h // 2 - int(1 * scale)),
                 ])
+
+        # Transform based on direction
+        if direction == 'left':
+            tmp = pygame.transform.flip(tmp, True, False)
+        elif direction == 'up':
+            tmp = pygame.transform.rotate(tmp, 90)
+        elif direction == 'down':
+            tmp = pygame.transform.rotate(tmp, -90)
+
+        # Blit centered on (x, y)
+        rw, rh = tmp.get_size()
+        surf.blit(tmp, (x - rw // 2, y - rh // 2))
 
     def draw_pedestrian(self, surf, x, y, direction='right', color_seed=0):
         """Draw a walking pedestrian (about 18px tall)."""
@@ -902,33 +919,23 @@ class Client:
 
     def get_house_positions(self):
         """Generate house positions in the residential neighbourhood — one per person.
-        Neighbourhood is at the bottom, below all 6 commercial sections."""
+        Neighbourhood is to the right of the commercial area."""
         num_houses = max(1, self.population) if self.population > 0 else 0
         if num_houses == 0:
             return []
 
-        res_start = RESIDENTIAL_Y_START
+        res_x_start = TOWN_WORLD_W + 40  # right of commercial area
+        cols = 8
+        col_spacing = (HOUSE_W + 20)
+        row_spacing = HOUSE_H + 30
 
         positions = []
-        cols = 15
-        col_spacing = TOWN_WORLD_W // cols
-        row_spacing = HOUSE_H + 30
-        seed_idx = 0
-        placed = 0
-        row = 0
-        while placed < num_houses:
-            for col in range(cols):
-                if placed >= num_houses:
-                    break
-                x = col * col_spacing + 10
-                y = res_start + row * row_spacing + 30
-                if not self._overlaps_road(x, y, HOUSE_W + 10, HOUSE_H):
-                    positions.append((x, y, seed_idx))
-                    placed += 1
-                seed_idx += 1
-            row += 1
-            if row > 200:
-                break
+        for i in range(num_houses):
+            col = i % cols
+            row = i // cols
+            x = res_x_start + col * col_spacing
+            y = 30 + row * row_spacing
+            positions.append((x, y, i))
         return positions
 
     def draw_house(self, x, y, color_seed=0):
@@ -1118,10 +1125,11 @@ class Client:
             max_content_y = view_h
             max_content_x = view_w
 
-        # Extend for residential neighbourhood
+        # Extend for residential neighbourhood (to the right)
         house_positions = self.get_house_positions()
         if house_positions:
             max_content_y = max(max_content_y, max(hy for _, hy, _ in house_positions) + HOUSE_H + 40)
+            max_content_x = max(max_content_x, max(hx for hx, _, _ in house_positions) + HOUSE_W + 20)
 
         total_h = max(max_content_y, view_h)
         total_w = max(max_content_x, view_w)
@@ -1399,10 +1407,13 @@ class Client:
 
         # Residential neighbourhood label
         if house_positions:
+            label_x = house_positions[0][0]
             label_y = house_positions[0][1] - 25
+            label_screen_x = town_x + label_x - sx
             label_screen_y = town_y + label_y - sy
-            if town_y - 20 < label_screen_y < town_y + view_h + 20:
-                drawables.append((label_y, 'res_label', town_x - sx, label_screen_y))
+            if (town_y - 20 < label_screen_y < town_y + view_h + 20 and
+                    town_x - 200 < label_screen_x < town_x + view_w + 20):
+                drawables.append((label_y, 'res_label', label_screen_x, label_screen_y))
 
         # Houses in residential neighbourhood
         import random as _house_rng_mod
