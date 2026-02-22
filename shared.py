@@ -122,18 +122,127 @@ PORT = 5555
 MAX_PLAYERS = 6
 
 
-def generate_problem():
-    """Return a dict with 'text' (str) and 'answer' (int) for a kid-friendly math problem."""
-    kind = random.choice(["add", "sub", "mul"])
-    if kind == "add":
-        a = random.randint(1, 50)
-        b = random.randint(1, 50)
-        return {"text": f"{a} + {b}", "answer": a + b, "reward": 5}
-    elif kind == "sub":
-        a = random.randint(10, 60)
-        b = random.randint(1, a)
-        return {"text": f"{a} - {b}", "answer": a - b, "reward": 5}
-    else:  # mul
-        a = random.randint(2, 12)
-        b = random.randint(2, 12)
-        return {"text": f"{a} × {b}", "answer": a * b, "reward": 10}
+GRADE_LABELS = {
+    1: "Easy Addition",
+    2: "Basic Arithmetic",
+    3: "Times Tables",
+    4: "Division",
+    5: "Harder Numbers",
+    6: "Order of Operations",
+    7: "Exponents & Negatives",
+    8: "Multi-Step Problems",
+}
+
+
+def generate_problem(grade=3):
+    """Return a dict with 'text' (str) and 'answer' (int) for a math problem scaled to grade level."""
+    grade = max(1, min(8, grade))
+
+    if grade == 1:
+        kind = random.choice(["add", "sub"])
+        a = random.randint(1, 10)
+        b = random.randint(1, 10)
+        if kind == "add":
+            return {"text": f"{a} + {b}", "answer": a + b, "reward": 3}
+        else:
+            a, b = max(a, b), min(a, b)
+            return {"text": f"{a} - {b}", "answer": a - b, "reward": 3}
+
+    elif grade == 2:
+        kind = random.choice(["add", "sub", "mul"])
+        if kind == "add":
+            a = random.randint(1, 20)
+            b = random.randint(1, 20)
+            return {"text": f"{a} + {b}", "answer": a + b, "reward": 5}
+        elif kind == "sub":
+            a = random.randint(5, 20)
+            b = random.randint(1, a)
+            return {"text": f"{a} - {b}", "answer": a - b, "reward": 5}
+        else:
+            a = random.randint(2, 5)
+            b = random.randint(2, 5)
+            return {"text": f"{a} × {b}", "answer": a * b, "reward": 5}
+
+    elif grade == 3:
+        kind = random.choice(["add", "sub", "mul"])
+        if kind == "add":
+            a = random.randint(1, 50)
+            b = random.randint(1, 50)
+            return {"text": f"{a} + {b}", "answer": a + b, "reward": 5}
+        elif kind == "sub":
+            a = random.randint(10, 50)
+            b = random.randint(1, a)
+            return {"text": f"{a} - {b}", "answer": a - b, "reward": 5}
+        else:
+            a = random.randint(2, 12)
+            b = random.randint(2, 12)
+            return {"text": f"{a} × {b}", "answer": a * b, "reward": 10}
+
+    elif grade == 4:
+        kind = random.choice(["add", "mul", "div"])
+        if kind == "add":
+            a = random.randint(10, 100)
+            b = random.randint(10, 100)
+            return {"text": f"{a} + {b}", "answer": a + b, "reward": 8}
+        elif kind == "mul":
+            a = random.randint(2, 12)
+            b = random.randint(2, 12)
+            return {"text": f"{a} × {b}", "answer": a * b, "reward": 12}
+        else:
+            b = random.randint(2, 12)
+            answer = random.randint(2, 12)
+            a = b * answer
+            return {"text": f"{a} ÷ {b}", "answer": answer, "reward": 12}
+
+    elif grade == 5:
+        kind = random.choice(["add", "mul", "div"])
+        if kind == "add":
+            a = random.randint(10, 200)
+            b = random.randint(10, 200)
+            return {"text": f"{a} + {b}", "answer": a + b, "reward": 10}
+        elif kind == "mul":
+            a = random.randint(5, 15)
+            b = random.randint(5, 15)
+            return {"text": f"{a} × {b}", "answer": a * b, "reward": 15}
+        else:
+            b = random.randint(3, 15)
+            answer = random.randint(3, 15)
+            a = b * answer
+            return {"text": f"{a} ÷ {b}", "answer": answer, "reward": 15}
+
+    elif grade == 6:
+        kind = random.choice(["mul", "ooo"])
+        if kind == "mul":
+            a = random.randint(10, 25)
+            b = random.randint(10, 25)
+            return {"text": f"{a} × {b}", "answer": a * b, "reward": 15}
+        else:
+            a = random.randint(2, 15)
+            b = random.randint(2, 10)
+            c = random.randint(2, 10)
+            return {"text": f"{a} + {b} × {c}", "answer": a + b * c, "reward": 20}
+
+    elif grade == 7:
+        kind = random.choice(["exp", "neg"])
+        if kind == "exp":
+            base = random.randint(2, 10)
+            exp = random.choice([2, 3])
+            sym = "²" if exp == 2 else "³"
+            return {"text": f"{base}{sym}", "answer": base ** exp, "reward": 20}
+        else:
+            a = random.randint(-20, -1)
+            b = random.randint(-20, 20)
+            return {"text": f"({a}) + ({b})", "answer": a + b, "reward": 25}
+
+    else:  # grade 8
+        kind = random.choice(["multi", "pct"])
+        if kind == "multi":
+            a = random.randint(2, 10)
+            b = random.randint(2, 10)
+            c = random.randint(2, 10)
+            d = random.randint(2, 10)
+            return {"text": f"{a}×{b} + {c}×{d}", "answer": a * b + c * d, "reward": 25}
+        else:
+            pct = random.choice([10, 20, 25, 50])
+            num = random.choice([40, 60, 80, 100, 120, 200, 250, 500])
+            return {"text": f"{pct}% of {num}", "answer": pct * num // 100, "reward": 30}

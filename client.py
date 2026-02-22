@@ -6,7 +6,7 @@ import threading
 import json
 import os
 import math
-from shared import BUILDINGS, BUILDING_ORDER, BUILDING_COLORS, CARS, CAR_ORDER, BUILDING_POPULATION, UNLOCK_REQUIREMENTS, PORT
+from shared import BUILDINGS, BUILDING_ORDER, BUILDING_COLORS, CARS, CAR_ORDER, BUILDING_POPULATION, UNLOCK_REQUIREMENTS, GRADE_LABELS, PORT
 
 # --- Constants ---
 WIDTH, HEIGHT = 1000, 750
@@ -204,6 +204,9 @@ class Client:
         self.name_text = ""
         self.active_field = "name"
         self.connect_error = ""
+        self.grade = 3
+        self.grade_left_btn = pygame.Rect(0, 0, 0, 0)
+        self.grade_right_btn = pygame.Rect(0, 0, 0, 0)
 
         # Game screen input
         self.answer_text = ""
@@ -218,6 +221,13 @@ class Client:
         # Shop scrolling
         self.shop_scroll = 0
 
+        # Scratch pad
+        self.scratch_surface = None  # created on first draw
+        self.scratch_drawing = False
+        self.scratch_last_pos = None
+        self.scratch_rect = pygame.Rect(0, 0, 0, 0)
+        self.scratch_clear_btn = pygame.Rect(0, 0, 0, 0)
+
         self.running = True
 
     # --- Networking ---
@@ -227,7 +237,7 @@ class Client:
             self.sock.settimeout(5)
             self.sock.connect((ip, PORT))
             self.sock.settimeout(None)
-            msg = json.dumps({"type": "join", "name": name}) + "\n"
+            msg = json.dumps({"type": "join", "name": name, "grade": self.grade}) + "\n"
             self.sock.sendall(msg.encode())
             self.connected = True
             self.recv_thread = threading.Thread(target=self.recv_loop, daemon=True)
@@ -597,9 +607,9 @@ class Client:
             self.screen.blit(glow, (lx - 18, ground_y - 30))
 
         # Center card with glass effect
-        card_w, card_h = 460, 400
+        card_w, card_h = 460, 470
         card_x = (WIDTH - card_w) // 2
-        card_y = 140
+        card_y = 110
         # Card glow
         glow_s = pygame.Surface((card_w + 30, card_h + 30), pygame.SRCALPHA)
         pygame.draw.rect(glow_s, (255, 255, 255, 10), (0, 0, card_w + 30, card_h + 30), border_radius=22)
@@ -638,11 +648,46 @@ class Client:
         self.draw_text("Server IP", self.font_xs, (170, 175, 195), fx, card_y + 200)
         self.ip_rect = self._draw_dark_input(self.ip_text, fx, card_y + 223, fw, 42, self.active_field == "ip")
 
-        self.connect_btn = self.draw_button("Play", fx + 50, card_y + 300, fw - 100, 52, GREEN, GREEN_HOVER, self.font_med)
+        # Grade selector
+        self.draw_text("Math Level", self.font_xs, (170, 175, 195), fx, card_y + 280)
+        grade_y = card_y + 303
+        arrow_w, arrow_h = 38, 36
+        grade_text = f"Grade {self.grade}"
+        grade_desc = GRADE_LABELS.get(self.grade, "")
+
+        # Left arrow
+        self.grade_left_btn = pygame.Rect(fx, grade_y, arrow_w, arrow_h)
+        left_color = (50, 55, 80) if self.grade > 1 else (30, 33, 50)
+        s = pygame.Surface((arrow_w, arrow_h), pygame.SRCALPHA)
+        pygame.draw.rect(s, (*left_color, 200), (0, 0, arrow_w, arrow_h), border_radius=6)
+        self.screen.blit(s, (fx, grade_y))
+        pygame.draw.rect(self.screen, (80, 85, 110), (fx, grade_y, arrow_w, arrow_h), 1, border_radius=6)
+        lc = (200, 205, 220) if self.grade > 1 else (80, 85, 100)
+        self.draw_text("<", self.font_sm, lc, fx + arrow_w // 2, grade_y + arrow_h // 2 - 9, center=True)
+
+        # Grade text in center
+        center_x = fx + fw // 2
+        self.draw_text(grade_text, self.font_sm, (230, 235, 245), center_x, grade_y + 4, center=True)
+
+        # Right arrow
+        rx = fx + fw - arrow_w
+        self.grade_right_btn = pygame.Rect(rx, grade_y, arrow_w, arrow_h)
+        right_color = (50, 55, 80) if self.grade < 8 else (30, 33, 50)
+        s = pygame.Surface((arrow_w, arrow_h), pygame.SRCALPHA)
+        pygame.draw.rect(s, (*right_color, 200), (0, 0, arrow_w, arrow_h), border_radius=6)
+        self.screen.blit(s, (rx, grade_y))
+        pygame.draw.rect(self.screen, (80, 85, 110), (rx, grade_y, arrow_w, arrow_h), 1, border_radius=6)
+        rc = (200, 205, 220) if self.grade < 8 else (80, 85, 100)
+        self.draw_text(">", self.font_sm, rc, rx + arrow_w // 2, grade_y + arrow_h // 2 - 9, center=True)
+
+        # Description below
+        self.draw_text(grade_desc, self.font_xs, (140, 145, 170), center_x, grade_y + 40, center=True)
+
+        self.connect_btn = self.draw_button("Play", fx + 50, card_y + 370, fw - 100, 52, GREEN, GREEN_HOVER, self.font_med)
 
         if self.connect_error:
             color = (170, 175, 195) if self.connect_error == "Connecting..." else (255, 100, 100)
-            self.draw_text(self.connect_error, self.font_xs, color, WIDTH // 2, card_y + 370, center=True)
+            self.draw_text(self.connect_error, self.font_xs, color, WIDTH // 2, card_y + 440, center=True)
 
     def _draw_dark_input(self, text, x, y, w, h, active=False):
         """Dark-themed input field for connect screen."""
@@ -661,6 +706,10 @@ class Client:
                 self.active_field = "name"
             elif self.ip_rect.collidepoint(event.pos):
                 self.active_field = "ip"
+            elif self.grade_left_btn.collidepoint(event.pos):
+                self.grade = max(1, self.grade - 1)
+            elif self.grade_right_btn.collidepoint(event.pos):
+                self.grade = min(8, self.grade + 1)
             elif self.connect_btn.collidepoint(event.pos):
                 self.try_connect()
         elif event.type == pygame.KEYDOWN:
@@ -761,6 +810,9 @@ class Client:
 
         # --- Shop button ---
         self.shop_btn = self.draw_button("Shop", prob_x + prob_w - 105, prob_y + 8, 95, 36, PURPLE, PURPLE_HOVER)
+
+        # --- Scratch Pad ---
+        self.draw_scratch_pad()
 
         # --- Leaderboard ---
         self.draw_leaderboard()
@@ -1803,7 +1855,7 @@ class Client:
     def _draw_hroad_3d(self, section, hy, town_x, town_y, view_w, view_h, total_w, sx):
         """Draw a horizontal road with 3D curb edges."""
         road_draw_x = town_x - sx - 10
-        road_draw_w = total_w + 60
+        road_draw_w = town_x + TOWN_WORLD_W - sx - road_draw_x + 10
         # Sidewalk with curb
         pygame.draw.rect(self.screen, (185, 180, 170), (road_draw_x, hy - 7, road_draw_w, ROAD_THICK + 14))
         pygame.draw.rect(self.screen, SIDEWALK, (road_draw_x, hy - 5, road_draw_w, ROAD_THICK + 10))
@@ -1951,25 +2003,64 @@ class Client:
             self.screen.blit(sign_top, (sign_cx - 36, sign_y - 8))
             self.draw_text("FOR SALE", self.font_tiny, FENCE_COLOR, sign_cx, sign_y + 5, center=True)
 
+    # --- Scratch Pad ---
+    def draw_scratch_pad(self):
+        lx = 635
+        sp_w = WIDTH - lx - 15
+        sp_h = 170
+        sp_y = 72
+        pad_x = lx + 6
+        pad_y = sp_y + 36
+        pad_w = sp_w - 12
+        pad_h = sp_h - 42
+
+        # Card
+        self.draw_shadow(lx, sp_y, sp_w, sp_h, radius=14, alpha=20)
+        pygame.draw.rect(self.screen, WHITE, (lx, sp_y, sp_w, sp_h), border_radius=14)
+
+        # Header
+        self.draw_gradient_rect(lx, sp_y, sp_w, 32, HEADER_TOP, HEADER_BOT, radius=14)
+        pygame.draw.rect(self.screen, HEADER_BOT, (lx, sp_y + 22, sp_w, 10))
+        pygame.draw.rect(self.screen, WHITE, (lx, sp_y + 30, sp_w, 6))
+        self.draw_text("Scratch Paper", self.font_xs, WHITE, lx + 14, sp_y + 8)
+
+        # Clear button in header
+        clr_x = lx + sp_w - 58
+        clr_y = sp_y + 5
+        self.scratch_clear_btn = pygame.Rect(clr_x, clr_y, 48, 22)
+        btn_s = pygame.Surface((48, 22), pygame.SRCALPHA)
+        pygame.draw.rect(btn_s, (255, 255, 255, 50), (0, 0, 48, 22), border_radius=4)
+        self.screen.blit(btn_s, (clr_x, clr_y))
+        self.draw_text("Clear", self.font_tiny, (220, 225, 240), clr_x + 24, clr_y + 4, center=True)
+
+        # Drawing area
+        if self.scratch_surface is None or self.scratch_surface.get_size() != (pad_w, pad_h):
+            self.scratch_surface = pygame.Surface((pad_w, pad_h))
+            self.scratch_surface.fill((245, 245, 240))
+        self.scratch_rect = pygame.Rect(pad_x, pad_y, pad_w, pad_h)
+        self.screen.blit(self.scratch_surface, (pad_x, pad_y))
+        pygame.draw.rect(self.screen, (200, 200, 195), (pad_x, pad_y, pad_w, pad_h), 1, border_radius=2)
+
     # --- Leaderboard ---
     def draw_leaderboard(self):
         lx = 635
         lb_w = WIDTH - lx - 15
-        lb_h = HEIGHT - 215
+        lb_top = 252
+        lb_h = HEIGHT - lb_top - 15
 
         # Card
-        self.draw_shadow(lx, 200, lb_w, lb_h, radius=14, alpha=20)
-        pygame.draw.rect(self.screen, WHITE, (lx, 200, lb_w, lb_h), border_radius=14)
+        self.draw_shadow(lx, lb_top, lb_w, lb_h, radius=14, alpha=20)
+        pygame.draw.rect(self.screen, WHITE, (lx, lb_top, lb_w, lb_h), border_radius=14)
 
         # Header
-        self.draw_gradient_rect(lx, 200, lb_w, 42, HEADER_TOP, HEADER_BOT, radius=14)
+        self.draw_gradient_rect(lx, lb_top, lb_w, 42, HEADER_TOP, HEADER_BOT, radius=14)
         # Fix bottom corners of header (overlap with card body)
-        pygame.draw.rect(self.screen, HEADER_BOT, (lx, 228, lb_w, 14))
-        pygame.draw.rect(self.screen, WHITE, (lx, 236, lb_w, 10))
-        self.draw_text("Leaderboard", self.font_sm, WHITE, lx + lb_w // 2, 214, center=True)
+        pygame.draw.rect(self.screen, HEADER_BOT, (lx, lb_top + 28, lb_w, 14))
+        pygame.draw.rect(self.screen, WHITE, (lx, lb_top + 36, lb_w, 10))
+        self.draw_text("Leaderboard", self.font_sm, WHITE, lx + lb_w // 2, lb_top + 14, center=True)
 
         medal_colors = [GOLD, SILVER, BRONZE]
-        y = 255
+        y = lb_top + 55
         for i, entry in enumerate(self.leaderboard[:6]):
             name = entry["name"]
             if len(name) > 10:
@@ -2203,8 +2294,15 @@ class Client:
                     self.shop_open = True
                     self.shop_scroll = 0
                     self.buy_buttons = []
+                elif self.scratch_clear_btn.collidepoint(event.pos):
+                    if self.scratch_surface:
+                        self.scratch_surface.fill((245, 245, 240))
                 elif self.submit_btn.collidepoint(event.pos):
                     self.submit_answer()
+                elif event.button == 1 and self.scratch_rect.collidepoint(event.pos):
+                    self.scratch_drawing = True
+                    self.scratch_last_pos = (event.pos[0] - self.scratch_rect.x,
+                                             event.pos[1] - self.scratch_rect.y)
                 elif event.button == 1:
                     # Start drag panning in town area
                     town_rect = pygame.Rect(15, 200, 605, HEIGHT - 215)
@@ -2214,8 +2312,20 @@ class Client:
                         self.drag_scroll_start = (self.town_scroll_x, self.town_scroll_y)
         elif event.type == pygame.MOUSEBUTTONUP:
             self.town_dragging = False
+            self.scratch_drawing = False
+            self.scratch_last_pos = None
         elif event.type == pygame.MOUSEMOTION:
-            if self.town_dragging and not self.shop_open:
+            if self.scratch_drawing and self.scratch_surface and not self.shop_open:
+                if self.scratch_rect.collidepoint(event.pos):
+                    cur = (event.pos[0] - self.scratch_rect.x,
+                           event.pos[1] - self.scratch_rect.y)
+                    if self.scratch_last_pos:
+                        pygame.draw.line(self.scratch_surface, (50, 50, 60),
+                                         self.scratch_last_pos, cur, 2)
+                    self.scratch_last_pos = cur
+                else:
+                    self.scratch_last_pos = None
+            elif self.town_dragging and not self.shop_open:
                 dx = self.drag_start[0] - event.pos[0]
                 dy = self.drag_start[1] - event.pos[1]
                 self.town_scroll_x = self.drag_scroll_start[0] + dx

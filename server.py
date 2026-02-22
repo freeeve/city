@@ -17,6 +17,7 @@ class Player:
         self.coins = 0
         self.buildings = []  # list of building names owned
         self.cars = []  # list of car names owned
+        self.grade = 3
         self.problem = generate_problem()
 
 
@@ -47,6 +48,7 @@ class GameServer:
                 "coins": p.coins,
                 "buildings": p.buildings[:],
                 "cars": p.cars[:],
+                "grade": p.grade,
             }
         try:
             tmp = SAVE_FILE + ".tmp"
@@ -63,6 +65,9 @@ class GameServer:
             player.coins = data.get("coins", 0)
             player.buildings = data.get("buildings", [])
             player.cars = data.get("cars", [])
+            saved_grade = data.get("grade", None)
+            if saved_grade is not None:
+                player.grade = saved_grade
             print(f"  Restored {player.name}: {player.coins} coins, {len(player.buildings)} buildings, {len(player.cars)} cars")
 
     def get_leaderboard(self):
@@ -143,9 +148,11 @@ class GameServer:
                                 conn.close()
                                 return
                             player = Player(conn, addr, msg["name"])
+                            player.grade = max(1, min(8, msg.get("grade", 3)))
+                            player.problem = generate_problem(player.grade)
                             self._restore_player(player)
                             self.players[addr] = player
-                            print(f"{msg['name']} joined from {addr}")
+                            print(f"{msg['name']} joined from {addr} (grade {player.grade})")
                         self.broadcast_states()
 
                     elif msg["type"] == "answer" and player:
@@ -164,7 +171,7 @@ class GameServer:
                             else:
                                 reward = 0
                                 result = "wrong"
-                            player.problem = generate_problem()
+                            player.problem = generate_problem(player.grade)
                             self.send_to(player, {
                                 "type": "result",
                                 "result": result,
