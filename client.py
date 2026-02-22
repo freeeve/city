@@ -1012,7 +1012,7 @@ class Client:
 
     def _overlaps_road(self, x, y, w, h):
         """Check if a rectangle overlaps any vertical or horizontal road."""
-        road_pad = 12  # sidewalk + curb buffer
+        road_pad = 20  # sidewalk + curb buffer (wider to keep visuals off road)
         for rvx in ROAD_V_POSITIONS:
             if x + w > rvx - road_pad and x < rvx + ROAD_THICK + road_pad:
                 return True
@@ -1023,6 +1023,18 @@ class Client:
             if road_y > RESIDENTIAL_Y_START - 50:
                 break  # no horizontal roads in residential area
             if y + h > road_y - road_pad and y < road_y + ROAD_THICK + road_pad:
+                return True
+        return False
+
+    def _on_horizontal_road(self, world_y):
+        """Check if a y position falls on a horizontal road."""
+        pad = 20  # buffer for lamp/object height
+        section_h = ROW_HEIGHT * 2 + ROAD_THICK + 16
+        for section in range(8):
+            road_y = section * section_h + ROW_HEIGHT * 2 - 15
+            if road_y > RESIDENTIAL_Y_START - 50:
+                break
+            if world_y + pad > road_y - pad and world_y - pad < road_y + ROAD_THICK + pad:
                 return True
         return False
 
@@ -1385,10 +1397,10 @@ class Client:
                 dy += 450
 
         # Trees (only on grass)
-        tree_templates = [(130, 50, 0.9), (260, 120, 1.15), (40, 300, 1.0),
-                          (520, 280, 0.9), (750, 200, 1.1), (900, 100, 0.75),
-                          (450, 50, 1.0), (180, 350, 0.85), (370, 200, 0.95),
-                          (810, 320, 0.8)]
+        tree_templates = [(130, 50, 0.9), (240, 120, 1.15), (40, 300, 1.0),
+                          (520, 280, 0.9), (770, 200, 1.1), (900, 100, 0.75),
+                          (450, 50, 1.0), (180, 350, 0.85), (480, 200, 0.95),
+                          (830, 320, 0.8)]
         for ttx, tty, ts in tree_templates:
             draw_x = town_x + ttx - sx
             if draw_x < town_x - 40 or draw_x > town_x + view_w + 40:
@@ -1419,12 +1431,15 @@ class Client:
                         drawables.append((world_y, 'flower', draw_x, dy, fc))
                 dy += 400
 
-        # Street lamps along vertical roads
+        # Street lamps along vertical roads (skip horizontal road intersections)
         for road_vx in ROAD_V_POSITIONS:
             lamp_x = town_x + road_vx - sx - 12
             for lamp_world_y in range(60, max_content_y, 120):
                 lamp_dy = town_y + lamp_world_y - sy
                 if lamp_dy < town_y - 40 or lamp_dy > town_y + view_h + 10:
+                    continue
+                # Skip if on a horizontal road
+                if self._on_horizontal_road(lamp_world_y):
                     continue
                 drawables.append((lamp_world_y, 'lamp', lamp_x, lamp_dy))
             # Lamps on right side too
@@ -1432,6 +1447,8 @@ class Client:
             for lamp_world_y in range(120, max_content_y, 120):
                 lamp_dy = town_y + lamp_world_y - sy
                 if lamp_dy < town_y - 40 or lamp_dy > town_y + view_h + 10:
+                    continue
+                if self._on_horizontal_road(lamp_world_y):
                     continue
                 drawables.append((lamp_world_y, 'lamp', lamp_x2, lamp_dy))
 
@@ -1453,6 +1470,8 @@ class Client:
         bench_positions = [(270, 50), (610, 130), (270, 280), (610, 400),
                            (270, 520), (610, 650)]
         for bbx, bby in bench_positions:
+            if self._overlaps_road(bbx, bby, 20, 10):
+                continue
             bdx = town_x + bbx - sx
             bdy = town_y + bby - sy
             if bdx < town_x - 25 or bdx > town_x + view_w + 10:
@@ -1462,11 +1481,11 @@ class Client:
             drawables.append((bby, 'bench', bdx, bdy))
 
         # Flower gardens near building plots
-        garden_positions = [(25, 140), (170, 140), (355, 140), (500, 140),
-                            (685, 140), (830, 140),
-                            (25, 325), (170, 325), (500, 525), (685, 525)]
+        garden_positions = [(25, 140), (170, 140), (400, 140), (500, 140),
+                            (770, 140), (830, 140),
+                            (25, 325), (170, 325), (500, 525), (770, 525)]
         for gi, (gx, gy) in enumerate(garden_positions):
-            if self._overlaps_plot(gx, gy, 30, 20):
+            if self._overlaps_plot(gx, gy, 30, 20) or self._overlaps_road(gx, gy, 30, 20):
                 continue
             gdx = town_x + gx - sx
             gdy = town_y + gy - sy
