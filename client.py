@@ -874,6 +874,13 @@ class Client:
         # --- Town area ---
         self.draw_town()
 
+        # Send own position to server for visitors viewing our city
+        self.visitor_pos_tick += 1
+        if self.visitor_pos_tick >= 3:
+            self.visitor_pos_tick = 0
+            self.send({"type": "own_pos", "x": self.player_x, "y": self.player_y,
+                        "dir": self.player_dir, "moving": self.player_moving})
+
         # --- Shop button ---
         self.shop_btn = self.draw_button("Shop", prob_x + prob_w - 105, prob_y + 8, 95, 36, PURPLE, PURPLE_HOVER)
 
@@ -1609,7 +1616,7 @@ class Client:
                 town_y - 30 < player_screen_y < town_y + view_h + 15):
             drawables.append((self.player_y, 'player', player_screen_x, player_screen_y))
 
-        # Visitor characters (other players viewing same city)
+        # Visitor characters (other players viewing same city, or city owner)
         for visitor in self.city_visitors:
             vx = visitor.get("x", 80)
             vy = visitor.get("y", 140)
@@ -1619,7 +1626,7 @@ class Client:
                     town_y - 30 < v_screen_y < town_y + view_h + 15):
                 drawables.append((vy, 'visitor', v_screen_x, v_screen_y,
                                   visitor.get("dir", "right"), visitor.get("name", ""),
-                                  visitor.get("seed", 0)))
+                                  visitor.get("seed", 0), visitor.get("is_owner", False)))
 
         # Residential neighbourhood label
         if house_positions:
@@ -1723,17 +1730,19 @@ class Client:
                 tag_s.blit(label, (3, 1))
                 self.screen.blit(tag_s, (int(px) - (lw + 6) // 2, int(py) + 10))
             elif kind == 'visitor':
-                _, _, vx, vy, vdir, vname, vseed = item
+                _, _, vx, vy, vdir, vname, vseed, vis_owner = item
                 # Shadow
                 shadow_s = pygame.Surface((20, 8), pygame.SRCALPHA)
                 pygame.draw.ellipse(shadow_s, (0, 0, 0, 30), shadow_s.get_rect())
                 self.screen.blit(shadow_s, (int(vx) - 10, int(vy) + 4))
                 # Body
                 self.draw_pedestrian(self.screen, vx, vy, direction=vdir, color_seed=vseed)
-                # Blue triangle indicator
+                # Triangle indicator — green for owner, blue for visitor
+                tri_color = (60, 200, 80) if vis_owner else (60, 140, 255)
+                tag_bg = (0, 100, 20, 140) if vis_owner else (0, 0, 120, 140)
                 tri_x = int(vx)
                 tri_y = int(vy) - 24
-                pygame.draw.polygon(self.screen, (60, 140, 255),
+                pygame.draw.polygon(self.screen, tri_color,
                                     [(tri_x, tri_y + 7), (tri_x - 5, tri_y), (tri_x + 5, tri_y)])
                 pygame.draw.polygon(self.screen, (255, 255, 255),
                                     [(tri_x, tri_y + 7), (tri_x - 5, tri_y), (tri_x + 5, tri_y)], 1)
@@ -1741,7 +1750,7 @@ class Client:
                 label = self.font_tiny.render(vname, True, (255, 255, 255))
                 lw, lh = label.get_size()
                 tag_s = pygame.Surface((lw + 6, lh + 2), pygame.SRCALPHA)
-                pygame.draw.rect(tag_s, (0, 0, 120, 140), (0, 0, lw + 6, lh + 2), border_radius=3)
+                pygame.draw.rect(tag_s, tag_bg, (0, 0, lw + 6, lh + 2), border_radius=3)
                 tag_s.blit(label, (3, 1))
                 self.screen.blit(tag_s, (int(vx) - (lw + 6) // 2, int(vy) + 10))
             elif kind == 'plot':
@@ -1770,10 +1779,19 @@ class Client:
         self.screen.set_clip(None)
 
         # Town label (on top, not scrolled)
-        ls = pygame.Surface((130, 28), pygame.SRCALPHA)
-        pygame.draw.rect(ls, (255, 255, 255, 190), (0, 0, 130, 28), border_radius=8)
-        self.screen.blit(ls, (town_x + 6, town_y + 6))
-        self.draw_text("Your Town", self.font_sm, GRASS_3, town_x + 71, town_y + 20, center=True)
+        n_vis = len(self.city_visitors) if not self.viewing_city else 0
+        if n_vis > 0:
+            lbl = f"Your Town  ({n_vis} visitor{'s' if n_vis != 1 else ''})"
+            lw_px = self.font_sm.size(lbl)[0] + 16
+            ls = pygame.Surface((lw_px, 28), pygame.SRCALPHA)
+            pygame.draw.rect(ls, (255, 255, 255, 190), (0, 0, lw_px, 28), border_radius=8)
+            self.screen.blit(ls, (town_x + 6, town_y + 6))
+            self.draw_text(lbl, self.font_sm, GRASS_3, town_x + 6 + lw_px // 2, town_y + 20, center=True)
+        else:
+            ls = pygame.Surface((130, 28), pygame.SRCALPHA)
+            pygame.draw.rect(ls, (255, 255, 255, 190), (0, 0, 130, 28), border_radius=8)
+            self.screen.blit(ls, (town_x + 6, town_y + 6))
+            self.draw_text("Your Town", self.font_sm, GRASS_3, town_x + 71, town_y + 20, center=True)
 
         # Vertical scrollbar
         if max_scroll_y > 0:
@@ -3075,8 +3093,12 @@ class Client:
         self.player_dir = save_player_dir
         self.player_moving = save_player_moving
 
-        # "View only" label
-        self.draw_text("View Only", self.font_xs, (180, 210, 255), WIDTH // 2, 45, center=True)
+        # "View only" label + visitor count
+        n_visitors = len(self.city_visitors)
+        if n_visitors > 0:
+            self.draw_text(f"View Only  |  {n_visitors} visitor{'s' if n_visitors != 1 else ''} here", self.font_xs, (180, 210, 255), WIDTH // 2, 45, center=True)
+        else:
+            self.draw_text("View Only", self.font_xs, (180, 210, 255), WIDTH // 2, 45, center=True)
 
     # --- Shop ---
     def draw_shop(self):

@@ -25,6 +25,10 @@ class Player:
         self.visitor_y = 140.0
         self.visitor_dir = 'right'
         self.visitor_moving = False
+        self.own_x = 80.0   # position in own city (for owner visibility)
+        self.own_y = 140.0
+        self.own_dir = 'right'
+        self.own_moving = False
 
 
 class GameServer:
@@ -109,10 +113,13 @@ class GameServer:
         return total
 
     def get_visitors_of(self, city_owner_name, exclude_addr=None):
-        """Return list of visitor dicts for all players viewing the given city."""
+        """Return list of visitor dicts for all players viewing the given city,
+        plus the city owner themselves if they're online and in their own city."""
         visitors = []
         for addr, p in self.players.items():
-            if p.viewing_city_of == city_owner_name and addr != exclude_addr:
+            if addr == exclude_addr:
+                continue
+            if p.viewing_city_of == city_owner_name:
                 visitors.append({
                     "name": p.name,
                     "x": p.visitor_x,
@@ -121,12 +128,26 @@ class GameServer:
                     "moving": p.visitor_moving,
                     "seed": hash(p.name) & 0xFFFF,
                 })
+            elif p.name == city_owner_name and p.viewing_city_of is None:
+                visitors.append({
+                    "name": p.name,
+                    "x": p.own_x,
+                    "y": p.own_y,
+                    "dir": p.own_dir,
+                    "moving": p.own_moving,
+                    "seed": hash(p.name) & 0xFFFF,
+                    "is_owner": True,
+                })
         return visitors
 
     def broadcast_visitors(self, city_owner_name):
-        """Send visitor list to each player viewing the given city."""
+        """Send visitor list to each player viewing the given city,
+        and also to the city owner if they're online."""
         for addr, p in list(self.players.items()):
             if p.viewing_city_of == city_owner_name:
+                visitors = self.get_visitors_of(city_owner_name, exclude_addr=addr)
+                self.send_to(p, {"type": "visitors", "visitors": visitors})
+            elif p.name == city_owner_name and p.viewing_city_of is None:
                 visitors = self.get_visitors_of(city_owner_name, exclude_addr=addr)
                 self.send_to(p, {"type": "visitors", "visitors": visitors})
 
@@ -255,6 +276,8 @@ class GameServer:
                             player.visitor_y = 140.0
                             player.visitor_dir = 'right'
                             player.visitor_moving = False
+                            viewers = [p.name for p in self.players.values() if p.viewing_city_of == player.viewing_city_of]
+                            print(f"  {player.name} entered {player.viewing_city_of}'s city (viewers: {viewers})")
                             self.broadcast_visitors(player.viewing_city_of)
 
                     elif msg["type"] == "leave_city" and player:
@@ -262,7 +285,10 @@ class GameServer:
                             old_city = player.viewing_city_of
                             player.viewing_city_of = None
                             if old_city:
+                                print(f"  {player.name} left {old_city}'s city")
                                 self.broadcast_visitors(old_city)
+                            # Now back in own city — send visitors of own city
+                            self.broadcast_visitors(player.name)
 
                     elif msg["type"] == "visitor_pos" and player:
                         with self.lock:
@@ -272,6 +298,15 @@ class GameServer:
                             player.visitor_moving = msg.get("moving", player.visitor_moving)
                             if player.viewing_city_of:
                                 self.broadcast_visitors(player.viewing_city_of)
+
+                    elif msg["type"] == "own_pos" and player:
+                        with self.lock:
+                            player.own_x = msg.get("x", player.own_x)
+                            player.own_y = msg.get("y", player.own_y)
+                            player.own_dir = msg.get("dir", player.own_dir)
+                            player.own_moving = msg.get("moving", player.own_moving)
+                            # Broadcast to anyone viewing this player's city
+                            self.broadcast_visitors(player.name)
 
                     elif msg["type"] == "rebirth" and player:
                         with self.lock:
