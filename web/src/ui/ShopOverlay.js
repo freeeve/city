@@ -1,3 +1,4 @@
+import Phaser from 'phaser';
 import { WIDTH, HEIGHT, rgb, formatNumber } from '../constants.js';
 import { BUILDINGS, BUILDING_ORDER, BUILDING_COLORS, BUILDING_POPULATION, CARS, CAR_ORDER, UNLOCK_REQUIREMENTS, BUILDING_IMAGES } from '../shared.js';
 
@@ -36,7 +37,6 @@ export class ShopOverlay {
   }
 
   render() {
-    // Clean up previous
     if (this.domElement) this.domElement.destroy();
     if (this.backdrop) this.backdrop.destroy();
 
@@ -51,6 +51,8 @@ export class ShopOverlay {
       Phaser.Geom.Rectangle.Contains
     );
     this.backdrop.on('pointerdown', () => this.hide());
+    // Hide from town camera
+    this.scene.addUIObj(this.backdrop);
 
     const state = this.scene.gameState;
     const pop = state.population;
@@ -92,7 +94,6 @@ export class ShopOverlay {
       const canAfford = coins >= b.cost;
       const [cr, cg, cb] = BUILDING_COLORS[name] || [128, 128, 128];
       const colorHex = `rgb(${cr},${cg},${cb})`;
-      const hasImage = name in BUILDING_IMAGES;
 
       html += `<div style="
         display: flex;
@@ -187,8 +188,8 @@ export class ShopOverlay {
     this.domElement = this.scene.add.dom(WIDTH / 2, HEIGHT / 2).createFromHTML(html);
     this.domElement.setScrollFactor(0);
     this.domElement.setDepth(951);
+    this.scene.addUIObj(this.domElement);
 
-    // Close button
     const closeBtn = this.domElement.getChildByID('shop-close-btn');
     if (closeBtn) {
       closeBtn.addEventListener('click', (e) => {
@@ -197,7 +198,6 @@ export class ShopOverlay {
       });
     }
 
-    // Buy buttons
     const buyBtns = this.domElement.node.querySelectorAll('.shop-buy-btn');
     buyBtns.forEach((btn) => {
       btn.addEventListener('click', (e) => {
@@ -205,7 +205,6 @@ export class ShopOverlay {
         const itemName = btn.getAttribute('data-name');
         if (!btn.disabled) {
           this.scene.buyItem(itemName);
-          // Re-render after a short delay to update affordability
           this.scene.time.delayedCall(200, () => {
             if (this.visible) this.render();
           });

@@ -4,6 +4,7 @@ export class Leaderboard {
   constructor(scene) {
     this.scene = scene;
     this.cityViewName = null;
+    const ui = (obj) => scene.addUIObj(obj);
 
     const panelX = WIDTH - 365;
     const panelY = 200;
@@ -11,7 +12,7 @@ export class Leaderboard {
     const panelH = HEIGHT - panelY - 15;
 
     // Panel background
-    this.bg = scene.add.graphics();
+    this.bg = ui(scene.add.graphics());
     this.bg.setScrollFactor(0);
     this.bg.setDepth(800);
     this.bg.fillStyle(0xf0f2fa, 0.95);
@@ -20,44 +21,42 @@ export class Leaderboard {
     this.bg.strokeRoundedRect(panelX, panelY, panelW, panelH, 10);
 
     // Title
-    this.title = scene.add.text(panelX + panelW / 2, panelY + 15, 'Leaderboard', {
+    this.title = ui(scene.add.text(panelX + panelW / 2, panelY + 15, 'Leaderboard', {
       fontFamily: 'Arial',
       fontSize: '18px',
       fontStyle: 'bold',
       color: '#2d3a5e',
-    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(801);
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(801));
 
-    // Player entries (DOM for clickable names)
-    this.entriesContainer = null;
     this.panelX = panelX;
     this.panelY = panelY;
     this.panelW = panelW;
     this.panelH = panelH;
 
     // City view back button (hidden by default)
-    this.cityViewLabel = scene.add.text(panelX + panelW / 2, panelY + 40, '', {
+    this.cityViewLabel = ui(scene.add.text(panelX + panelW / 2, panelY + 40, '', {
       fontFamily: 'Arial',
       fontSize: '14px',
       color: '#6677aa',
-    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(801);
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(801));
 
-    this.backBtnBg = scene.add.graphics();
+    this.backBtnBg = ui(scene.add.graphics());
     this.backBtnBg.setScrollFactor(0);
     this.backBtnBg.setDepth(801);
     this.backBtnBg.visible = false;
 
-    this.backBtnText = scene.add.text(panelX + panelW / 2, panelY + panelH - 40, 'Back to My City', {
+    this.backBtnText = ui(scene.add.text(panelX + panelW / 2, panelY + panelH - 40, 'Back to My City', {
       fontFamily: 'Arial',
       fontSize: '14px',
       fontStyle: 'bold',
       color: '#ffffff',
-    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(802).setVisible(false);
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(802).setVisible(false));
 
-    this.backBtnZone = scene.add.zone(panelX + panelW / 2, panelY + panelH - 30, 120, 30)
+    this.backBtnZone = ui(scene.add.zone(panelX + panelW / 2, panelY + panelH - 30, 120, 30)
       .setScrollFactor(0)
       .setDepth(802)
       .setInteractive({ useHandCursor: true })
-      .setVisible(false);
+      .setVisible(false));
 
     this.backBtnZone.on('pointerdown', () => {
       scene.leaveCityView();
@@ -72,34 +71,30 @@ export class Leaderboard {
       const y = panelY + 45 + i * 44;
       const rank = i + 1;
 
-      // Rank number
-      const rankText = scene.add.text(panelX + 15, y + 4, `${rank}.`, {
+      const rankText = ui(scene.add.text(panelX + 15, y + 4, `${rank}.`, {
         fontFamily: 'Arial',
         fontSize: '14px',
         fontStyle: 'bold',
         color: i < 3 ? medalColors[i] : '#888',
-      }).setScrollFactor(0).setDepth(801);
+      }).setScrollFactor(0).setDepth(801));
 
-      // Name
-      const nameText = scene.add.text(panelX + 38, y + 2, '', {
+      const nameText = ui(scene.add.text(panelX + 38, y + 2, '', {
         fontFamily: 'Arial',
         fontSize: '15px',
         fontStyle: 'bold',
         color: '#2d3a5e',
-      }).setScrollFactor(0).setDepth(801);
+      }).setScrollFactor(0).setDepth(801));
 
-      // Coins
-      const coinsText = scene.add.text(panelX + 38, y + 20, '', {
+      const coinsText = ui(scene.add.text(panelX + 38, y + 20, '', {
         fontFamily: 'Arial',
         fontSize: '12px',
         color: '#888',
-      }).setScrollFactor(0).setDepth(801);
+      }).setScrollFactor(0).setDepth(801));
 
-      // Click zone for viewing city
-      const zone = scene.add.zone(panelX + panelW / 2, y + 15, panelW - 20, 40)
+      const zone = ui(scene.add.zone(panelX + panelW / 2, y + 15, panelW - 20, 40)
         .setScrollFactor(0)
         .setDepth(802)
-        .setInteractive({ useHandCursor: true });
+        .setInteractive({ useHandCursor: true }));
 
       zone.on('pointerdown', () => {
         const text = nameText.text;
@@ -123,7 +118,6 @@ export class Leaderboard {
         if (p.rebirths > 0) detail += ` (R${p.rebirths})`;
         entry.coinsText.setText(detail);
 
-        // Highlight current player
         if (p.name === this.scene.playerName) {
           entry.nameText.setColor('#3778c8');
         } else {

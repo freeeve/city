@@ -10,11 +10,10 @@ export class PlayerCharacter {
     this.dir = 'right';
     this.moving = false;
 
-    // Character body (simple colored shape)
     this.graphics = scene.add.graphics();
-    this.graphics.setDepth(5000); // will be updated per-frame
+    this.graphics.setDepth(5000);
+    scene.addTownObj(this.graphics);
 
-    // Name label
     this.nameLabel = scene.add.text(0, 0, name, {
       fontFamily: 'Arial',
       fontSize: '11px',
@@ -23,9 +22,10 @@ export class PlayerCharacter {
       stroke: '#333333',
       strokeThickness: 2,
     }).setOrigin(0.5, 0);
+    scene.addTownObj(this.nameLabel);
 
-    // Red triangle indicator
     this.indicator = scene.add.graphics();
+    scene.addTownObj(this.indicator);
 
     this.draw();
   }
@@ -34,7 +34,6 @@ export class PlayerCharacter {
     const x = this.x;
     const y = this.y;
 
-    // Body (simple character)
     this.graphics.clear();
 
     // Shadow
@@ -66,18 +65,15 @@ export class PlayerCharacter {
       x + 5, y - 24
     );
 
-    // Update depth based on y position
     const depth = y + 20;
     this.graphics.setDepth(depth);
     this.indicator.setDepth(depth + 1);
 
-    // Name label below
     this.nameLabel.setPosition(x, y + 22);
     this.nameLabel.setDepth(depth + 1);
   }
 
   handleMovement(cursors, wasd) {
-    // Don't move if an input element is focused
     const active = document.activeElement;
     if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) {
       return;
@@ -97,7 +93,6 @@ export class PlayerCharacter {
       this.x += dx;
       this.y += dy;
 
-      // Clamp to town bounds
       const totalRows = Math.ceil(44 / 6);
       const worldH = totalRows * ROW_HEIGHT + 100;
       this.x = Math.max(0, Math.min(TOWN_WORLD_W, this.x));
@@ -108,7 +103,6 @@ export class PlayerCharacter {
 
       this.draw();
 
-      // Send position to server
       this.scene.net.send({
         type: 'own_pos',
         x: this.x,

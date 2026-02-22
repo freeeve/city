@@ -28,22 +28,29 @@ export class GameScene extends Phaser.Scene {
       leaderboard: [],
       rebirths: 0,
     };
-    this.viewingCity = null; // { player_name, buildings, cars, ... }
-    this.resultFlash = null; // { text, color, timer }
+    this.viewingCity = null;
+    this.resultFlash = null;
   }
 
   create() {
-    // Background
+    // Network
+    this.net = new WebSocketClient();
+    this.setupNetwork();
+    this.doConnect();
+
+    // Town camera with viewport — create FIRST so town/UI classes can register
+    this.townCamera = this.cameras.add(
+      TOWN_X, TOWN_Y, TOWN_VIEW_W, HEIGHT - TOWN_Y - 15
+    );
+    this.townCamera.setBackgroundColor(0x69b94b);
+
+    // Background (UI layer — should not render in town camera)
     const bg = this.add.graphics();
     bg.fillStyle(0xc8e1ff, 1);
     bg.fillRect(0, 0, WIDTH, HEIGHT);
     bg.setScrollFactor(0);
     bg.setDepth(-100);
-
-    // Network
-    this.net = new WebSocketClient();
-    this.setupNetwork();
-    this.doConnect();
+    this.townCamera.ignore(bg);
 
     // Town renderer (draws in world space)
     this.townRenderer = new TownRenderer(this);
@@ -51,20 +58,13 @@ export class GameScene extends Phaser.Scene {
     // Player character
     this.player = new PlayerCharacter(this, this.playerName);
 
-    // Town camera with viewport
-    this.townCamera = this.cameras.add(
-      TOWN_X, TOWN_Y, TOWN_VIEW_W, HEIGHT - TOWN_Y - 15
-    );
-    this.townCamera.setBackgroundColor(0x69b94b);
-
     // UI elements (fixed to main camera, not town camera)
     this.hud = new HUD(this);
     this.mathPanel = new MathPanel(this);
     this.leaderboard = new Leaderboard(this);
     this.shopOverlay = new ShopOverlay(this);
 
-    // Ignore UI from town camera, and ignore town from main camera
-    // The main camera shows everything at default, we'll manage depth & scroll
+    // Main camera stays fixed at origin for UI
     this.cameras.main.setScroll(0, 0);
 
     // Key bindings
@@ -77,6 +77,18 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
+  // Register a town-layer object: visible in townCamera, hidden from main camera
+  addTownObj(obj) {
+    this.cameras.main.ignore(obj);
+    return obj;
+  }
+
+  // Register a UI-layer object: visible in main camera, hidden from town camera
+  addUIObj(obj) {
+    this.townCamera.ignore(obj);
+    return obj;
+  }
+
   doConnect() {
     this.net.connect(this.wsUrl).then(() => {
       this.net.send({
@@ -86,7 +98,6 @@ export class GameScene extends Phaser.Scene {
       });
     }).catch((err) => {
       console.error('Connection failed:', err);
-      // Go back to connect screen
       this.scene.start('ConnectScene');
     });
   }
