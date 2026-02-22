@@ -103,12 +103,22 @@ class Client:
             "Lemonade Stand": "lemonade_stand.png",
             "Ice Cream Truck": "ice_cream_truck.png",
             "Cookie Shop": "cookie_shop.png",
+            "Flower Shop": "flower_shop.png",
             "Pet Shop": "pet_shop.png",
+            "Bakery": "bakery.png",
             "Toy Store": "toy_store.png",
+            "Bookstore": "bookstore.png",
             "Movie Theater": "movie_theater.png",
+            "Pizza Place": "pizza_place.png",
             "Arcade": "arcade.png",
+            "Gym": "gym.png",
+            "Hospital": "hospital.png",
             "Water Park": "water_park.png",
+            "Library": "library.png",
+            "Museum": "museum.png",
             "Theme Park": "theme_park.png",
+            "Stadium": "stadium.png",
+            "Airport": "airport.png",
             "Space Station": "space_station.png",
         }
         for name, filename in name_to_file.items():
@@ -1850,17 +1860,38 @@ class Client:
             name = assignment
             inc = BUILDINGS[name][1]
 
-            # 3D Building image
+            # 3D Building image (or colored fallback)
+            img_x = abs_x + (PLOT_W - 90) // 2
+            img_y = abs_y + 2
+            shadow = pygame.Surface((98, 20), pygame.SRCALPHA)
+            pygame.draw.ellipse(shadow, (0, 0, 0, 30), (0, 0, 98, 20))
+            self.screen.blit(shadow, (img_x + 2, img_y + 80))
             if name in self.building_images_3d:
-                img3d = self.building_images_3d[name]
-                iw, ih = img3d.get_size()
-                img_x = abs_x + (PLOT_W - 90) // 2
-                img_y = abs_y + 2
-                # Ground shadow (offset to lower-right for 3D effect)
-                shadow = pygame.Surface((98, 20), pygame.SRCALPHA)
-                pygame.draw.ellipse(shadow, (0, 0, 0, 30), (0, 0, 98, 20))
-                self.screen.blit(shadow, (img_x + 2, img_y + 80))
-                self.screen.blit(img3d, (img_x, img_y))
+                self.screen.blit(self.building_images_3d[name], (img_x, img_y))
+            else:
+                # Colored box fallback with 3D effect
+                base = BUILDING_COLORS.get(name, (150, 150, 150))
+                dark = (max(0, base[0] - 60), max(0, base[1] - 60), max(0, base[2] - 60))
+                light = (min(255, base[0] + 40), min(255, base[1] + 40), min(255, base[2] + 40))
+                bw, bh = 70, 70
+                bx, by = img_x + 10, img_y + 10
+                # Side face
+                side_pts = [(bx + bw, by), (bx + bw + 8, by - 8), (bx + bw + 8, by + bh - 8), (bx + bw, by + bh)]
+                pygame.draw.polygon(self.screen, dark, side_pts)
+                # Top face
+                top_pts = [(bx, by), (bx + 8, by - 8), (bx + bw + 8, by - 8), (bx + bw, by)]
+                pygame.draw.polygon(self.screen, light, top_pts)
+                # Front face
+                pygame.draw.rect(self.screen, base, (bx, by, bw, bh))
+                pygame.draw.rect(self.screen, dark, (bx, by, bw, bh), 1)
+                # Windows
+                for wy in range(by + 8, by + bh - 15, 18):
+                    for wx in range(bx + 8, bx + bw - 10, 18):
+                        pygame.draw.rect(self.screen, (180, 210, 240), (wx, wy, 12, 10), border_radius=1)
+                        pygame.draw.rect(self.screen, dark, (wx, wy, 12, 10), 1)
+                # Door
+                pygame.draw.rect(self.screen, dark, (bx + bw // 2 - 8, by + bh - 18, 16, 18))
+                pygame.draw.rect(self.screen, (max(0, dark[0] - 20), max(0, dark[1] - 20), max(0, dark[2] - 20)), (bx + bw // 2 - 8, by + bh - 18, 16, 18), 1)
 
             # Name plate
             plate_cx = abs_x + PLOT_W // 2
