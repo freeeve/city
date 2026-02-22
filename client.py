@@ -54,13 +54,14 @@ SILVER = (190, 195, 205)
 BRONZE = (205, 150, 90)
 
 # Town plot positions (x, y) within the town area
-TOWN_PLOTS = {
-    "Lemonade Stand": (10, 15),       # top-left quadrant
-    "Cookie Shop": (200, 15),         # top-right near
-    "Toy Store": (355, 15),           # top-right far
-    "Arcade": (10, 235),              # bottom-left quadrant
-    "Theme Park": (250, 245),         # bottom-right quadrant
-}
+# Plot grid: rows of plots on grass, separated by horizontal roads every 2 rows
+# Each row-pair has plots at these x offsets, roads run between pairs
+PLOT_X_LEFT = [10]             # left of vertical road (fits 1 plot)
+PLOT_X_RIGHT = [200, 355]     # right of vertical road (fits 2 plots)
+ROAD_V_X = 155                 # vertical road x offset within town
+ROAD_THICK = 36
+ROW_HEIGHT = 175               # height per row-pair (2 plot rows + road)
+PLOT_W, PLOT_H = 135, 130
 
 
 class Client:
@@ -123,6 +124,9 @@ class Client:
 
         # Game screen input
         self.answer_text = ""
+
+        # Town scrolling
+        self.town_scroll = 0
 
         self.running = True
 
@@ -413,143 +417,220 @@ class Client:
         pygame.draw.circle(self.screen, color, (x, y), 4)
         pygame.draw.circle(self.screen, (255, 255, 200), (x, y), 2)
 
+    def get_plot_positions(self):
+        """Generate plot positions in a grid. Each 'section' has a top row and bottom row
+        separated by a horizontal road. Sections repeat as you scroll down."""
+        positions = []
+        section_h = ROW_HEIGHT * 2 + ROAD_THICK + 16  # two row-pairs + road + gap
+        for section in range(10):  # 10 sections = 30 plots
+            base_y = section * section_h
+            # Top row of section
+            for x in PLOT_X_LEFT:
+                positions.append((x, base_y + 10))
+            for x in PLOT_X_RIGHT:
+                positions.append((x, base_y + 10))
+            # Bottom row of section
+            for x in PLOT_X_LEFT:
+                positions.append((x, base_y + ROW_HEIGHT))
+            for x in PLOT_X_RIGHT:
+                positions.append((x, base_y + ROW_HEIGHT))
+        return positions
+
     def draw_town(self):
         town_x, town_y = 15, 200
-        town_w, town_h = 605, 535
-        plot_w, plot_h = 135, 160
+        town_w, town_h = 605, HEIGHT - town_y - 15
+        view_h = town_h  # visible height
 
-        # Grass background with varied patches
-        pygame.draw.rect(self.screen, GRASS_1, (town_x, town_y, town_w, town_h), border_radius=14)
-        # Grass patches for texture
-        patches = [(40, 80, 60, 40), (200, 50, 50, 30), (400, 90, 70, 35),
-                   (80, 300, 55, 30), (350, 320, 65, 35), (500, 250, 45, 25),
-                   (150, 420, 60, 30), (420, 430, 50, 28)]
-        for px, py, pw, ph in patches:
-            s = pygame.Surface((pw, ph), pygame.SRCALPHA)
-            pygame.draw.ellipse(s, (*GRASS_2, 90), (0, 0, pw, ph))
-            self.screen.blit(s, (town_x + px, town_y + py))
-
-        # --- Roads ---
-        road_thick = 36
-        # Horizontal road
-        hy = town_y + 185
-        # Road shadow
-        rs = pygame.Surface((town_w, road_thick + 4), pygame.SRCALPHA)
-        rs.fill((0, 0, 0, 20))
-        self.screen.blit(rs, (town_x, hy - 2))
-        # Sidewalks
-        pygame.draw.rect(self.screen, SIDEWALK, (town_x, hy - 4, town_w, road_thick + 8))
-        # Road fill
-        pygame.draw.rect(self.screen, ROAD_FILL, (town_x, hy, town_w, road_thick))
-        # Edge lines
-        pygame.draw.line(self.screen, ROAD_EDGE, (town_x, hy), (town_x + town_w, hy), 2)
-        pygame.draw.line(self.screen, ROAD_EDGE, (town_x, hy + road_thick), (town_x + town_w, hy + road_thick), 2)
-        # Center dashes
-        for rx in range(town_x + 20, town_x + town_w - 20, 44):
-            pygame.draw.rect(self.screen, ROAD_DASH, (rx, hy + road_thick // 2 - 2, 24, 4), border_radius=2)
-
-        # Vertical road
-        vx = town_x + 155
-        pygame.draw.rect(self.screen, SIDEWALK, (vx - 4, town_y, road_thick + 8, town_h))
-        pygame.draw.rect(self.screen, ROAD_FILL, (vx, town_y, road_thick, town_h))
-        pygame.draw.line(self.screen, ROAD_EDGE, (vx, town_y), (vx, town_y + town_h), 2)
-        pygame.draw.line(self.screen, ROAD_EDGE, (vx + road_thick, town_y), (vx + road_thick, town_y + town_h), 2)
-        for ry in range(town_y + 20, town_y + town_h - 20, 44):
-            pygame.draw.rect(self.screen, ROAD_DASH, (vx + road_thick // 2 - 2, ry, 4, 24), border_radius=2)
-
-        # Intersection
-        pygame.draw.rect(self.screen, ROAD_FILL, (vx, hy, road_thick, road_thick))
-
-        # --- Trees ---
-        tree_spots = [(town_x + 510, town_y + 160, 0.9), (town_x + 550, town_y + 100, 1.1),
-                      (town_x + 40, town_y + 470, 1.0), (town_x + 520, town_y + 450, 0.85),
-                      (town_x + 480, town_y + 380, 1.05), (town_x + 130, town_y + 500, 0.7),
-                      (town_x + 560, town_y + 290, 0.75)]
-        for tx, ty, ts in tree_spots:
-            self.draw_tree(tx, ty, ts)
-
-        # --- Flowers ---
-        flower_spots = [(30, 170, (255, 100, 120)), (60, 480, (255, 200, 80)), (500, 160, (180, 120, 255)),
-                        (540, 470, (255, 130, 80)), (100, 175, (120, 200, 255)), (450, 500, (255, 160, 200))]
-        for fx, fy, fc in flower_spots:
-            self.draw_flower(town_x + fx, town_y + fy, fc)
-
-        # --- Building plots ---
+        # Count buildings
         counts = {}
         for b in self.buildings:
             counts[b] = counts.get(b, 0) + 1
 
-        for name in BUILDING_ORDER:
-            px, py = TOWN_PLOTS[name]
-            abs_x = town_x + px
-            abs_y = town_y + py
+        # Generate all plot positions
+        all_plots = self.get_plot_positions()
 
+        # Assign buildings to plots: owned buildings first, then empty slots
+        plot_assignments = []  # list of (name, count) or None for empty
+        building_idx = 0
+        assigned = {}
+        for name in BUILDING_ORDER:
             if name in counts:
-                count = counts[name]
+                assigned[name] = counts[name]
+        # Fill plots: one entry per building type, then empties
+        for name in BUILDING_ORDER:
+            if name in assigned:
+                plot_assignments.append((name, assigned[name]))
+        # Fill remaining with empty
+        while len(plot_assignments) < len(all_plots):
+            plot_assignments.append(None)
+
+        # Calculate total town content height
+        if all_plots:
+            max_y = max(py for _, py in all_plots) + PLOT_H + 40
+        else:
+            max_y = view_h
+        total_h = max(max_y, view_h)
+
+        # Clamp scroll
+        max_scroll = max(0, total_h - view_h)
+        self.town_scroll = max(0, min(self.town_scroll, max_scroll))
+        scroll = self.town_scroll
+
+        # Clip region for town
+        clip_rect = pygame.Rect(town_x, town_y, town_w, view_h)
+        self.screen.set_clip(clip_rect)
+
+        # Grass background
+        pygame.draw.rect(self.screen, GRASS_1, (town_x, town_y, town_w, view_h), border_radius=14)
+
+        # Grass patches (tile them with scroll)
+        patch_templates = [(40, 80, 60, 40), (200, 50, 50, 30), (400, 90, 70, 35),
+                           (80, 300, 55, 30), (350, 320, 65, 35), (500, 250, 45, 25)]
+        for px, py, pw, ph in patch_templates:
+            draw_y = town_y + py - (scroll % 400)
+            while draw_y < town_y + view_h:
+                if draw_y + ph > town_y - ph:
+                    s = pygame.Surface((pw, ph), pygame.SRCALPHA)
+                    pygame.draw.ellipse(s, (*GRASS_2, 90), (0, 0, pw, ph))
+                    self.screen.blit(s, (town_x + px, draw_y))
+                draw_y += 400
+
+        # --- Vertical road (runs full height) ---
+        vx = town_x + ROAD_V_X
+        pygame.draw.rect(self.screen, SIDEWALK, (vx - 4, town_y, ROAD_THICK + 8, view_h))
+        pygame.draw.rect(self.screen, ROAD_FILL, (vx, town_y, ROAD_THICK, view_h))
+        pygame.draw.line(self.screen, ROAD_EDGE, (vx, town_y), (vx, town_y + view_h), 2)
+        pygame.draw.line(self.screen, ROAD_EDGE, (vx + ROAD_THICK, town_y), (vx + ROAD_THICK, town_y + view_h), 2)
+        dash_start = -(scroll % 44)
+        for ry_off in range(int(dash_start), view_h + 44, 44):
+            pygame.draw.rect(self.screen, ROAD_DASH, (vx + ROAD_THICK // 2 - 2, town_y + ry_off, 4, 24), border_radius=2)
+
+        # --- Horizontal roads between sections ---
+        section_h = ROW_HEIGHT * 2 + ROAD_THICK + 16
+        for section in range(12):
+            road_local_y = section * section_h + ROW_HEIGHT * 2 - 15
+            hy = town_y + road_local_y - scroll
+            if hy > town_y + view_h + 10 or hy + ROAD_THICK < town_y - 10:
+                continue
+            pygame.draw.rect(self.screen, SIDEWALK, (town_x, hy - 4, town_w, ROAD_THICK + 8))
+            pygame.draw.rect(self.screen, ROAD_FILL, (town_x, hy, town_w, ROAD_THICK))
+            pygame.draw.line(self.screen, ROAD_EDGE, (town_x, hy), (town_x + town_w, hy), 2)
+            pygame.draw.line(self.screen, ROAD_EDGE, (town_x, hy + ROAD_THICK), (town_x + town_w, hy + ROAD_THICK), 2)
+            for rx in range(town_x + 20, town_x + town_w - 20, 44):
+                pygame.draw.rect(self.screen, ROAD_DASH, (rx, hy + ROAD_THICK // 2 - 2, 24, 4), border_radius=2)
+            # Intersection
+            pygame.draw.rect(self.screen, ROAD_FILL, (vx, hy, ROAD_THICK, ROAD_THICK))
+
+        # --- Trees (scattered, tiled with scroll) ---
+        tree_templates = [(510, 50, 0.9), (550, 120, 1.1), (40, 300, 1.0),
+                          (520, 280, 0.85), (480, 200, 1.05), (130, 320, 0.7)]
+        for tx, ty, ts in tree_templates:
+            draw_y = town_y + ty - (scroll % 500)
+            while draw_y < town_y + view_h + 40:
+                if draw_y > town_y - 40:
+                    self.draw_tree(town_x + tx, draw_y, ts)
+                draw_y += 500
+
+        # --- Flowers (tiled) ---
+        flower_templates = [(30, 130, (255, 100, 120)), (500, 80, (180, 120, 255)),
+                            (545, 300, (255, 130, 80)), (100, 140, (120, 200, 255))]
+        for fx, fy, fc in flower_templates:
+            draw_y = town_y + fy - (scroll % 400)
+            while draw_y < town_y + view_h + 10:
+                if draw_y > town_y - 10:
+                    self.draw_flower(town_x + fx, draw_y, fc)
+                draw_y += 400
+
+        # --- Building plots ---
+        for i, (px, py) in enumerate(all_plots):
+            abs_x = town_x + px
+            abs_y = town_y + py - scroll
+
+            # Skip if off screen
+            if abs_y > town_y + view_h + 20 or abs_y + PLOT_H < town_y - 20:
+                continue
+
+            if i < len(plot_assignments) and plot_assignments[i] is not None:
+                name, count = plot_assignments[i]
                 inc = BUILDINGS[name][1]
 
-                # Building image with shadow
+                # Building image
                 if name in self.building_images:
                     img = self.building_images[name]
-                    img_x = abs_x + (plot_w - 90) // 2
-                    img_y = abs_y + 5
-                    # Ground shadow ellipse
+                    img_x = abs_x + (PLOT_W - 90) // 2
+                    img_y = abs_y + 2
                     shadow = pygame.Surface((94, 18), pygame.SRCALPHA)
                     pygame.draw.ellipse(shadow, (0, 0, 0, 35), (0, 0, 94, 18))
                     self.screen.blit(shadow, (img_x - 2, img_y + 78))
                     self.screen.blit(img, (img_x, img_y))
 
                 # Count badge
-                bx, by = abs_x + plot_w - 16, abs_y + 8
-                pygame.draw.circle(self.screen, (0, 0, 0, 30), (bx + 1, by + 1), 14)
+                bx, by = abs_x + PLOT_W - 16, abs_y + 6
                 pygame.draw.circle(self.screen, ACCENT, (bx, by), 14)
                 pygame.draw.circle(self.screen, WHITE, (bx, by), 14, 2)
                 self.draw_text(f"x{count}", self.font_xs, WHITE, bx, by, center=True)
 
                 # Name plate
-                plate_cx = abs_x + plot_w // 2
-                plate_y = abs_y + 100
+                plate_cx = abs_x + PLOT_W // 2
+                plate_y = abs_y + 96
                 tw = self.font_xs.size(name)[0] + 14
-                plate_s = pygame.Surface((tw, 20), pygame.SRCALPHA)
-                pygame.draw.rect(plate_s, (255, 255, 255, 210), (0, 0, tw, 20), border_radius=5)
-                self.screen.blit(plate_s, (plate_cx - tw // 2, plate_y))
+                ps = pygame.Surface((tw, 20), pygame.SRCALPHA)
+                pygame.draw.rect(ps, (255, 255, 255, 210), (0, 0, tw, 20), border_radius=5)
+                self.screen.blit(ps, (plate_cx - tw // 2, plate_y))
                 self.draw_text(name, self.font_xs, DARK_GRAY, plate_cx, plate_y + 10, center=True)
 
                 # Income label
                 inc_text = f"+{inc * count}/solve"
-                inc_w = self.font_tiny.size(inc_text)[0] + 10
-                inc_s = pygame.Surface((inc_w, 16), pygame.SRCALPHA)
-                pygame.draw.rect(inc_s, (60, 150, 60, 160), (0, 0, inc_w, 16), border_radius=4)
-                self.screen.blit(inc_s, (plate_cx - inc_w // 2, plate_y + 22))
+                iw = self.font_tiny.size(inc_text)[0] + 10
+                inc_s = pygame.Surface((iw, 16), pygame.SRCALPHA)
+                pygame.draw.rect(inc_s, (60, 150, 60, 160), (0, 0, iw, 16), border_radius=4)
+                self.screen.blit(inc_s, (plate_cx - iw // 2, plate_y + 22))
                 self.draw_text(inc_text, self.font_tiny, WHITE, plate_cx, plate_y + 30, center=True)
             else:
                 # Empty plot
-                ps = pygame.Surface((plot_w, plot_h - 40), pygame.SRCALPHA)
-                pygame.draw.rect(ps, (0, 0, 0, 18), (0, 0, plot_w, plot_h - 40), border_radius=10)
-                # Dashed border
-                for side_x in range(0, plot_w, 12):
-                    pygame.draw.rect(ps, (255, 255, 255, 50), (side_x, 0, 6, 2))
-                    pygame.draw.rect(ps, (255, 255, 255, 50), (side_x, plot_h - 42, 6, 2))
-                for side_y in range(0, plot_h - 40, 12):
-                    pygame.draw.rect(ps, (255, 255, 255, 50), (0, side_y, 2, 6))
-                    pygame.draw.rect(ps, (255, 255, 255, 50), (plot_w - 2, side_y, 2, 6))
+                eh = PLOT_H - 10
+                ps = pygame.Surface((PLOT_W, eh), pygame.SRCALPHA)
+                pygame.draw.rect(ps, (0, 0, 0, 18), (0, 0, PLOT_W, eh), border_radius=10)
+                for sx in range(0, PLOT_W, 12):
+                    pygame.draw.rect(ps, (255, 255, 255, 50), (sx, 0, 6, 2))
+                    pygame.draw.rect(ps, (255, 255, 255, 50), (sx, eh - 2, 6, 2))
+                for sy in range(0, eh, 12):
+                    pygame.draw.rect(ps, (255, 255, 255, 50), (0, sy, 2, 6))
+                    pygame.draw.rect(ps, (255, 255, 255, 50), (PLOT_W - 2, sy, 2, 6))
                 self.screen.blit(ps, (abs_x, abs_y))
 
-                # Sign post
-                sign_cx = abs_x + plot_w // 2
-                sign_y = abs_y + plot_h // 2 - 25
-                pygame.draw.rect(self.screen, FENCE_COLOR, (sign_cx - 2, sign_y + 15, 4, 25))
-                sign_s = pygame.Surface((70, 24), pygame.SRCALPHA)
-                pygame.draw.rect(sign_s, (255, 255, 255, 180), (0, 0, 70, 24), border_radius=4)
-                pygame.draw.rect(sign_s, (*FENCE_COLOR, 200), (0, 0, 70, 24), 1, border_radius=4)
-                self.screen.blit(sign_s, (sign_cx - 35, sign_y - 6))
+                sign_cx = abs_x + PLOT_W // 2
+                sign_y = abs_y + eh // 2 - 15
+                pygame.draw.rect(self.screen, FENCE_COLOR, (sign_cx - 2, sign_y + 15, 4, 20))
+                ss = pygame.Surface((70, 24), pygame.SRCALPHA)
+                pygame.draw.rect(ss, (255, 255, 255, 180), (0, 0, 70, 24), border_radius=4)
+                pygame.draw.rect(ss, (*FENCE_COLOR, 200), (0, 0, 70, 24), 1, border_radius=4)
+                self.screen.blit(ss, (sign_cx - 35, sign_y - 6))
                 self.draw_text("FOR SALE", self.font_tiny, FENCE_COLOR, sign_cx, sign_y + 5, center=True)
 
-        # Town label
+        # Reset clip
+        self.screen.set_clip(None)
+
+        # Town label (on top, not scrolled)
         ls = pygame.Surface((130, 28), pygame.SRCALPHA)
         pygame.draw.rect(ls, (255, 255, 255, 190), (0, 0, 130, 28), border_radius=8)
         self.screen.blit(ls, (town_x + 6, town_y + 6))
         self.draw_text("Your Town", self.font_sm, GRASS_3, town_x + 71, town_y + 20, center=True)
+
+        # Scroll indicator
+        if max_scroll > 0:
+            bar_h = view_h - 20
+            thumb_h = max(30, int(bar_h * (view_h / total_h)))
+            thumb_y = town_y + 10 + int((bar_h - thumb_h) * (scroll / max_scroll))
+            bar_x = town_x + town_w - 10
+            # Track
+            track_s = pygame.Surface((6, bar_h), pygame.SRCALPHA)
+            pygame.draw.rect(track_s, (0, 0, 0, 30), (0, 0, 6, bar_h), border_radius=3)
+            self.screen.blit(track_s, (bar_x, town_y + 10))
+            # Thumb
+            thumb_s = pygame.Surface((6, thumb_h), pygame.SRCALPHA)
+            pygame.draw.rect(thumb_s, (0, 0, 0, 80), (0, 0, 6, thumb_h), border_radius=3)
+            self.screen.blit(thumb_s, (bar_x, thumb_y))
 
     # --- Leaderboard ---
     def draw_leaderboard(self):
@@ -661,7 +742,13 @@ class Client:
             y += 86
 
     def handle_game_events(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN:
+        if event.type == pygame.MOUSEWHEEL and not self.shop_open:
+            # Scroll the town when mouse is over it
+            mx, my = pygame.mouse.get_pos()
+            town_rect = pygame.Rect(15, 200, 605, HEIGHT - 215)
+            if town_rect.collidepoint(mx, my):
+                self.town_scroll -= event.y * 30
+        elif event.type == pygame.MOUSEBUTTONDOWN:
             if self.shop_open:
                 if self.shop_close_btn.collidepoint(event.pos):
                     self.shop_open = False
