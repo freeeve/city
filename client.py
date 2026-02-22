@@ -743,11 +743,7 @@ class Client:
 
     def handle_game_events(self, event):
         if event.type == pygame.MOUSEWHEEL and not self.shop_open:
-            # Scroll the town when mouse is over it
-            mx, my = pygame.mouse.get_pos()
-            town_rect = pygame.Rect(15, 200, 605, HEIGHT - 215)
-            if town_rect.collidepoint(mx, my):
-                self.town_scroll -= event.y * 30
+            self.town_scroll -= event.y * 30
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if self.shop_open:
                 if self.shop_close_btn.collidepoint(event.pos):
