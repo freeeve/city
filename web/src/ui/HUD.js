@@ -8,13 +8,13 @@ export class HUD {
     // Header background
     this.headerBg = ui(scene.add.graphics());
     this.headerBg.setScrollFactor(0);
-    this.headerBg.setDepth(900);
+    this.headerBg.setDepth(5200);
     this.drawHeader();
 
     // Coin icon (small circle)
     this.coinIcon = ui(scene.add.graphics());
     this.coinIcon.setScrollFactor(0);
-    this.coinIcon.setDepth(901);
+    this.coinIcon.setDepth(5201);
     this.coinIcon.fillStyle(COIN_GOLD, 1);
     this.coinIcon.fillCircle(30, 22, 10);
     this.coinIcon.fillStyle(0xc8a01e, 1);
@@ -27,35 +27,35 @@ export class HUD {
       fontFamily: PX_FONT,
       fontSize: '12px',
       color: '#ffd23c',
-    }).setScrollFactor(0).setDepth(901));
+    }).setScrollFactor(0).setDepth(5201));
 
     // Population
     this.popText = ui(scene.add.text(200, 10, 'Pop: 0', {
       fontFamily: PX_FONT,
       fontSize: '10px',
       color: '#ddeeff',
-    }).setScrollFactor(0).setDepth(901));
+    }).setScrollFactor(0).setDepth(5201));
 
     // Bonus
     this.bonusText = ui(scene.add.text(200, 28, 'Bonus: x1.0', {
       fontFamily: PX_FONT,
       fontSize: '8px',
       color: '#aaccee',
-    }).setScrollFactor(0).setDepth(901));
+    }).setScrollFactor(0).setDepth(5201));
 
     // Income
     this.incomeText = ui(scene.add.text(400, 10, 'Income: +0', {
       fontFamily: PX_FONT,
       fontSize: '10px',
       color: '#88ddaa',
-    }).setScrollFactor(0).setDepth(901));
+    }).setScrollFactor(0).setDepth(5201));
 
     // Rebirths
     this.rebirthText = ui(scene.add.text(400, 28, '', {
       fontFamily: PX_FONT,
       fontSize: '8px',
       color: '#ddaaff',
-    }).setScrollFactor(0).setDepth(901));
+    }).setScrollFactor(0).setDepth(5201));
 
     // Shop button (DOM for reliable click handling)
     const shopHTML = `<button id="hud-shop-btn" style="
@@ -65,7 +65,7 @@ export class HUD {
     ">Shop</button>`;
     this.shopBtnDOM = ui(scene.add.dom(WIDTH - 70, 22).createFromHTML(shopHTML));
     this.shopBtnDOM.setScrollFactor(0);
-    this.shopBtnDOM.setDepth(902);
+    this.shopBtnDOM.setDepth(5202);
     const shopBtnEl = this.shopBtnDOM.getChildByID('hud-shop-btn');
     shopBtnEl.addEventListener('click', () => {
       scene.shopOverlay.toggle();
@@ -81,7 +81,7 @@ export class HUD {
     ">Rebirth</button>`;
     this.rebirthBtnDOM = ui(scene.add.dom(WIDTH - 160, 22).createFromHTML(rebirthHTML));
     this.rebirthBtnDOM.setScrollFactor(0);
-    this.rebirthBtnDOM.setDepth(902);
+    this.rebirthBtnDOM.setDepth(5202);
     this.rebirthBtnEl = this.rebirthBtnDOM.getChildByID('hud-rebirth-btn');
     this.rebirthBtnEl.addEventListener('click', () => scene.requestRebirth());
     this.rebirthBtnEl.addEventListener('mouseenter', () => { this.rebirthBtnEl.style.background = '#783cbe'; });
@@ -95,7 +95,7 @@ export class HUD {
     ">♪</button>`;
     this.musicBtnDOM = ui(scene.add.dom(WIDTH - 240, 22).createFromHTML(musicHTML));
     this.musicBtnDOM.setScrollFactor(0);
-    this.musicBtnDOM.setDepth(902);
+    this.musicBtnDOM.setDepth(5202);
     this.musicBtnEl = this.musicBtnDOM.getChildByID('hud-music-btn');
     this.musicBtnEl.addEventListener('click', () => {
       if (scene.music) {

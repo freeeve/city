@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WIDTH, HEIGHT, TOWN_X, TOWN_Y, TOWN_VIEW_W, ROW_HEIGHT, COMMERCIAL_W } from '../constants.js';
+import { WIDTH, HEIGHT, TOWN_X, TOWN_Y, TOWN_VIEW_W, ROW_HEIGHT } from '../constants.js';
 import { WebSocketClient } from '../network.js';
 import { HUD } from '../ui/HUD.js';
 import { MathPanel } from '../ui/MathPanel.js';
@@ -61,7 +61,7 @@ export class GameScene extends Phaser.Scene {
     // all town objects but below all UI elements.
     const frame = this.add.graphics();
     frame.setScrollFactor(0);
-    frame.setDepth(750);
+    frame.setDepth(5000);
     frame.fillStyle(0xc8e1ff, 1);
     frame.fillRect(0, 0, WIDTH, TOWN_Y);                                              // top
     frame.fillRect(0, TOWN_Y, TOWN_X, HEIGHT - TOWN_Y);                               // left
@@ -282,14 +282,10 @@ export class GameScene extends Phaser.Scene {
     cam.scrollX += (targetX - cam.scrollX) * lerp;
     cam.scrollY += (targetY - cam.scrollY) * lerp;
 
-    // Clamp camera so houses (neighbourhood) never scroll into the leaderboard area
-    // Viewport right edge in world space = scrollX + TOWN_X + TOWN_VIEW_W
-    // Keep that <= COMMERCIAL_W + 50 so houses stay off-screen
-    const maxScrollX = COMMERCIAL_W + 50 - TOWN_X - TOWN_VIEW_W;
-    if (cam.scrollX > maxScrollX) cam.scrollX = maxScrollX;
-    if (cam.scrollX < -50) cam.scrollX = -50;
+    // Soft clamp: keep camera within world bounds
     const totalRows = Math.ceil(44 / 6);
     const worldH = totalRows * ROW_HEIGHT + 100;
+    if (cam.scrollX < -50) cam.scrollX = -50;
     if (cam.scrollY < -50) cam.scrollY = -50;
     if (cam.scrollY > worldH - viewH) cam.scrollY = worldH - viewH;
 

@@ -14,7 +14,7 @@ export class Leaderboard {
     // Panel background
     this.bg = ui(scene.add.graphics());
     this.bg.setScrollFactor(0);
-    this.bg.setDepth(800);
+    this.bg.setDepth(5100);
     this.bg.fillStyle(0xf0f2fa, 0.95);
     this.bg.fillRoundedRect(panelX, panelY, panelW, panelH, 10);
     this.bg.lineStyle(2, 0xd0d4e8, 1);
@@ -25,7 +25,7 @@ export class Leaderboard {
       fontFamily: PX_FONT,
       fontSize: '11px',
       color: '#2d3a5e',
-    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(801));
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(5101));
 
     this.panelX = panelX;
     this.panelY = panelY;
@@ -37,7 +37,7 @@ export class Leaderboard {
       fontFamily: PX_FONT,
       fontSize: '8px',
       color: '#6677aa',
-    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(801));
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(5101));
 
     // Back button (DOM for reliable clicking)
     const backHTML = `<button id="lb-back-btn" style="
@@ -47,7 +47,7 @@ export class Leaderboard {
     ">Back to My City</button>`;
     this.backBtnDOM = ui(scene.add.dom(panelX + panelW / 2, panelY + panelH - 30).createFromHTML(backHTML));
     this.backBtnDOM.setScrollFactor(0);
-    this.backBtnDOM.setDepth(802);
+    this.backBtnDOM.setDepth(5102);
     this.backBtnEl = this.backBtnDOM.getChildByID('lb-back-btn');
     this.backBtnEl.addEventListener('click', () => scene.leaveCityView());
 
@@ -64,23 +64,23 @@ export class Leaderboard {
         fontFamily: PX_FONT,
         fontSize: '9px',
         color: i < 3 ? medalColors[i] : '#888',
-      }).setScrollFactor(0).setDepth(801));
+      }).setScrollFactor(0).setDepth(5101));
 
       const nameText = ui(scene.add.text(panelX + 38, y + 2, '', {
         fontFamily: PX_FONT,
         fontSize: '9px',
         color: '#2d3a5e',
-      }).setScrollFactor(0).setDepth(801));
+      }).setScrollFactor(0).setDepth(5101));
 
       const coinsText = ui(scene.add.text(panelX + 38, y + 20, '', {
         fontFamily: PX_FONT,
         fontSize: '7px',
         color: '#888',
-      }).setScrollFactor(0).setDepth(801));
+      }).setScrollFactor(0).setDepth(5101));
 
       const zone = ui(scene.add.zone(panelX + panelW / 2, y + 15, panelW - 20, 40)
         .setScrollFactor(0)
-        .setDepth(802)
+        .setDepth(5102)
         .setInteractive({ useHandCursor: true }));
 
       zone.on('pointerdown', () => {

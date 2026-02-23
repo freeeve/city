@@ -14,7 +14,7 @@ export class MathPanel {
     // Panel background
     this.bg = ui(scene.add.graphics());
     this.bg.setScrollFactor(0);
-    this.bg.setDepth(900);
+    this.bg.setDepth(5200);
     this.bg.fillStyle(0xf5f5ff, 1);
     this.bg.fillRoundedRect(panelX, panelY, panelW, panelH, 10);
     this.bg.lineStyle(2, 0xd0d4e8, 1);
@@ -25,14 +25,14 @@ export class MathPanel {
       fontFamily: PX_FONT,
       fontSize: '18px',
       color: '#2d3a5e',
-    }).setScrollFactor(0).setDepth(901));
+    }).setScrollFactor(0).setDepth(5201));
 
     // Result text (correct/wrong feedback)
     this.resultText = ui(scene.add.text(panelX + 20, panelY + 50, '', {
       fontFamily: PX_FONT,
       fontSize: '10px',
       color: '#44dd66',
-    }).setScrollFactor(0).setDepth(901));
+    }).setScrollFactor(0).setDepth(5201));
 
     // DOM input for answer
     const formHTML = `
@@ -49,7 +49,7 @@ export class MathPanel {
 
     this.form = ui(scene.add.dom(panelX + 130, panelY + 100).createFromHTML(formHTML));
     this.form.setScrollFactor(0);
-    this.form.setDepth(901);
+    this.form.setDepth(5201);
 
     const answerInput = this.form.getChildByID('answer-input');
     const submitBtn = this.form.getChildByID('submit-btn');

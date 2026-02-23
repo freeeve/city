@@ -26,13 +26,13 @@ export class ScratchPad {
     // Card background
     this.bg = ui(scene.add.graphics());
     this.bg.setScrollFactor(0);
-    this.bg.setDepth(900);
+    this.bg.setDepth(5200);
     this.drawCard();
 
     // Header bar
     this.header = ui(scene.add.graphics());
     this.header.setScrollFactor(0);
-    this.header.setDepth(901);
+    this.header.setDepth(5201);
     this.drawHeaderBar();
 
     // Title
@@ -40,7 +40,7 @@ export class ScratchPad {
       fontFamily: PX_FONT,
       fontSize: '8px',
       color: '#ffffff',
-    }).setScrollFactor(0).setDepth(902));
+    }).setScrollFactor(0).setDepth(5202));
 
     // Mode buttons + Clear (DOM for easier interaction)
     const btnY = spY + 4;
@@ -68,7 +68,7 @@ export class ScratchPad {
     `;
     this.btnsDOM = ui(scene.add.dom(lx + spW - 82, btnY + 11).createFromHTML(btnsHTML));
     this.btnsDOM.setScrollFactor(0);
-    this.btnsDOM.setDepth(903);
+    this.btnsDOM.setDepth(5203);
 
     const drawBtn = this.btnsDOM.getChildByID('scratch-draw-btn');
     const typeBtn = this.btnsDOM.getChildByID('scratch-type-btn');
@@ -96,7 +96,7 @@ export class ScratchPad {
     this.canvasTexture = scene.textures.createCanvas('scratchCanvas', this.padW, this.padH);
     this.canvasImage = ui(scene.add.image(this.padX + this.padW / 2, this.padY + this.padH / 2, 'scratchCanvas'));
     this.canvasImage.setScrollFactor(0);
-    this.canvasImage.setDepth(902);
+    this.canvasImage.setDepth(5202);
     this.canvasImage.setDisplaySize(this.padW, this.padH);
     this.refreshCanvasTexture();
 
@@ -119,7 +119,7 @@ export class ScratchPad {
     `;
     this.textareaDOM = ui(scene.add.dom(this.padX + this.padW / 2, this.padY + this.padH / 2).createFromHTML(taHTML));
     this.textareaDOM.setScrollFactor(0);
-    this.textareaDOM.setDepth(902);
+    this.textareaDOM.setDepth(5202);
     this.textareaDOM.setVisible(false);
 
     const ta = this.textareaDOM.getChildByID('scratch-textarea');
@@ -130,7 +130,7 @@ export class ScratchPad {
     // Border around pad area
     this.padBorder = ui(scene.add.graphics());
     this.padBorder.setScrollFactor(0);
-    this.padBorder.setDepth(903);
+    this.padBorder.setDepth(5203);
     this.padBorder.lineStyle(1, 0xc8c8c3, 1);
     this.padBorder.strokeRect(this.padX, this.padY, this.padW, this.padH);
 
@@ -142,7 +142,7 @@ export class ScratchPad {
     this.drawZone = ui(scene.add.zone(
       this.padX + this.padW / 2, this.padY + this.padH / 2,
       this.padW, this.padH
-    ).setScrollFactor(0).setDepth(902).setInteractive({ useHandCursor: false }));
+    ).setScrollFactor(0).setDepth(5202).setInteractive({ useHandCursor: false }));
 
     this.drawZone.on('pointerdown', (pointer) => {
       if (this.mode !== 'draw') return;
