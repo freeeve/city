@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { WIDTH, HEIGHT, TOWN_X, TOWN_Y, TOWN_VIEW_W } from '../constants.js';
+import { WIDTH, HEIGHT, TOWN_X, TOWN_Y, TOWN_VIEW_W, ROW_HEIGHT, COMMERCIAL_W } from '../constants.js';
 import { WebSocketClient } from '../network.js';
 import { HUD } from '../ui/HUD.js';
 import { MathPanel } from '../ui/MathPanel.js';
@@ -11,6 +11,7 @@ import { PlayerCharacter } from '../town/PlayerCharacter.js';
 import { BuildingInterior } from '../town/BuildingInterior.js';
 import { VirtualJoystick } from '../ui/VirtualJoystick.js';
 import { MusicPlayer } from '../audio/MusicPlayer.js';
+import { NPCSystem } from '../town/NPCSystem.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -50,6 +51,10 @@ export class GameScene extends Phaser.Scene {
 
     // Building interior system
     this.buildingInterior = new BuildingInterior(this);
+
+    // NPC pedestrian system
+    this.npcSystem = new NPCSystem(this);
+    this.frameTick = 0;
 
     // Frame overlay — covers areas outside the town viewport so town
     // objects only show through the viewport window. Depth 750 = above
@@ -142,6 +147,7 @@ export class GameScene extends Phaser.Scene {
 
   setupNetwork() {
     this.net.on('state', (msg) => {
+      const prevPop = this.gameState.population;
       this.gameState = {
         coins: msg.coins,
         buildings: msg.buildings,
@@ -158,6 +164,10 @@ export class GameScene extends Phaser.Scene {
       this.leaderboard.update(this.gameState.leaderboard);
       if (!this.viewingCity) {
         this.townRenderer.updateBuildings(this.gameState.buildings);
+      }
+      // Spawn/update NPCs when population changes
+      if (msg.population !== prevPop) {
+        this.npcSystem.init(msg.population, msg.buildings);
       }
     });
 
@@ -272,6 +282,11 @@ export class GameScene extends Phaser.Scene {
     cam.scrollX += (targetX - cam.scrollX) * lerp;
     cam.scrollY += (targetY - cam.scrollY) * lerp;
 
+    // Clamp camera so houses (neighbourhood) never scroll into the leaderboard area
+    const totalRows = Math.ceil(44 / 6);
+    const worldH = totalRows * ROW_HEIGHT + 100;
+    cam.setBounds(0, 0, COMMERCIAL_W + 50, worldH);
+
     // Result flash
     if (this.resultFlash) {
       this.resultFlash.timer--;
@@ -279,6 +294,10 @@ export class GameScene extends Phaser.Scene {
         this.resultFlash = null;
       }
     }
+
+    // Update NPC pedestrians
+    this.frameTick++;
+    this.npcSystem.update();
 
     // Depth sort town objects
     this.townRenderer.depthSort();
