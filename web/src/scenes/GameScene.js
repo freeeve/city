@@ -283,9 +283,15 @@ export class GameScene extends Phaser.Scene {
     cam.scrollY += (targetY - cam.scrollY) * lerp;
 
     // Clamp camera so houses (neighbourhood) never scroll into the leaderboard area
+    // Viewport right edge in world space = scrollX + TOWN_X + TOWN_VIEW_W
+    // Keep that <= COMMERCIAL_W + 50 so houses stay off-screen
+    const maxScrollX = COMMERCIAL_W + 50 - TOWN_X - TOWN_VIEW_W;
+    if (cam.scrollX > maxScrollX) cam.scrollX = maxScrollX;
+    if (cam.scrollX < -50) cam.scrollX = -50;
     const totalRows = Math.ceil(44 / 6);
     const worldH = totalRows * ROW_HEIGHT + 100;
-    cam.setBounds(0, 0, COMMERCIAL_W + 50, worldH);
+    if (cam.scrollY < -50) cam.scrollY = -50;
+    if (cam.scrollY > worldH - viewH) cam.scrollY = worldH - viewH;
 
     // Result flash
     if (this.resultFlash) {
