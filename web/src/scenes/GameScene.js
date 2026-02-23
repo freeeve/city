@@ -4,6 +4,7 @@ import { WebSocketClient } from '../network.js';
 import { HUD } from '../ui/HUD.js';
 import { MathPanel } from '../ui/MathPanel.js';
 import { ShopOverlay } from '../ui/ShopOverlay.js';
+import { SettingsOverlay } from '../ui/SettingsOverlay.js';
 import { Leaderboard } from '../ui/Leaderboard.js';
 import { ScratchPad } from '../ui/ScratchPad.js';
 import { TownRenderer } from '../town/TownRenderer.js';
@@ -22,7 +23,6 @@ export class GameScene extends Phaser.Scene {
     this.playerName = data.name;
     this.wsUrl = data.wsUrl;
     this.grade = data.grade;
-    this.appearance = data.appearance;
     this.gameState = {
       coins: 0,
       buildings: [],
@@ -48,7 +48,7 @@ export class GameScene extends Phaser.Scene {
     this.townRenderer = new TownRenderer(this);
 
     // Player character
-    this.player = new PlayerCharacter(this, this.playerName, this.appearance);
+    this.player = new PlayerCharacter(this, this.playerName);
 
     // Snap camera to player immediately so character starts centered
     const viewH = HEIGHT - TOWN_Y - 15;
@@ -85,6 +85,7 @@ export class GameScene extends Phaser.Scene {
     this.leaderboard = new Leaderboard(this);
     this.scratchPad = new ScratchPad(this);
     this.shopOverlay = new ShopOverlay(this);
+    this.settingsOverlay = new SettingsOverlay(this);
 
     // Virtual joystick (mobile only)
     const container = this.game.canvas.parentElement;

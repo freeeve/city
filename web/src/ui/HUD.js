@@ -29,6 +29,21 @@ export class HUD {
       color: '#ffd23c',
     }).setScrollFactor(0).setDepth(5201));
 
+    // Settings (gear) button next to coins
+    const gearHTML = `<button id="hud-settings-btn" style="
+      background: rgba(255,255,255,0.2); color: white; border: none; border-radius: 4px;
+      padding: 4px 8px; font-size: 12px; cursor: pointer; line-height: 1;
+    ">&#9881;</button>`;
+    this.settingsBtnDOM = ui(scene.add.dom(150, 22).createFromHTML(gearHTML));
+    this.settingsBtnDOM.setScrollFactor(0);
+    this.settingsBtnDOM.setDepth(5202);
+    const settingsBtnEl = this.settingsBtnDOM.getChildByID('hud-settings-btn');
+    settingsBtnEl.addEventListener('click', () => {
+      scene.settingsOverlay.toggle();
+    });
+    settingsBtnEl.addEventListener('mouseenter', () => { settingsBtnEl.style.background = 'rgba(255,255,255,0.35)'; });
+    settingsBtnEl.addEventListener('mouseleave', () => { settingsBtnEl.style.background = 'rgba(255,255,255,0.2)'; });
+
     // Population
     this.popText = ui(scene.add.text(200, 10, 'Pop: 0', {
       fontFamily: PX_FONT,
