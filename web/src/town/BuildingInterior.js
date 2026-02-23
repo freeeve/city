@@ -3426,16 +3426,47 @@ export class BuildingInterior {
     this._addText(`Home sweet home!`, cx, ry + ROOM_H - WALL_THICK - 30, '#886644');
   }
 
+  _getCashierPos(name) {
+    // Returns {dx, dy} offset from (left, top) to place the cashier at the register.
+    // dy positions the NPC's feet so upper body is visible above the counter.
+    const iW = ROOM_W - WALL_THICK * 2 - 8;
+    const positions = {
+      'Lemonade Stand':   { dx: iW - 49, dy: 30 },       // behind counter, near register
+      'Ice Cream Truck':  { dx: 26,      dy: 42 },       // behind counter, near register
+      'Cookie Shop':      { dx: iW - 75, dy: 30 },       // behind display case, near oven side
+      'Flower Shop':      { dx: iW - 39, dy: 40 },       // behind counter, near register
+      'Pet Shop':         { dx: 26,      dy: 92 },       // behind counter, near register
+      'Bakery':           { dx: iW - 44, dy: 30 },       // behind bread shelf, near oven
+      'Toy Store':        { dx: iW - 37, dy: 68 },       // behind counter, near register
+      'Bookstore':        { dx: iW - 35, dy: 92 },       // at coffee corner/checkout area
+      'Movie Theater':    { dx: iW - 31, dy: 78 },       // at popcorn stand
+      'Arcade':           { dx: 130,     dy: 108 },      // behind prize/ticket counter
+      'Pizza Place':      { dx: iW - 75, dy: 22 },       // behind pizza counter
+      'Gym':              { dx: 30,      dy: 22 },       // at front desk area
+      'Hospital':         { dx: 30,      dy: 22 },       // behind reception desk
+      'Water Park':       { dx: iW - 30, dy: 22 },       // lifeguard area
+      'Library':          { dx: 30,      dy: 22 },       // at front desk
+      'Museum':           { dx: 30,      dy: 22 },       // at entrance
+      'Theme Park':       { dx: 30,      dy: 140 },      // at ticket booth
+      'Stadium':          { dx: 30,      dy: 22 },       // at entrance
+      'Airport':          { dx: 59,      dy: 50 },       // behind first check-in counter
+    };
+    return positions[name] || { dx: iW - 40, dy: 22 };   // default: right side, behind counter
+  }
+
   _renderCashier(rx, ry) {
-    // Draw a pixel-art NPC behind the counter (top-right area of room)
+    const left = rx + WALL_THICK + 4;
+    const top = ry + WALL_THICK + 4;
+    const pos = this._getCashierPos(this.buildingName);
+
     const rng = this._seededRng((this.buildingName || '').length * 137 + 42);
     const skin = SKIN_PALETTE[Math.floor(rng() * SKIN_PALETTE.length)];
     const shirt = SHIRT_PALETTE[Math.floor(rng() * SHIRT_PALETTE.length)];
     const pants = PANTS_PALETTE[Math.floor(rng() * PANTS_PALETTE.length)];
     const hair = HAIR_PALETTE[Math.floor(rng() * HAIR_PALETTE.length)];
 
-    const cx = rx + ROOM_W - WALL_THICK - 40;
-    const cy = ry + WALL_THICK + 40;
+    const cx = left + pos.dx;
+    const cy = top + pos.dy;
 
     const g = this.scene.add.graphics();
     g.setDepth(5);
