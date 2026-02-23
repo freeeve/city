@@ -49,6 +49,12 @@ export class GameScene extends Phaser.Scene {
     // Player character
     this.player = new PlayerCharacter(this, this.playerName);
 
+    // Snap camera to player immediately so character starts centered
+    const viewH = HEIGHT - TOWN_Y - 15;
+    const cam = this.cameras.main;
+    cam.scrollX = this.player.x - TOWN_X - TOWN_VIEW_W / 2;
+    cam.scrollY = this.player.y - TOWN_Y - viewH / 2;
+
     // Building interior system
     this.buildingInterior = new BuildingInterior(this);
 
