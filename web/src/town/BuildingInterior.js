@@ -1,5 +1,6 @@
 import { PX_FONT, rgb, PLOT_COLS, ROW_HEIGHT, PLOT_W, PLOT_H, NEIGHBOURHOOD_X, HOUSE_W, HOUSE_H } from '../constants.js';
 import { BUILDING_COLORS } from '../shared.js';
+import { SKIN_PALETTE, SHIRT_PALETTE, PANTS_PALETTE, HAIR_PALETTE } from './NPCSystem.js';
 
 /**
  * Building interior — renders a room the player can walk around inside.
@@ -234,6 +235,9 @@ export class BuildingInterior {
     player.insideBuilding = false;
     player.draw();
 
+    // Cashier "Bye!" floats above player in town
+    this._showTownBubble('Bye!');
+
     this.enterBtn.style.display = 'none';
     this.buildingName = null;
     this.buildingIndex = -1;
@@ -397,6 +401,10 @@ export class BuildingInterior {
 
     // Render building-specific interior items
     this._renderInteriorItems(g, rx, ry, cr, cg, cb);
+
+    // Cashier NPC behind the counter
+    this._renderCashier(rx, ry);
+    this._showSpeechBubble('Hello!');
   }
 
   _renderInteriorItems(g, rx, ry, cr, cg, cb) {
@@ -3418,6 +3426,116 @@ export class BuildingInterior {
     this._addText(`Home sweet home!`, cx, ry + ROOM_H - WALL_THICK - 30, '#886644');
   }
 
+  _renderCashier(rx, ry) {
+    // Draw a pixel-art NPC behind the counter (top-right area of room)
+    const rng = this._seededRng((this.buildingName || '').length * 137 + 42);
+    const skin = SKIN_PALETTE[Math.floor(rng() * SKIN_PALETTE.length)];
+    const shirt = SHIRT_PALETTE[Math.floor(rng() * SHIRT_PALETTE.length)];
+    const pants = PANTS_PALETTE[Math.floor(rng() * PANTS_PALETTE.length)];
+    const hair = HAIR_PALETTE[Math.floor(rng() * HAIR_PALETTE.length)];
+
+    const cx = rx + ROOM_W - WALL_THICK - 40;
+    const cy = ry + WALL_THICK + 40;
+
+    const g = this.scene.add.graphics();
+    g.setDepth(5);
+    this.scene.addTownObj(g);
+    this.objects.push(g);
+
+    // Head
+    g.fillStyle(skin, 1);
+    g.fillCircle(cx, cy - 13, 5);
+
+    // Hair
+    g.fillStyle(hair, 1);
+    g.fillRect(cx - 5, cy - 18, 10, 4);
+
+    // Body / shirt
+    g.fillStyle(shirt, 1);
+    g.fillRect(cx - 4, cy - 8, 8, 9);
+
+    // Arms
+    g.fillRect(cx - 6, cy - 7, 2, 6);
+    g.fillRect(cx + 4, cy - 5, 2, 6);
+
+    // Legs
+    g.fillStyle(pants, 1);
+    g.fillRect(cx - 4, cy + 1, 3, 7);
+    g.fillRect(cx + 1, cy + 1, 3, 6);
+
+    // Eyes (facing left toward the player)
+    g.fillStyle(0x222222, 1);
+    g.fillRect(cx - 3, cy - 14, 2, 2);
+
+    this._cashierX = cx;
+    this._cashierY = cy;
+  }
+
+  _showSpeechBubble(text) {
+    if (!this._cashierX) return;
+
+    const bx = this._cashierX;
+    const by = this._cashierY - 28;
+
+    // Bubble background
+    const bg = this.scene.add.graphics();
+    bg.setDepth(2002);
+    bg.fillStyle(0xffffff, 0.95);
+    bg.fillRoundedRect(bx - 22, by - 10, 44, 16, 4);
+    // Little triangle pointing down
+    bg.fillTriangle(bx - 3, by + 6, bx + 3, by + 6, bx, by + 11);
+    this.scene.addTownObj(bg);
+    this.objects.push(bg);
+
+    const label = this.scene.add.text(bx, by - 2, text, {
+      fontFamily: PX_FONT,
+      fontSize: '7px',
+      color: '#333333',
+    }).setOrigin(0.5, 0.5).setDepth(2003);
+    this.scene.addTownObj(label);
+    this.objects.push(label);
+
+    // Fade out after 2 seconds
+    this.scene.tweens.add({
+      targets: [bg, label],
+      alpha: 0,
+      delay: 2000,
+      duration: 500,
+    });
+  }
+
+  _showTownBubble(text) {
+    const player = this.scene.player;
+    const tx = player.x;
+    const ty = player.y - 30;
+
+    const bg = this.scene.add.graphics();
+    bg.setDepth(2002);
+    bg.fillStyle(0xffffff, 0.95);
+    bg.fillRoundedRect(tx - 18, ty - 10, 36, 16, 4);
+    bg.fillTriangle(tx - 3, ty + 6, tx + 3, ty + 6, tx, ty + 11);
+    this.scene.addTownObj(bg);
+
+    const label = this.scene.add.text(tx, ty - 2, text, {
+      fontFamily: PX_FONT,
+      fontSize: '7px',
+      color: '#333333',
+    }).setOrigin(0.5, 0.5).setDepth(2003);
+    this.scene.addTownObj(label);
+
+    // Fade out and destroy
+    this.scene.tweens.add({
+      targets: [bg, label],
+      alpha: 0,
+      delay: 1500,
+      duration: 500,
+      onComplete: () => {
+        bg.destroy();
+        label.destroy();
+      },
+    });
+  }
+
   _addText(text, x, y, color) {
     const t = this.scene.add.text(x, y, text, {
       fontFamily: PX_FONT,
@@ -3436,6 +3554,8 @@ export class BuildingInterior {
     }
     this.objects = [];
     this.exitPrompt = null;
+    this._cashierX = 0;
+    this._cashierY = 0;
   }
 
   destroy() {
