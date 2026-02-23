@@ -3494,9 +3494,9 @@ export class BuildingInterior {
     g.fillRect(cx - 4, cy + 1, 3, 7);
     g.fillRect(cx + 1, cy + 1, 3, 6);
 
-    // Eyes (facing left toward the player)
+    // Eyes (facing right / toward the door)
     g.fillStyle(0x222222, 1);
-    g.fillRect(cx - 3, cy - 14, 2, 2);
+    g.fillRect(cx + 1, cy - 14, 2, 2);
 
     this._cashierX = cx;
     this._cashierY = cy;
