@@ -288,12 +288,14 @@ export class GameScene extends Phaser.Scene {
     cam.scrollX += (targetX - cam.scrollX) * lerp;
     cam.scrollY += (targetY - cam.scrollY) * lerp;
 
-    // Soft clamp: keep camera within world bounds
-    const totalRows = Math.ceil(44 / 6);
-    const worldH = totalRows * ROW_HEIGHT + 100;
-    if (cam.scrollX < -50) cam.scrollX = -50;
-    if (cam.scrollY < -50) cam.scrollY = -50;
-    if (cam.scrollY > worldH - viewH) cam.scrollY = worldH - viewH;
+    // Soft clamp: keep camera within world bounds (skip when inside a building)
+    if (!this.buildingInterior.visible) {
+      const totalRows = Math.ceil(44 / 6);
+      const worldH = totalRows * ROW_HEIGHT + 100;
+      if (cam.scrollX < -50) cam.scrollX = -50;
+      if (cam.scrollY < -TOWN_Y) cam.scrollY = -TOWN_Y;
+      if (cam.scrollY > worldH - viewH) cam.scrollY = worldH - viewH;
+    }
 
     // Result flash
     if (this.resultFlash) {
