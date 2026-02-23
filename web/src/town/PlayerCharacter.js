@@ -1,4 +1,4 @@
-import { TOWN_WORLD_W, ROW_HEIGHT, PLOT_COLS, PLOT_W, PLOT_H, PX_FONT } from '../constants.js';
+import { TOWN_WORLD_W, ROW_HEIGHT, PLOT_COLS, PLOT_W, PLOT_H, PX_FONT, NEIGHBOURHOOD_X, HOUSE_W, HOUSE_H } from '../constants.js';
 
 // Pixel-art pedestrian character matching the Python client's draw_pedestrian
 export class PlayerCharacter {
@@ -133,6 +133,31 @@ export class PlayerCharacter {
       // Check if player is within the plot bounds (with a small margin)
       if (this.x >= px - 5 && this.x <= px + PLOT_W + 5 &&
           this.y >= py - 5 && this.y <= py + PLOT_H + 5) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  /**
+   * Returns the index of the house the player is standing on, or -1.
+   */
+  getNearbyHouseIndex(population) {
+    const numHouses = population >= 100 ? Math.floor(population / 100) : 0;
+    if (numHouses === 0) return -1;
+
+    const cols = 6;
+    const colSpacing = HOUSE_W + 40;
+    const rowSpacing = HOUSE_H + 50;
+
+    for (let i = 0; i < numHouses; i++) {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const hx = NEIGHBOURHOOD_X + col * colSpacing;
+      const hy = 30 + row * rowSpacing;
+
+      if (this.x >= hx - 10 && this.x <= hx + HOUSE_W + 10 &&
+          this.y >= hy - 10 && this.y <= hy + HOUSE_H + 10) {
         return i;
       }
     }

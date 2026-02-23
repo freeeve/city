@@ -231,6 +231,12 @@ export class GameScene extends Phaser.Scene {
           const idx = this.player.getNearbyBuildingIndex();
           if (idx >= 0 && idx < this.gameState.buildings.length) {
             this.buildingInterior.enter(this.gameState.buildings[idx], idx);
+          } else {
+            // Check for house entry
+            const houseIdx = this.player.getNearbyHouseIndex(this.gameState.population);
+            if (houseIdx >= 0) {
+              this.buildingInterior.enterHouse(houseIdx);
+            }
           }
         }
       }

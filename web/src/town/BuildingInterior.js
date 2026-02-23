@@ -1,4 +1,4 @@
-import { PX_FONT, rgb, PLOT_COLS, ROW_HEIGHT, PLOT_W, PLOT_H } from '../constants.js';
+import { PX_FONT, rgb, PLOT_COLS, ROW_HEIGHT, PLOT_W, PLOT_H, NEIGHBOURHOOD_X, HOUSE_W, HOUSE_H } from '../constants.js';
 import { BUILDING_COLORS } from '../shared.js';
 
 /**
@@ -101,6 +101,11 @@ export class BuildingInterior {
     const idx = player.getNearbyBuildingIndex();
     if (idx >= 0 && idx < this.scene.gameState.buildings.length) {
       this.enter(this.scene.gameState.buildings[idx], idx);
+    } else {
+      const houseIdx = player.getNearbyHouseIndex(this.scene.gameState.population);
+      if (houseIdx >= 0) {
+        this.enterHouse(houseIdx);
+      }
     }
   }
 
@@ -133,8 +138,29 @@ export class BuildingInterior {
       this.enterBtn.textContent = 'Enter';
       this.enterBtn.style.background = '#3cbe5a';
     } else {
-      this.enterPrompt.setVisible(false);
-      this.enterBtn.style.display = 'none';
+      // Check for house
+      const pop = this.scene.gameState.population;
+      const houseIdx = player.getNearbyHouseIndex(pop);
+      if (houseIdx >= 0) {
+        const cols = 6;
+        const colSpacing = HOUSE_W + 40;
+        const rowSpacing = HOUSE_H + 50;
+        const col = houseIdx % cols;
+        const row = Math.floor(houseIdx / cols);
+        const hx = NEIGHBOURHOOD_X + col * colSpacing + HOUSE_W / 2;
+        const hy = 30 + row * rowSpacing - 10;
+
+        this.enterPrompt.setText(`[E] Enter House ${houseIdx + 1}`);
+        this.enterPrompt.setPosition(hx, hy);
+        this.enterPrompt.setVisible(true);
+
+        this.enterBtn.style.display = 'block';
+        this.enterBtn.textContent = 'Enter';
+        this.enterBtn.style.background = '#3cbe5a';
+      } else {
+        this.enterPrompt.setVisible(false);
+        this.enterBtn.style.display = 'none';
+      }
     }
   }
 
@@ -167,6 +193,33 @@ export class BuildingInterior {
     this.enterPrompt.setVisible(false);
 
     // Hide virtual joystick enter prompt
+  }
+
+  enterHouse(houseIndex) {
+    if (this.visible) return;
+
+    this.visible = true;
+    this.buildingName = `House ${houseIndex + 1}`;
+    this.buildingIndex = -1;
+    this._houseIndex = houseIndex;
+
+    const player = this.scene.player;
+    this.savedPlayerX = player.x;
+    this.savedPlayerY = player.y;
+    player.insideBuilding = true;
+
+    this.playerRoomX = ROOM_W / 2;
+    this.playerRoomY = ROOM_H - 50;
+    player.x = this.roomX + this.playerRoomX;
+    player.y = this.roomY + this.playerRoomY;
+    player.draw();
+
+    this._renderHouseRoom(houseIndex);
+
+    this.enterBtn.style.display = 'block';
+    this.enterBtn.textContent = 'Exit';
+    this.enterBtn.style.background = '#dc4646';
+    this.enterPrompt.setVisible(false);
   }
 
   exit() {
@@ -2939,6 +2992,430 @@ export class BuildingInterior {
         break;
       }
     }
+  }
+
+  _seededRng(seed) {
+    let s = seed;
+    return () => {
+      s = (s * 16807 + 0) % 2147483647;
+      return (s & 0x7fffffff) / 2147483647;
+    };
+  }
+
+  _renderHouseRoom(houseIndex) {
+    this._destroyRoom();
+
+    const rng = this._seededRng(houseIndex * 777 + 42);
+    const rx = this.roomX;
+    const ry = this.roomY;
+
+    const g = this.scene.add.graphics();
+    g.setDepth(4);
+    this.scene.addTownObj(g);
+    this.objects.push(g);
+
+    // House color palette from seed
+    const wallPalettes = [
+      [245, 235, 220], [230, 240, 250], [250, 240, 230], [235, 245, 235],
+      [250, 245, 235], [240, 235, 250], [245, 240, 240], [240, 250, 245],
+    ];
+    const floorPalettes = [
+      [180, 140, 100], [160, 130, 90], [140, 110, 75], [170, 150, 110],
+    ];
+    const accentPalettes = [
+      [100, 140, 180], [140, 100, 100], [100, 140, 100], [160, 130, 80],
+      [120, 100, 140], [140, 120, 80], [80, 120, 140], [160, 100, 120],
+    ];
+
+    const wp = wallPalettes[Math.floor(rng() * wallPalettes.length)];
+    const fp = floorPalettes[Math.floor(rng() * floorPalettes.length)];
+    const ap = accentPalettes[Math.floor(rng() * accentPalettes.length)];
+
+    // Floor (warm wood)
+    g.fillStyle(rgb(fp[0], fp[1], fp[2]), 1);
+    g.fillRect(rx, ry, ROOM_W, ROOM_H);
+    // Wood grain pattern
+    g.lineStyle(1, rgb(fp[0] - 15, fp[1] - 15, fp[2] - 10), 0.15);
+    for (let fx = 0; fx < ROOM_W; fx += 28) {
+      g.lineBetween(rx + fx, ry, rx + fx, ry + ROOM_H);
+    }
+    // Planks
+    g.lineStyle(1, rgb(fp[0] - 20, fp[1] - 20, fp[2] - 15), 0.08);
+    for (let fy = 0; fy < ROOM_H; fy += 40) {
+      g.lineBetween(rx, ry + fy, rx + ROOM_W, ry + fy);
+    }
+
+    // Walls
+    const wc = rgb(wp[0], wp[1], wp[2]);
+    const wd = rgb(wp[0] - 20, wp[1] - 20, wp[2] - 20);
+    g.fillStyle(wc, 1);
+    g.fillRect(rx, ry, ROOM_W, WALL_THICK);
+    g.fillRect(rx, ry, WALL_THICK, ROOM_H);
+    g.fillRect(rx + ROOM_W - WALL_THICK, ry, WALL_THICK, ROOM_H);
+    g.fillStyle(wd, 1);
+    g.fillRect(rx, ry + WALL_THICK - 2, ROOM_W, 2);
+    g.fillRect(rx + WALL_THICK - 2, ry, 2, ROOM_H);
+    g.fillRect(rx + ROOM_W - WALL_THICK, ry, 2, ROOM_H);
+
+    // Bottom wall with door gap
+    const doorLeft = rx + ROOM_W / 2 - DOOR_W / 2;
+    g.fillStyle(wc, 1);
+    g.fillRect(rx, ry + ROOM_H - WALL_THICK, doorLeft - rx, WALL_THICK);
+    g.fillRect(doorLeft + DOOR_W, ry + ROOM_H - WALL_THICK, rx + ROOM_W - doorLeft - DOOR_W, WALL_THICK);
+    g.fillStyle(wd, 1);
+    g.fillRect(rx, ry + ROOM_H - WALL_THICK, doorLeft - rx, 2);
+    g.fillRect(doorLeft + DOOR_W, ry + ROOM_H - WALL_THICK, rx + ROOM_W - doorLeft - DOOR_W, 2);
+
+    // Door frame
+    g.fillStyle(rgb(100, 70, 40), 1);
+    g.fillRect(doorLeft - 4, ry + ROOM_H - WALL_THICK, 4, WALL_THICK);
+    g.fillRect(doorLeft + DOOR_W, ry + ROOM_H - WALL_THICK, 4, WALL_THICK);
+    g.fillRect(doorLeft - 4, ry + ROOM_H - WALL_THICK, DOOR_W + 8, 4);
+
+    // Welcome mat
+    g.fillStyle(rgb(120, 90, 50), 0.5);
+    g.fillRect(doorLeft + 4, ry + ROOM_H - 10, DOOR_W - 8, 8);
+    this._addText('HOME', rx + ROOM_W / 2, ry + ROOM_H - 6, '#8B4513');
+
+    // Exit text
+    this.exitPrompt = this.scene.add.text(
+      rx + ROOM_W / 2, ry + ROOM_H - 4,
+      'EXIT', {
+        fontFamily: PX_FONT,
+        fontSize: '8px',
+        color: '#ffffff',
+        backgroundColor: 'rgba(220,70,70,0.8)',
+        padding: { x: 8, y: 3 },
+      }
+    ).setOrigin(0.5, 0.5).setDepth(2000);
+    this.scene.addTownObj(this.exitPrompt);
+    this.objects.push(this.exitPrompt);
+
+    // House name header
+    const nameLabel = this.scene.add.text(
+      rx + ROOM_W / 2, ry + 5,
+      `House ${houseIndex + 1}`, {
+        fontFamily: PX_FONT,
+        fontSize: '10px',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 2,
+      }
+    ).setOrigin(0.5, 0).setDepth(2001);
+    this.scene.addTownObj(nameLabel);
+    this.objects.push(nameLabel);
+
+    // Interior layout
+    const left = rx + WALL_THICK + 4;
+    const top2 = ry + WALL_THICK + 4;
+    const innerW = ROOM_W - WALL_THICK * 2 - 8;
+    const cx = rx + ROOM_W / 2;
+
+    // Choose house style based on seed (8 variants)
+    const style = Math.floor(rng() * 8);
+
+    // ── Common elements for all houses ──
+
+    // Area rug
+    const rugColors = [
+      [160, 80, 80], [80, 100, 140], [100, 130, 80], [140, 100, 60],
+      [120, 80, 120], [80, 120, 120], [140, 120, 80], [100, 80, 60],
+    ];
+    const rc = rugColors[style];
+    g.fillStyle(rgb(rc[0], rc[1], rc[2]), 0.3);
+    g.fillRect(left + 30, top2 + 60, innerW - 60, 70);
+    g.lineStyle(1, rgb(rc[0] - 20, rc[1] - 20, rc[2] - 20), 0.2);
+    g.strokeRect(left + 30, top2 + 60, innerW - 60, 70);
+    // Rug pattern
+    g.lineStyle(1, rgb(rc[0] + 20, rc[1] + 20, rc[2] + 20), 0.15);
+    g.strokeRect(left + 34, top2 + 64, innerW - 68, 62);
+
+    // Baseboard trim
+    g.fillStyle(rgb(wp[0] - 30, wp[1] - 30, wp[2] - 30), 0.4);
+    g.fillRect(rx + WALL_THICK, ry + ROOM_H - WALL_THICK - 3, ROOM_W - WALL_THICK * 2, 3);
+
+    // ── Style-specific furniture ──
+
+    if (style === 0 || style === 4) {
+      // LIVING ROOM: Couch + TV + coffee table
+      // Couch
+      g.fillStyle(rgb(ap[0], ap[1], ap[2]), 0.8);
+      g.fillRect(left + 10, top2 + 5, 80, 30);
+      g.fillStyle(rgb(ap[0] - 20, ap[1] - 20, ap[2] - 20), 1);
+      g.fillRect(left + 10, top2 + 3, 80, 6);
+      g.fillRect(left + 10, top2 + 5, 8, 28);
+      g.fillRect(left + 82, top2 + 5, 8, 28);
+      // Cushions
+      g.fillStyle(rgb(ap[0] + 15, ap[1] + 15, ap[2] + 15), 0.6);
+      g.fillRect(left + 20, top2 + 10, 28, 20);
+      g.fillRect(left + 52, top2 + 10, 28, 20);
+      // Throw pillow
+      g.fillStyle(rgb(ap[0] + 40, ap[1] - 10, ap[2] - 10), 0.7);
+      g.fillRect(left + 14, top2 + 12, 10, 12);
+
+      // TV stand + TV
+      g.fillStyle(rgb(80, 60, 40), 1);
+      g.fillRect(left + innerW - 55, top2 + 12, 45, 20);
+      g.fillStyle(rgb(30, 30, 35), 1);
+      g.fillRect(left + innerW - 50, top2 + 3, 36, 22);
+      g.fillStyle(rgb(80, 120, 160), 0.4);
+      g.fillRect(left + innerW - 48, top2 + 5, 32, 16);
+      // Stand
+      g.fillStyle(rgb(50, 50, 55), 1);
+      g.fillRect(left + innerW - 36, top2 + 25, 8, 5);
+
+      // Coffee table
+      g.fillStyle(rgb(140, 100, 60), 1);
+      g.fillRect(left + 40, top2 + 45, 50, 20);
+      g.fillStyle(rgb(120, 80, 40), 1);
+      g.fillRect(left + 55, top2 + 65, 6, 8);
+      g.fillRect(left + 75, top2 + 65, 6, 8);
+      // Magazine on table
+      g.fillStyle(rgb(200, 80, 80), 0.6);
+      g.fillRect(left + 45, top2 + 48, 12, 8);
+      // Coffee mug
+      g.fillStyle(0xffffff, 0.8);
+      g.fillRect(left + 70, top2 + 48, 6, 8);
+      g.fillStyle(rgb(80, 40, 20), 0.6);
+      g.fillRect(left + 71, top2 + 49, 4, 3);
+    } else if (style === 1 || style === 5) {
+      // KITCHEN: Counters + stove + fridge + table
+      // Kitchen counter (L-shaped)
+      g.fillStyle(rgb(200, 190, 180), 1);
+      g.fillRect(left + 5, top2 + 5, innerW - 60, 18);
+      g.fillStyle(rgb(180, 170, 160), 1);
+      g.fillRect(left + 5, top2 + 23, innerW - 60, 3);
+      // Cabinets below
+      g.fillStyle(rgb(160, 130, 90), 1);
+      g.fillRect(left + 5, top2 + 26, innerW - 60, 16);
+      // Cabinet handles
+      g.fillStyle(rgb(180, 180, 190), 1);
+      for (let h = 0; h < 5; h++) {
+        g.fillRect(left + 20 + h * 36, top2 + 32, 8, 2);
+      }
+      // Stove
+      g.fillStyle(rgb(70, 70, 80), 1);
+      g.fillRect(left + 50, top2 + 5, 40, 18);
+      // Burners
+      g.fillStyle(rgb(50, 50, 55), 1);
+      g.fillCircle(left + 60, top2 + 12, 5);
+      g.fillCircle(left + 78, top2 + 12, 5);
+      g.fillStyle(rgb(40, 40, 45), 1);
+      g.fillCircle(left + 60, top2 + 12, 2);
+      g.fillCircle(left + 78, top2 + 12, 2);
+      // Pan on stove
+      g.fillStyle(rgb(50, 50, 55), 1);
+      g.fillCircle(left + 60, top2 + 12, 7);
+      g.fillStyle(rgb(60, 60, 65), 1);
+      g.fillCircle(left + 60, top2 + 12, 5);
+      g.fillRect(left + 52, top2 + 11, 8, 2);
+      // Sink
+      g.fillStyle(rgb(180, 190, 200), 1);
+      g.fillRect(left + 15, top2 + 7, 24, 12);
+      g.fillStyle(rgb(160, 170, 180), 1);
+      g.fillRect(left + 18, top2 + 9, 18, 8);
+      // Faucet
+      g.fillStyle(rgb(180, 180, 190), 1);
+      g.fillRect(left + 25, top2 + 3, 4, 6);
+      g.fillRect(left + 23, top2 + 3, 8, 2);
+      // Fridge
+      g.fillStyle(rgb(220, 220, 230), 1);
+      g.fillRect(left + innerW - 45, top2 + 3, 36, 50);
+      g.fillStyle(rgb(200, 200, 210), 1);
+      g.fillRect(left + innerW - 45, top2 + 28, 36, 2);
+      g.fillStyle(rgb(180, 180, 190), 1);
+      g.fillRect(left + innerW - 42, top2 + 12, 2, 12);
+      g.fillRect(left + innerW - 42, top2 + 35, 2, 12);
+      // Fridge magnets
+      g.fillStyle(0xff4444, 0.7);
+      g.fillRect(left + innerW - 30, top2 + 8, 4, 4);
+      g.fillStyle(0x4444ff, 0.7);
+      g.fillRect(left + innerW - 20, top2 + 10, 4, 4);
+      // Dining table
+      g.fillStyle(rgb(160, 120, 80), 1);
+      g.fillRect(left + 20, top2 + 70, 70, 35);
+      g.fillStyle(rgb(140, 100, 60), 1);
+      g.fillRect(left + 30, top2 + 105, 8, 12);
+      g.fillRect(left + 72, top2 + 105, 8, 12);
+      // Plates
+      g.fillStyle(0xffffff, 0.6);
+      g.fillCircle(left + 40, top2 + 82, 7);
+      g.fillCircle(left + 70, top2 + 82, 7);
+      // Chairs
+      g.fillStyle(rgb(120, 80, 50), 1);
+      g.fillRect(left + 12, top2 + 78, 8, 18);
+      g.fillRect(left + 90, top2 + 78, 8, 18);
+    } else if (style === 2 || style === 6) {
+      // BEDROOM: Bed + nightstand + dresser + closet
+      // Bed
+      g.fillStyle(rgb(140, 100, 60), 1);
+      g.fillRect(left + 10, top2 + 20, 80, 55);
+      // Mattress
+      g.fillStyle(0xffffff, 0.9);
+      g.fillRect(left + 12, top2 + 22, 76, 51);
+      // Blanket
+      g.fillStyle(rgb(ap[0], ap[1], ap[2]), 0.5);
+      g.fillRect(left + 12, top2 + 40, 76, 31);
+      // Pillow
+      g.fillStyle(0xffffff, 1);
+      g.fillRect(left + 16, top2 + 24, 30, 14);
+      g.fillRect(left + 52, top2 + 24, 30, 14);
+      // Headboard
+      g.fillStyle(rgb(120, 80, 45), 1);
+      g.fillRect(left + 10, top2 + 15, 80, 8);
+
+      // Nightstand
+      g.fillStyle(rgb(140, 100, 60), 1);
+      g.fillRect(left + 95, top2 + 30, 28, 28);
+      // Lamp on nightstand
+      g.fillStyle(rgb(60, 60, 60), 1);
+      g.fillRect(left + 105, top2 + 18, 3, 14);
+      g.fillStyle(0xffee88, 0.5);
+      g.fillTriangle(left + 96, top2 + 20, left + 106, top2 + 12, left + 116, top2 + 20);
+      // Alarm clock
+      g.fillStyle(rgb(40, 40, 50), 1);
+      g.fillRect(left + 98, top2 + 35, 12, 8);
+      g.fillStyle(0x00ff00, 0.5);
+      this._addText('7:00', left + 104, top2 + 39, '#00ff00');
+
+      // Dresser
+      g.fillStyle(rgb(160, 120, 70), 1);
+      g.fillRect(left + innerW - 55, top2 + 5, 46, 50);
+      // Drawers
+      for (let d = 0; d < 3; d++) {
+        g.fillStyle(rgb(150, 110, 60), 1);
+        g.fillRect(left + innerW - 52, top2 + 8 + d * 15, 40, 12);
+        g.fillStyle(rgb(180, 150, 100), 1);
+        g.fillRect(left + innerW - 35, top2 + 12 + d * 15, 6, 3);
+      }
+      // Mirror above dresser
+      g.fillStyle(rgb(200, 220, 240), 0.4);
+      g.fillRect(left + innerW - 48, top2 + 3, 32, 3);
+      // Photo frame
+      g.fillStyle(rgb(160, 120, 60), 1);
+      g.fillRect(left + innerW - 25, top2 + 3, 12, 14);
+      g.fillStyle(rgb(200, 220, 240), 0.5);
+      g.fillRect(left + innerW - 23, top2 + 5, 8, 10);
+
+      // Closet
+      g.fillStyle(rgb(200, 190, 180), 1);
+      g.fillRect(left + 5, top2 + 85, 50, 40);
+      g.fillStyle(rgb(180, 170, 160), 1);
+      g.lineBetween(left + 30, top2 + 85, left + 30, top2 + 125);
+      g.fillStyle(rgb(160, 150, 140), 1);
+      g.fillRect(left + 23, top2 + 100, 3, 8);
+      g.fillRect(left + 32, top2 + 100, 3, 8);
+    } else if (style === 3 || style === 7) {
+      // STUDY/DEN: Desk + bookshelf + reading chair
+      // Desk
+      g.fillStyle(rgb(130, 90, 55), 1);
+      g.fillRect(left + 10, top2 + 5, 90, 20);
+      g.fillStyle(rgb(110, 75, 45), 1);
+      g.fillRect(left + 16, top2 + 25, 8, 20);
+      g.fillRect(left + 86, top2 + 25, 8, 20);
+      // Computer/laptop
+      g.fillStyle(rgb(50, 50, 60), 1);
+      g.fillRect(left + 30, top2 + 3, 34, 18);
+      g.fillStyle(rgb(80, 130, 180), 0.5);
+      g.fillRect(left + 32, top2 + 5, 30, 12);
+      // Keyboard
+      g.fillStyle(rgb(60, 60, 65), 1);
+      g.fillRect(left + 32, top2 + 22, 28, 4);
+      // Desk lamp
+      g.fillStyle(rgb(40, 40, 50), 1);
+      g.fillRect(left + 75, top2 + 8, 2, 12);
+      g.fillRect(left + 72, top2 + 20, 8, 2);
+      g.fillStyle(0xffee88, 0.3);
+      g.fillCircle(left + 76, top2 + 6, 6);
+      // Pencil cup
+      g.fillStyle(rgb(ap[0], ap[1], ap[2]), 0.7);
+      g.fillRect(left + 16, top2 + 8, 8, 10);
+      g.fillStyle(0xffcc00, 1);
+      g.fillRect(left + 17, top2 + 4, 2, 6);
+      g.fillStyle(0x4444ff, 1);
+      g.fillRect(left + 20, top2 + 5, 2, 5);
+
+      // Bookshelf (right wall)
+      g.fillStyle(rgb(120, 85, 55), 1);
+      g.fillRect(left + innerW - 45, top2 + 3, 38, 65);
+      const bookC = [0xcc3333, 0x3366cc, 0x33aa55, 0xccaa33, 0x8833cc, 0xcc6633];
+      for (let sh = 0; sh < 3; sh++) {
+        g.fillStyle(rgb(100, 70, 40), 1);
+        g.fillRect(left + innerW - 43, top2 + 22 + sh * 20, 34, 2);
+        for (let b = 0; b < 4; b++) {
+          const bh = 8 + (b * 3) % 6;
+          g.fillStyle(bookC[(sh * 4 + b) % bookC.length], 1);
+          g.fillRect(left + innerW - 42 + b * 8, top2 + 22 + sh * 20 - bh, 6, bh);
+        }
+      }
+
+      // Reading chair
+      g.fillStyle(rgb(ap[0], ap[1], ap[2]), 0.7);
+      g.fillRect(left + 15, top2 + 70, 35, 30);
+      g.fillStyle(rgb(ap[0] - 20, ap[1] - 20, ap[2] - 20), 1);
+      g.fillRect(left + 15, top2 + 66, 35, 8);
+      g.fillRect(left + 12, top2 + 70, 5, 28);
+      g.fillRect(left + 48, top2 + 70, 5, 28);
+      // Book on chair
+      g.fillStyle(0x3366cc, 0.7);
+      g.fillRect(left + 25, top2 + 78, 14, 10);
+    }
+
+    // ── Common decorative elements ──
+
+    // Window on left or right wall (seeded)
+    const winSide = rng() > 0.5 ? 'left' : 'right';
+    const winX = winSide === 'left' ? rx + 3 : rx + ROOM_W - WALL_THICK + 3;
+    const winY = ry + 40;
+    g.fillStyle(rgb(180, 210, 240), 0.4);
+    g.fillRect(winX, winY, WALL_THICK - 6, 30);
+    g.lineStyle(1, rgb(160, 160, 170), 0.6);
+    g.strokeRect(winX, winY, WALL_THICK - 6, 30);
+    g.lineBetween(winX + (WALL_THICK - 6) / 2, winY, winX + (WALL_THICK - 6) / 2, winY + 30);
+    g.lineBetween(winX, winY + 15, winX + WALL_THICK - 6, winY + 15);
+    // Curtain
+    g.fillStyle(rgb(ap[0], ap[1], ap[2]), 0.2);
+    g.fillRect(winX - 1, winY - 2, 4, 34);
+    g.fillRect(winX + WALL_THICK - 9, winY - 2, 4, 34);
+
+    // Potted plant (corner)
+    const plantX = rng() > 0.5 ? left + 5 : left + innerW - 20;
+    const plantY = top2 + innerW > 150 ? top2 + 100 : top2 + 85;
+    g.fillStyle(rgb(140, 90, 50), 1);
+    g.fillRect(plantX, plantY + 10, 16, 14);
+    g.fillStyle(0x44aa33, 1);
+    g.fillCircle(plantX + 8, plantY + 6, 10);
+    g.fillStyle(0x55cc44, 0.5);
+    g.fillCircle(plantX + 12, plantY + 3, 6);
+
+    // Wall clock
+    g.fillStyle(0xffffff, 0.8);
+    g.fillCircle(cx + 30, ry + WALL_THICK + 10, 8);
+    g.lineStyle(1, rgb(80, 80, 80), 0.8);
+    g.strokeCircle(cx + 30, ry + WALL_THICK + 10, 8);
+    // Clock hands
+    g.lineBetween(cx + 30, ry + WALL_THICK + 10, cx + 30, ry + WALL_THICK + 4);
+    g.lineBetween(cx + 30, ry + WALL_THICK + 10, cx + 35, ry + WALL_THICK + 10);
+
+    // Picture frame on back wall
+    const picX = left + 5 + Math.floor(rng() * 60);
+    g.fillStyle(rgb(140, 100, 50), 1);
+    g.fillRect(picX, ry + WALL_THICK + 4, 24, 18);
+    g.fillStyle(rgb(180, 200, 160), 0.5);
+    g.fillRect(picX + 2, ry + WALL_THICK + 6, 20, 14);
+
+    // Ceiling light
+    g.fillStyle(0xffee88, 0.3);
+    g.fillCircle(cx, ry + WALL_THICK + 3, 8);
+    g.fillStyle(rgb(200, 200, 210), 1);
+    g.fillRect(cx - 5, ry + WALL_THICK - 1, 10, 4);
+
+    // Shoes by door
+    g.fillStyle(rgb(60, 40, 30), 0.6);
+    g.fillRect(doorLeft + DOOR_W + 10, ry + ROOM_H - WALL_THICK - 8, 8, 4);
+    g.fillRect(doorLeft + DOOR_W + 12, ry + ROOM_H - WALL_THICK - 8, 8, 4);
+
+    this._addText(`Home sweet home!`, cx, ry + ROOM_H - WALL_THICK - 30, '#886644');
   }
 
   _addText(text, x, y, color) {
