@@ -357,382 +357,1290 @@ export class BuildingInterior {
 
     switch (name) {
       case 'Lemonade Stand': {
-        // Counter at top
+        // Checkered floor accent
+        g.fillStyle(0xffffff, 0.08);
+        for (let fx = 0; fx < innerW; fx += 24) {
+          for (let fy = 0; fy < innerH; fy += 24) {
+            if ((fx + fy) % 48 === 0) g.fillRect(left + fx, top + fy, 24, 24);
+          }
+        }
+        // Counter at top with cash register
         g.fillStyle(rgb(200, 170, 100), 1);
         g.fillRect(left + 20, top + 10, innerW - 40, 20);
         g.fillStyle(rgb(180, 150, 80), 1);
         g.fillRect(left + 20, top + 30, innerW - 40, 4);
-        // Lemons
+        // Cash register on counter
+        g.fillStyle(rgb(80, 80, 90), 1);
+        g.fillRect(left + innerW - 60, top + 4, 22, 16);
+        g.fillStyle(rgb(60, 60, 70), 1);
+        g.fillRect(left + innerW - 58, top + 6, 18, 8);
+        g.fillStyle(0x00ff00, 0.5);
+        g.fillRect(left + innerW - 56, top + 7, 14, 6);
+        // Lemons in bowl
+        g.fillStyle(rgb(180, 160, 120), 1);
+        g.fillEllipse(left + 50, top + 18, 32, 8);
         g.fillStyle(0xffee44, 1);
         for (let i = 0; i < 5; i++) {
-          g.fillCircle(left + 40 + i * 28, top + 18, 6);
+          g.fillCircle(left + 38 + i * 8, top + 16, 5);
         }
-        // Pitcher
+        g.fillStyle(0xeedd33, 1);
+        g.fillCircle(left + 46, top + 12, 4);
+        g.fillCircle(left + 54, top + 13, 4);
+        // Pitcher with condensation
         g.fillStyle(rgb(180, 220, 255), 0.7);
-        g.fillRect(cx - 8, top + 50, 16, 24);
+        g.fillRect(cx - 8, top + 45, 16, 28);
+        g.fillRect(cx - 10, top + 43, 20, 4);
         g.fillStyle(0xffee44, 0.5);
-        g.fillRect(cx - 6, top + 54, 12, 16);
-        // Cups
+        g.fillRect(cx - 6, top + 50, 12, 18);
+        // Handle
+        g.fillStyle(rgb(160, 200, 240), 0.7);
+        g.fillRect(cx + 8, top + 48, 6, 3);
+        g.fillRect(cx + 12, top + 48, 3, 14);
+        g.fillRect(cx + 8, top + 60, 6, 3);
+        // Condensation drops
+        g.fillStyle(0xffffff, 0.3);
+        g.fillCircle(cx - 6, top + 55, 1.5);
+        g.fillCircle(cx + 4, top + 62, 1);
+        // Cups with straws
         g.fillStyle(0xffffff, 1);
         for (let i = 0; i < 4; i++) {
-          g.fillRect(left + 30 + i * 50, top + 55, 12, 16);
+          g.fillRect(left + 30 + i * 55, top + 55, 12, 16);
+          // Straw
+          g.fillStyle(rgb(220, 50, 50), 1);
+          g.fillRect(left + 34 + i * 55, top + 48, 2, 18);
+          g.fillStyle(0xffffff, 1);
         }
-        // Sign
-        this._addText('Fresh Lemonade!', cx, top + 90, '#996600');
+        // Hanging string lights across ceiling
+        g.lineStyle(1, rgb(80, 80, 80), 0.5);
+        g.lineBetween(left + 5, top + 2, left + innerW - 5, top + 5);
+        const bulbColors2 = [0xffee44, 0xff8844, 0xffee44, 0xff6644, 0xffee44];
+        for (let i = 0; i < 5; i++) {
+          g.fillStyle(bulbColors2[i], 0.7);
+          g.fillCircle(left + 25 + i * 50, top + 4 + (i % 2) * 2, 3);
+        }
+        // Lemon tree in pot (corner)
+        g.fillStyle(rgb(140, 90, 50), 1);
+        g.fillRect(left + innerW - 30, top + 100, 20, 18);
+        g.fillStyle(rgb(80, 60, 30), 1);
+        g.fillRect(left + innerW - 24, top + 80, 6, 22);
+        g.fillStyle(0x44aa33, 1);
+        g.fillCircle(left + innerW - 21, top + 74, 12);
+        g.fillStyle(0xffee44, 1);
+        g.fillCircle(left + innerW - 25, top + 78, 3);
+        g.fillCircle(left + innerW - 16, top + 72, 3);
+        // Price sign on wall
+        g.fillStyle(rgb(240, 220, 180), 1);
+        g.fillRect(left + 5, top + 5, 40, 22);
+        g.lineStyle(1, rgb(180, 140, 60), 1);
+        g.strokeRect(left + 5, top + 5, 40, 22);
+        this._addText('$1.00', left + 25, top + 16, '#996600');
+        // Welcome mat detail
+        g.fillStyle(rgb(100, 140, 60), 0.4);
+        g.fillRect(cx - 20, top + innerH - 20, 40, 12);
+        this._addText('Fresh Lemonade!', cx, top + 95, '#996600');
         break;
       }
       case 'Ice Cream Truck': {
-        // Freezer display
+        // Checkered pink & white floor
+        g.fillStyle(0xff88aa, 0.08);
+        for (let fx = 0; fx < innerW; fx += 20) {
+          for (let fy = 0; fy < innerH; fy += 20) {
+            if ((fx + fy) % 40 === 0) g.fillRect(left + fx, top + fy, 20, 20);
+          }
+        }
+        // Freezer display with frost effect
         g.fillStyle(rgb(200, 230, 255), 1);
         g.fillRect(left + 10, top + 5, innerW - 20, 40);
-        g.lineStyle(1, rgb(150, 180, 200), 1);
+        g.lineStyle(2, rgb(150, 180, 200), 1);
         g.strokeRect(left + 10, top + 5, innerW - 20, 40);
-        // Ice cream flavors
+        // Frost on glass
+        g.fillStyle(0xffffff, 0.15);
+        g.fillRect(left + 12, top + 7, 20, 8);
+        g.fillRect(left + innerW - 40, top + 30, 16, 10);
+        // Ice cream flavors with labels
         const colors = [0xff88aa, 0x88ddff, 0xffee88, 0xcc88ff, 0x88ff88, 0xffaa66];
+        const flavorNames = ['Strwb', 'Mint', 'Vanla', 'Grape', 'Lime', 'Mango'];
         for (let i = 0; i < 6; i++) {
           g.fillStyle(colors[i], 1);
           g.fillCircle(left + 30 + i * 40, top + 25, 12);
+          // Flavor swirl
+          g.fillStyle(0xffffff, 0.3);
+          g.fillCircle(left + 28 + i * 40, top + 22, 4);
         }
-        // Counter
+        // Counter with register
         g.fillStyle(rgb(180, 180, 190), 1);
         g.fillRect(left + 10, top + 50, innerW - 20, 16);
-        // Cone stack
+        g.fillStyle(rgb(160, 160, 170), 1);
+        g.fillRect(left + 10, top + 66, innerW - 20, 3);
+        // Register
+        g.fillStyle(rgb(70, 70, 80), 1);
+        g.fillRect(left + 15, top + 44, 24, 14);
+        g.fillStyle(rgb(100, 200, 100), 0.4);
+        g.fillRect(left + 17, top + 46, 20, 8);
+        // Cone stack (pyramid)
         g.fillStyle(rgb(200, 170, 100), 1);
         for (let i = 0; i < 3; i++) {
           g.fillTriangle(left + 50 + i * 30, top + 80, left + 56 + i * 30, top + 100, left + 62 + i * 30, top + 80);
         }
+        // Sprinkle containers
+        const sprinkleC = [0xff4444, 0x44ff44, 0x4444ff, 0xffff44];
+        for (let i = 0; i < 4; i++) {
+          g.fillStyle(rgb(200, 200, 210), 0.8);
+          g.fillRect(left + 160 + i * 20, top + 80, 14, 22);
+          g.fillStyle(sprinkleC[i], 0.7);
+          g.fillRect(left + 162 + i * 20, top + 84, 10, 14);
+        }
+        // Waffle cone maker
+        g.fillStyle(rgb(60, 60, 70), 1);
+        g.fillRect(left + innerW - 50, top + 75, 35, 25);
+        g.fillStyle(rgb(200, 170, 100), 0.5);
+        g.fillCircle(left + innerW - 33, top + 87, 8);
+        // Hanging menu board
+        g.fillStyle(rgb(40, 40, 50), 1);
+        g.fillRect(left + innerW - 55, top + 3, 45, 20);
+        this._addText('MENU', left + innerW - 33, top + 8, '#ffffff');
+        this._addText('$2-$5', left + innerW - 33, top + 18, '#ffcc44');
+        // Napkin dispenser on counter
+        g.fillStyle(rgb(180, 180, 190), 1);
+        g.fillRect(cx + 30, top + 50, 14, 12);
+        g.fillStyle(0xffffff, 1);
+        g.fillRect(cx + 33, top + 48, 8, 4);
         this._addText('Choose a flavor!', cx, top + 120, '#4488cc');
         break;
       }
       case 'Cookie Shop': {
-        // Oven in back
+        // Warm brown floor with rug
+        g.fillStyle(rgb(160, 100, 50), 0.15);
+        g.fillRect(left + 30, top + 90, innerW - 60, 60);
+        g.lineStyle(1, rgb(140, 80, 40), 0.2);
+        g.strokeRect(left + 30, top + 90, innerW - 60, 60);
+        // Oven in back with details
         g.fillStyle(rgb(80, 80, 90), 1);
-        g.fillRect(left + innerW - 60, top + 5, 50, 45);
+        g.fillRect(left + innerW - 65, top + 5, 55, 50);
+        g.fillStyle(rgb(70, 70, 80), 1);
+        g.fillRect(left + innerW - 63, top + 7, 51, 3);
         g.fillStyle(rgb(255, 140, 40), 0.3);
-        g.fillRect(left + innerW - 55, top + 15, 40, 20);
-        // Display case
+        g.fillRect(left + innerW - 58, top + 15, 42, 24);
+        // Oven door handle
+        g.fillStyle(rgb(140, 140, 150), 1);
+        g.fillRect(left + innerW - 55, top + 42, 36, 3);
+        // Temperature dial
+        g.fillStyle(rgb(200, 200, 210), 1);
+        g.fillCircle(left + innerW - 50, top + 10, 4);
+        g.fillStyle(0xff3333, 1);
+        g.fillRect(left + innerW - 51, top + 8, 2, 4);
+        // Timer
+        g.fillStyle(rgb(200, 200, 210), 1);
+        g.fillCircle(left + innerW - 36, top + 10, 4);
+        this._addText('12m', left + innerW - 36, top + 10, '#333333');
+        // Display case with glass top
         g.fillStyle(rgb(220, 200, 180), 1);
-        g.fillRect(left + 10, top + 10, innerW - 80, 35);
+        g.fillRect(left + 10, top + 10, innerW - 85, 40);
         g.fillStyle(rgb(255, 240, 220), 0.8);
-        g.fillRect(left + 12, top + 12, innerW - 84, 31);
-        // Cookies
-        const cookieColors = [rgb(180, 120, 50), rgb(160, 100, 40), rgb(200, 140, 60)];
+        g.fillRect(left + 12, top + 12, innerW - 89, 36);
+        // Glass cover
+        g.lineStyle(1, rgb(200, 220, 240), 0.5);
+        g.strokeRect(left + 12, top + 12, innerW - 89, 36);
+        // Cookies with more variety
+        const cookieColors = [rgb(180, 120, 50), rgb(160, 100, 40), rgb(200, 140, 60), rgb(170, 90, 35)];
         for (let i = 0; i < 8; i++) {
-          g.fillStyle(cookieColors[i % 3], 1);
-          g.fillCircle(left + 25 + i * 22, top + 28, 7);
-          g.fillStyle(rgb(80, 50, 20), 1);
-          g.fillCircle(left + 23 + i * 22, top + 26, 1.5);
-          g.fillCircle(left + 27 + i * 22, top + 30, 1.5);
+          g.fillStyle(cookieColors[i % 4], 1);
+          g.fillCircle(left + 25 + i * 22, top + 30, 7);
+          // Chocolate chips
+          g.fillStyle(rgb(60, 30, 10), 1);
+          g.fillCircle(left + 23 + i * 22, top + 28, 1.5);
+          g.fillCircle(left + 27 + i * 22, top + 32, 1.5);
+          g.fillCircle(left + 25 + i * 22, top + 26, 1);
         }
-        // Cookie jars
+        // Cookie jars with labels
         g.fillStyle(rgb(200, 180, 160), 0.7);
+        const jarLabels = ['Choc', 'Oat', 'Sugar'];
         for (let i = 0; i < 3; i++) {
-          g.fillRect(left + 20 + i * 60, top + 60, 24, 32);
+          g.fillRect(left + 20 + i * 65, top + 62, 26, 34);
+          g.fillStyle(rgb(220, 200, 180), 0.9);
+          g.fillCircle(left + 33 + i * 65, top + 60, 14);
           g.fillStyle(rgb(160, 140, 120), 1);
-          g.fillRect(left + 18 + i * 60, top + 58, 28, 4);
+          g.fillRect(left + 18 + i * 65, top + 59, 30, 4);
+          this._addText(jarLabels[i], left + 33 + i * 65, top + 80, '#8B4513');
+          g.fillStyle(rgb(200, 180, 160), 0.7);
         }
-        this._addText('Fresh baked daily!', cx, top + 110, '#8B4513');
+        // Mixing bowl on side table
+        g.fillStyle(rgb(200, 200, 210), 1);
+        g.fillEllipse(left + innerW - 30, top + 70, 24, 10);
+        g.fillStyle(rgb(230, 210, 180), 0.8);
+        g.fillEllipse(left + innerW - 30, top + 68, 18, 6);
+        // Whisk
+        g.fillStyle(rgb(160, 160, 170), 1);
+        g.fillRect(left + innerW - 22, top + 58, 2, 14);
+        // Ceiling lamp
+        g.fillStyle(rgb(200, 160, 80), 0.6);
+        g.fillRect(cx - 12, top, 24, 6);
+        g.fillStyle(0xffee88, 0.2);
+        g.fillRect(cx - 30, top + 6, 60, 40);
+        // Chalkboard menu
+        g.fillStyle(rgb(40, 50, 40), 1);
+        g.fillRect(left + 5, top + 3, 50, 30);
+        g.lineStyle(1, rgb(160, 120, 60), 1);
+        g.strokeRect(left + 5, top + 3, 50, 30);
+        this._addText('Today:', left + 30, top + 12, '#ffffff');
+        this._addText('Snickr', left + 30, top + 24, '#ffcc88');
+        this._addText('Fresh baked daily!', cx, top + 115, '#8B4513');
         break;
       }
       case 'Flower Shop': {
-        // Flower displays along walls
-        const flowerC = [0xff6088, 0xffcc44, 0xff88cc, 0xaa66ff, 0xff8844, 0x88ccff];
-        for (let i = 0; i < 6; i++) {
-          const fx = left + 15 + i * 40;
-          g.fillStyle(rgb(120, 80, 50), 1);
-          g.fillRect(fx, top + 10, 24, 20);
-          g.fillStyle(0x44aa33, 1);
-          g.fillRect(fx + 6, top + 2, 3, 10);
-          g.fillRect(fx + 14, top, 3, 12);
-          g.fillStyle(flowerC[i], 1);
-          g.fillCircle(fx + 7, top, 6);
-          g.fillCircle(fx + 15, top - 2, 5);
+        // Earthy floor accent
+        g.fillStyle(rgb(120, 100, 60), 0.08);
+        for (let fx = 0; fx < innerW; fx += 16) {
+          for (let fy = 0; fy < innerH; fy += 16) {
+            if ((fx + fy) % 32 === 0) g.fillRect(left + fx, top + fy, 16, 16);
+          }
         }
-        // Counter
+        // Flower displays along back wall (enhanced)
+        const flowerC = [0xff6088, 0xffcc44, 0xff88cc, 0xaa66ff, 0xff8844, 0x88ccff];
+        const flowerNames = ['Rose', 'Daisy', 'Tulip', 'Iris', 'Lily', 'Forget'];
+        for (let i = 0; i < 6; i++) {
+          const fx = left + 12 + i * 42;
+          // Pot
+          g.fillStyle(rgb(160, 90, 50), 1);
+          g.fillRect(fx + 2, top + 14, 22, 18);
+          g.fillStyle(rgb(140, 75, 40), 1);
+          g.fillRect(fx, top + 12, 26, 4);
+          // Soil
+          g.fillStyle(rgb(80, 50, 30), 1);
+          g.fillRect(fx + 4, top + 14, 18, 4);
+          // Stems
+          g.fillStyle(0x44aa33, 1);
+          g.fillRect(fx + 8, top - 2, 2, 18);
+          g.fillRect(fx + 15, top - 5, 2, 21);
+          // Leaves
+          g.fillStyle(0x55bb44, 1);
+          g.fillEllipse(fx + 5, top + 6, 6, 3);
+          g.fillEllipse(fx + 20, top + 3, 6, 3);
+          // Flower heads
+          g.fillStyle(flowerC[i], 1);
+          g.fillCircle(fx + 9, top - 4, 6);
+          g.fillCircle(fx + 16, top - 7, 5);
+          // Petal details
+          g.fillStyle(0xffffff, 0.3);
+          g.fillCircle(fx + 9, top - 5, 2);
+          g.fillCircle(fx + 16, top - 8, 2);
+        }
+        // Counter with register and wrapping paper
         g.fillStyle(rgb(180, 150, 120), 1);
-        g.fillRect(left + 10, top + 50, innerW - 20, 16);
-        // Watering can
+        g.fillRect(left + 10, top + 45, innerW - 20, 18);
+        g.fillStyle(rgb(160, 130, 100), 1);
+        g.fillRect(left + 10, top + 63, innerW - 20, 3);
+        // Register
+        g.fillStyle(rgb(80, 80, 90), 1);
+        g.fillRect(left + innerW - 50, top + 38, 24, 14);
+        g.fillStyle(0x00ff00, 0.4);
+        g.fillRect(left + innerW - 48, top + 40, 20, 8);
+        // Wrapping paper rolls
+        g.fillStyle(rgb(220, 180, 200), 0.8);
+        g.fillRect(left + 15, top + 47, 30, 8);
+        g.fillStyle(rgb(180, 220, 180), 0.8);
+        g.fillRect(left + 50, top + 47, 30, 8);
+        // Ribbon spools
+        g.fillStyle(rgb(220, 80, 80), 1);
+        g.fillCircle(left + 95, top + 51, 5);
+        g.fillStyle(rgb(80, 80, 220), 1);
+        g.fillCircle(left + 110, top + 51, 5);
+        // Watering can (detailed)
+        g.fillStyle(rgb(80, 140, 180), 1);
+        g.fillRect(left + 18, top + 80, 24, 18);
+        g.fillRect(left + 42, top + 82, 16, 4);
+        g.fillStyle(rgb(60, 120, 160), 1);
+        g.fillRect(left + 56, top + 80, 4, 3);
+        g.fillRect(left + 56, top + 79, 8, 2);
+        // Handle
         g.fillStyle(rgb(100, 160, 200), 1);
-        g.fillRect(left + 20, top + 80, 20, 16);
-        g.fillRect(left + 40, top + 80, 12, 4);
-        this._addText('Beautiful blooms!', cx, top + 120, '#dd5588');
+        g.fillRect(left + 20, top + 76, 20, 4);
+        // Hanging baskets from ceiling
+        for (let h = 0; h < 2; h++) {
+          const hx = left + 50 + h * 130;
+          g.lineStyle(1, rgb(100, 80, 60), 0.6);
+          g.lineBetween(hx + 10, top, hx + 10, top + 5);
+          g.fillStyle(rgb(120, 80, 50), 0.8);
+          g.fillRect(hx, top + 5, 20, 10);
+          g.fillStyle(0x44aa33, 1);
+          g.fillCircle(hx + 5, top + 3, 5);
+          g.fillCircle(hx + 15, top + 2, 6);
+          g.fillStyle(0xff88cc, 0.8);
+          g.fillCircle(hx + 10, top, 4);
+        }
+        // Potted plant on floor
+        g.fillStyle(rgb(160, 90, 50), 1);
+        g.fillRect(left + innerW - 35, top + 85, 24, 26);
+        g.fillStyle(0x44aa33, 1);
+        g.fillCircle(left + innerW - 23, top + 78, 14);
+        g.fillStyle(0x55bb44, 0.6);
+        g.fillCircle(left + innerW - 18, top + 80, 8);
+        // Window with sunlight
+        g.fillStyle(rgb(180, 220, 255), 0.3);
+        g.fillRect(left + innerW - 10, top + 15, 8, 24);
+        g.lineStyle(1, rgb(140, 140, 150), 0.6);
+        g.strokeRect(left + innerW - 10, top + 15, 8, 24);
+        this._addText('Beautiful blooms!', cx, top + 125, '#dd5588');
         break;
       }
       case 'Pet Shop': {
-        // Fish tank (large, left side)
+        // Paw print floor pattern
+        g.fillStyle(rgb(180, 150, 120), 0.12);
+        for (let i = 0; i < 6; i++) {
+          const px2 = left + 20 + i * 42;
+          const py2 = top + innerH - 30 - (i % 2) * 20;
+          g.fillCircle(px2, py2, 4);
+          g.fillCircle(px2 - 3, py2 - 5, 2);
+          g.fillCircle(px2 + 3, py2 - 5, 2);
+          g.fillCircle(px2 - 5, py2 - 2, 2);
+          g.fillCircle(px2 + 5, py2 - 2, 2);
+        }
+        // Fish tank (large, left side) with stand
+        g.fillStyle(rgb(80, 60, 40), 1);
+        g.fillRect(left + 8, top + 68, 94, 8);
+        g.fillRect(left + 14, top + 76, 6, 18);
+        g.fillRect(left + 92, top + 76, 6, 18);
         g.fillStyle(rgb(80, 160, 220), 0.4);
         g.fillRect(left + 10, top + 10, 90, 60);
         g.lineStyle(2, rgb(60, 120, 180), 0.8);
         g.strokeRect(left + 10, top + 10, 90, 60);
-        // Fish
+        // Sand and plants at bottom
+        g.fillStyle(rgb(200, 180, 140), 0.5);
+        g.fillRect(left + 12, top + 58, 86, 10);
+        g.fillStyle(0x44aa33, 0.6);
+        g.fillRect(left + 20, top + 48, 3, 14);
+        g.fillRect(left + 24, top + 50, 3, 12);
+        g.fillRect(left + 75, top + 46, 3, 16);
+        g.fillRect(left + 80, top + 50, 3, 12);
+        // Fish (more detailed)
         g.fillStyle(0xff6644, 1);
-        g.fillEllipse(left + 40, top + 35, 12, 6);
+        g.fillEllipse(left + 40, top + 32, 14, 7);
+        g.fillTriangle(left + 30, top + 32, left + 26, top + 26, left + 26, top + 38);
+        g.fillStyle(0x222222, 1);
+        g.fillCircle(left + 46, top + 30, 1.5);
         g.fillStyle(0xffcc44, 1);
-        g.fillEllipse(left + 70, top + 45, 10, 5);
+        g.fillEllipse(left + 70, top + 42, 12, 6);
+        g.fillTriangle(left + 62, top + 42, left + 58, top + 37, left + 58, top + 47);
+        g.fillStyle(0x222222, 1);
+        g.fillCircle(left + 75, top + 41, 1.5);
         g.fillStyle(0x44bbff, 1);
-        g.fillEllipse(left + 55, top + 55, 8, 4);
+        g.fillEllipse(left + 55, top + 52, 10, 5);
+        // Treasure chest in tank
+        g.fillStyle(rgb(160, 120, 40), 0.5);
+        g.fillRect(left + 45, top + 58, 10, 6);
         // Bubbles
         g.fillStyle(0xffffff, 0.3);
-        g.fillCircle(left + 30, top + 20, 2);
-        g.fillCircle(left + 60, top + 25, 3);
-        g.fillCircle(left + 80, top + 18, 2);
-        // Cages (right side)
+        g.fillCircle(left + 30, top + 18, 2);
+        g.fillCircle(left + 32, top + 24, 1.5);
+        g.fillCircle(left + 60, top + 22, 3);
+        g.fillCircle(left + 62, top + 28, 2);
+        g.fillCircle(left + 80, top + 15, 2);
+        // Cages with animals (right side)
         for (let i = 0; i < 2; i++) {
-          const cageX = left + 120 + i * 70;
+          const cageX = left + 118 + i * 72;
+          g.fillStyle(rgb(220, 220, 220), 1);
+          g.fillRect(cageX, top + 10, 54, 44);
           g.fillStyle(rgb(200, 200, 200), 1);
-          g.fillRect(cageX, top + 10, 50, 40);
+          g.fillRect(cageX, top + 8, 54, 4);
           g.lineStyle(1, rgb(120, 120, 120), 0.6);
           for (let bar = 0; bar < 6; bar++) {
-            g.lineBetween(cageX + 8 + bar * 8, top + 10, cageX + 8 + bar * 8, top + 50);
+            g.lineBetween(cageX + 8 + bar * 8, top + 12, cageX + 8 + bar * 8, top + 54);
+          }
+          // Animals inside
+          if (i === 0) {
+            // Hamster
+            g.fillStyle(rgb(200, 160, 100), 1);
+            g.fillEllipse(cageX + 27, top + 38, 14, 10);
+            g.fillCircle(cageX + 34, top + 32, 6);
+            g.fillStyle(0x222222, 1);
+            g.fillCircle(cageX + 36, top + 31, 1.5);
+            // Wheel
+            g.lineStyle(1, rgb(140, 140, 150), 0.8);
+            g.strokeCircle(cageX + 15, top + 36, 8);
+          } else {
+            // Bird
+            g.fillStyle(rgb(100, 200, 80), 1);
+            g.fillEllipse(cageX + 27, top + 34, 10, 12);
+            g.fillCircle(cageX + 27, top + 24, 6);
+            g.fillStyle(0xff8833, 1);
+            g.fillTriangle(cageX + 33, top + 23, cageX + 38, top + 24, cageX + 33, top + 25);
+            g.fillStyle(0x222222, 1);
+            g.fillCircle(cageX + 30, top + 23, 1.5);
+            // Perch
+            g.fillStyle(rgb(120, 80, 40), 1);
+            g.fillRect(cageX + 10, top + 40, 34, 3);
           }
         }
-        // Counter
+        // Counter with register and treats
         g.fillStyle(rgb(180, 160, 140), 1);
-        g.fillRect(left + 10, top + 80, innerW - 20, 14);
-        this._addText('Adopt a friend!', cx, top + 110, '#44aa88');
+        g.fillRect(left + 10, top + 100, innerW - 20, 16);
+        g.fillStyle(rgb(160, 140, 120), 1);
+        g.fillRect(left + 10, top + 116, innerW - 20, 3);
+        // Register
+        g.fillStyle(rgb(70, 70, 80), 1);
+        g.fillRect(left + 15, top + 94, 22, 12);
+        // Pet food shelf
+        g.fillStyle(rgb(140, 110, 80), 1);
+        g.fillRect(left + 120, top + 70, 80, 24);
+        g.fillStyle(rgb(120, 90, 60), 1);
+        g.fillRect(left + 120, top + 94, 80, 3);
+        // Food bags
+        const bagColors = [rgb(200, 60, 60), rgb(60, 120, 200), rgb(60, 160, 60)];
+        for (let b = 0; b < 3; b++) {
+          g.fillStyle(bagColors[b], 0.8);
+          g.fillRect(left + 126 + b * 24, top + 74, 18, 18);
+        }
+        // Dog bone treat on counter
+        g.fillStyle(rgb(220, 200, 160), 1);
+        g.fillRect(left + 60, top + 103, 16, 5);
+        g.fillCircle(left + 60, top + 106, 4);
+        g.fillCircle(left + 76, top + 106, 4);
+        this._addText('Adopt a friend!', cx, top + 135, '#44aa88');
         break;
       }
       case 'Bakery': {
-        // Bread display shelf
+        // Flour-dusted floor accent
+        g.fillStyle(0xffffff, 0.05);
+        g.fillCircle(left + 40, top + 100, 15);
+        g.fillCircle(left + 100, top + 120, 10);
+        g.fillCircle(left + innerW - 50, top + 95, 12);
+        // Bread display shelf (back wall)
         g.fillStyle(rgb(160, 120, 80), 1);
-        g.fillRect(left + 10, top + 5, innerW - 20, 50);
-        // Shelves
+        g.fillRect(left + 10, top + 5, innerW - 75, 55);
+        // Shelves with brackets
         for (let s = 0; s < 2; s++) {
           g.fillStyle(rgb(140, 100, 60), 1);
-          g.fillRect(left + 12, top + 25 + s * 20, innerW - 24, 3);
+          g.fillRect(left + 12, top + 25 + s * 22, innerW - 79, 3);
+          // Brackets
+          g.fillStyle(rgb(100, 70, 40), 1);
+          g.fillRect(left + 20, top + 25 + s * 22, 4, 6);
+          g.fillRect(left + innerW - 80, top + 25 + s * 22, 4, 6);
         }
-        // Bread
+        // Bread variety
         g.fillStyle(rgb(210, 170, 80), 1);
         g.fillEllipse(left + 30, top + 18, 20, 10);
+        // Score marks on bread
+        g.lineStyle(1, rgb(180, 140, 60), 0.5);
+        g.lineBetween(left + 24, top + 16, left + 28, top + 19);
+        g.lineBetween(left + 30, top + 15, left + 34, top + 18);
+        g.fillStyle(rgb(190, 150, 70), 1);
         g.fillEllipse(left + 70, top + 16, 16, 12);
+        g.fillStyle(rgb(220, 180, 90), 1);
         g.fillEllipse(left + 110, top + 18, 22, 8);
+        // Baguette
+        g.fillStyle(rgb(200, 160, 70), 1);
+        g.fillRect(left + 140, top + 13, 40, 8);
+        g.fillEllipse(left + 140, top + 17, 6, 5);
+        g.fillEllipse(left + 180, top + 17, 6, 5);
+        // Second shelf breads
+        g.fillStyle(rgb(190, 140, 60), 1);
         g.fillEllipse(left + 40, top + 38, 18, 10);
         g.fillEllipse(left + 80, top + 36, 20, 8);
-        // Cake display
+        // Croissants
+        g.fillStyle(rgb(220, 180, 80), 1);
+        g.fillTriangle(left + 120, top + 42, left + 140, top + 35, left + 140, top + 42);
+        g.fillTriangle(left + 150, top + 42, left + 170, top + 35, left + 170, top + 42);
+        // Cake display case (glass)
+        g.fillStyle(rgb(240, 230, 220), 1);
+        g.fillRect(cx - 25, top + 68, 50, 30);
+        g.fillStyle(rgb(200, 230, 255), 0.3);
+        g.fillRect(cx - 23, top + 62, 46, 8);
+        g.lineStyle(1, rgb(180, 200, 220), 0.5);
+        g.strokeRect(cx - 25, top + 62, 50, 36);
+        // Layered cake inside
         g.fillStyle(rgb(255, 220, 220), 1);
-        g.fillRect(cx - 15, top + 65, 30, 25);
-        g.fillStyle(rgb(255, 150, 150), 1);
-        g.fillRect(cx - 15, top + 65, 30, 5);
-        // Oven
+        g.fillRect(cx - 15, top + 72, 30, 22);
+        g.fillStyle(rgb(255, 180, 180), 1);
+        g.fillRect(cx - 15, top + 72, 30, 4);
+        g.fillRect(cx - 15, top + 82, 30, 4);
+        // Frosting
+        g.fillStyle(rgb(255, 240, 240), 1);
+        g.fillRect(cx - 15, top + 70, 30, 4);
+        // Cherry on top
+        g.fillStyle(0xff3333, 1);
+        g.fillCircle(cx, top + 69, 3);
+        // Oven (more detailed)
         g.fillStyle(rgb(80, 80, 90), 1);
-        g.fillRect(left + innerW - 50, top + 10, 40, 35);
+        g.fillRect(left + innerW - 55, top + 5, 45, 45);
+        g.fillStyle(rgb(70, 70, 80), 1);
+        g.fillRect(left + innerW - 53, top + 7, 41, 3);
         g.fillStyle(rgb(255, 130, 30), 0.3);
-        g.fillRect(left + innerW - 46, top + 18, 32, 20);
-        this._addText('Warm & fresh!', cx, top + 110, '#cc8844');
+        g.fillRect(left + innerW - 50, top + 15, 36, 22);
+        // Oven window
+        g.fillStyle(rgb(200, 120, 40), 0.15);
+        g.fillRect(left + innerW - 48, top + 17, 32, 18);
+        // Handle
+        g.fillStyle(rgb(140, 140, 150), 1);
+        g.fillRect(left + innerW - 48, top + 40, 32, 3);
+        // Temperature knobs
+        g.fillStyle(rgb(200, 200, 210), 1);
+        g.fillCircle(left + innerW - 45, top + 10, 3);
+        g.fillCircle(left + innerW - 35, top + 10, 3);
+        // Flour sack
+        g.fillStyle(rgb(230, 220, 200), 1);
+        g.fillRect(left + 10, top + 70, 22, 28);
+        this._addText('FLOUR', left + 21, top + 84, '#998877');
+        // Rolling pin
+        g.fillStyle(rgb(180, 150, 110), 1);
+        g.fillRect(left + 45, top + 80, 30, 5);
+        g.fillStyle(rgb(140, 110, 70), 1);
+        g.fillCircle(left + 45, top + 82, 4);
+        g.fillCircle(left + 75, top + 82, 4);
+        // Ceiling pendant light
+        g.fillStyle(rgb(60, 60, 60), 1);
+        g.fillRect(cx - 1, top, 2, 8);
+        g.fillStyle(0xffee88, 0.5);
+        g.fillTriangle(cx - 10, top + 8, cx, top + 3, cx + 10, top + 8);
+        g.fillStyle(0xffee88, 0.1);
+        g.fillTriangle(cx - 30, top + 40, cx, top + 8, cx + 30, top + 40);
+        this._addText('Warm & fresh!', cx, top + 115, '#cc8844');
         break;
       }
       case 'Toy Store': {
-        // Toy shelves
+        // Colorful star pattern floor
+        g.fillStyle(0xffcc00, 0.06);
+        for (let s = 0; s < 4; s++) {
+          const sx2 = left + 30 + s * 60;
+          const sy2 = top + innerH - 25;
+          g.fillTriangle(sx2, sy2 - 8, sx2 - 6, sy2 + 4, sx2 + 6, sy2 + 4);
+          g.fillTriangle(sx2, sy2 + 6, sx2 - 6, sy2 - 3, sx2 + 6, sy2 - 3);
+        }
+        // Toy shelves with colored edges
+        const shelfColors = [rgb(200, 80, 80), rgb(80, 160, 80), rgb(80, 80, 200)];
         for (let s = 0; s < 3; s++) {
-          const sy = top + 8 + s * 30;
-          g.fillStyle(rgb(200, 180, 160), 1);
+          const sy = top + 5 + s * 30;
+          g.fillStyle(rgb(230, 220, 210), 1);
           g.fillRect(left + 10, sy, innerW - 20, 24);
-          g.fillStyle(rgb(180, 160, 140), 1);
+          g.fillStyle(shelfColors[s], 0.6);
           g.fillRect(left + 10, sy + 24, innerW - 20, 3);
         }
-        // Toys (colorful blocks and shapes)
+        // Toys with more variety and detail
         const toyColors = [0xff4444, 0x44bbff, 0xffcc00, 0x44dd44, 0xff88cc, 0xaa66ff];
         for (let i = 0; i < 12; i++) {
-          const tx = left + 20 + (i % 6) * 38;
-          const ty = top + 12 + Math.floor(i / 6) * 30;
+          const tx = left + 18 + (i % 6) * 40;
+          const ty = top + 9 + Math.floor(i / 6) * 30;
           g.fillStyle(toyColors[i % 6], 1);
-          if (i % 3 === 0) g.fillRect(tx, ty, 14, 14);
-          else if (i % 3 === 1) g.fillCircle(tx + 7, ty + 7, 7);
-          else g.fillTriangle(tx, ty + 14, tx + 7, ty, tx + 14, ty + 14);
+          if (i % 4 === 0) {
+            g.fillRect(tx, ty, 14, 14);
+            g.fillStyle(0xffffff, 0.3);
+            g.fillRect(tx + 2, ty + 2, 4, 4);
+          } else if (i % 4 === 1) {
+            g.fillCircle(tx + 7, ty + 7, 7);
+            g.fillStyle(0xffffff, 0.3);
+            g.fillCircle(tx + 5, ty + 5, 3);
+          } else if (i % 4 === 2) {
+            g.fillTriangle(tx, ty + 14, tx + 7, ty, tx + 14, ty + 14);
+          } else {
+            // Teddy bear shape
+            g.fillCircle(tx + 7, ty + 9, 6);
+            g.fillCircle(tx + 7, ty + 4, 4);
+            g.fillCircle(tx + 3, ty + 1, 2);
+            g.fillCircle(tx + 11, ty + 1, 2);
+          }
         }
-        // Train set
-        g.fillStyle(rgb(100, 100, 110), 1);
-        g.fillRect(left + 30, top + 100, 60, 12);
+        // Train set with track (bigger, more detail)
+        // Oval track
+        g.lineStyle(3, rgb(120, 100, 80), 0.6);
+        g.strokeRect(left + 20, top + 98, 110, 40);
+        // Track ties
+        g.fillStyle(rgb(100, 80, 50), 0.4);
+        for (let t = 0; t < 10; t++) {
+          g.fillRect(left + 25 + t * 11, top + 96, 3, 4);
+          g.fillRect(left + 25 + t * 11, top + 136, 3, 4);
+        }
+        // Train engine
         g.fillStyle(0xff3333, 1);
-        g.fillRect(left + 30, top + 92, 20, 12);
+        g.fillRect(left + 25, top + 100, 24, 14);
+        g.fillStyle(rgb(40, 40, 50), 1);
+        g.fillRect(left + 25, top + 98, 24, 4);
+        // Smokestack
+        g.fillStyle(rgb(40, 40, 50), 1);
+        g.fillRect(left + 30, top + 92, 6, 8);
+        // Smoke puffs
+        g.fillStyle(rgb(200, 200, 200), 0.3);
+        g.fillCircle(left + 33, top + 89, 4);
+        g.fillCircle(left + 28, top + 86, 3);
+        // Train cars
+        g.fillStyle(0x4488cc, 1);
+        g.fillRect(left + 55, top + 101, 20, 12);
+        g.fillStyle(0x44cc44, 1);
+        g.fillRect(left + 80, top + 101, 20, 12);
+        // Wheels
         g.fillStyle(0x333333, 1);
-        g.fillCircle(left + 36, top + 112, 4);
-        g.fillCircle(left + 50, top + 112, 4);
-        g.fillCircle(left + 70, top + 112, 4);
-        this._addText('Welcome to Toy World!', cx, top + 130, '#4488cc');
+        g.fillCircle(left + 31, top + 114, 3);
+        g.fillCircle(left + 43, top + 114, 3);
+        g.fillCircle(left + 61, top + 114, 3);
+        g.fillCircle(left + 71, top + 114, 3);
+        g.fillCircle(left + 86, top + 114, 3);
+        g.fillCircle(left + 96, top + 114, 3);
+        // Stuffed animal display
+        g.fillStyle(rgb(200, 160, 100), 1);
+        g.fillCircle(left + innerW - 35, top + 105, 14);
+        g.fillCircle(left + innerW - 35, top + 95, 10);
+        g.fillCircle(left + innerW - 41, top + 88, 5);
+        g.fillCircle(left + innerW - 29, top + 88, 5);
+        g.fillStyle(0x222222, 1);
+        g.fillCircle(left + innerW - 37, top + 93, 2);
+        g.fillCircle(left + innerW - 33, top + 93, 2);
+        // Price tag
+        g.fillStyle(0xffffff, 1);
+        g.fillRect(left + innerW - 42, top + 115, 14, 8);
+        this._addText('$5', left + innerW - 35, top + 119, '#cc3333');
+        // Balloon
+        g.fillStyle(0xff4444, 0.7);
+        g.fillCircle(left + innerW - 15, top + 15, 10);
+        g.fillStyle(0xff4444, 0.5);
+        g.fillCircle(left + innerW - 13, top + 12, 4);
+        g.lineStyle(1, rgb(100, 100, 100), 0.4);
+        g.lineBetween(left + innerW - 15, top + 25, left + innerW - 15, top + 50);
+        // Register at counter
+        g.fillStyle(rgb(180, 160, 140), 1);
+        g.fillRect(left + innerW - 55, top + 70, 45, 16);
+        g.fillStyle(rgb(70, 70, 80), 1);
+        g.fillRect(left + innerW - 48, top + 64, 22, 12);
+        this._addText('Welcome to Toy World!', cx, top + 145, '#4488cc');
         break;
       }
       case 'Bookstore': {
-        // Bookshelves along top wall
-        const bookColors = [0xcc3333, 0x3366cc, 0x33aa55, 0xccaa33, 0x8833cc, 0xcc6633, 0x336699, 0xaa3366];
+        // Warm wood floor
+        g.fillStyle(rgb(160, 120, 70), 0.1);
+        for (let fx = 0; fx < innerW; fx += 32) {
+          g.fillRect(left + fx, top, 2, innerH);
+        }
+        // Bookshelves along top wall (enhanced with varying book heights)
+        const bookColors = [0xcc3333, 0x3366cc, 0x33aa55, 0xccaa33, 0x8833cc, 0xcc6633, 0x336699, 0xaa3366, 0x996644, 0x449966];
         for (let shelf = 0; shelf < 3; shelf++) {
           const sy = top + 5 + shelf * 28;
           g.fillStyle(rgb(120, 85, 55), 1);
           g.fillRect(left + 5, sy, innerW - 10, 24);
-          // Books
-          for (let b = 0; b < 12; b++) {
+          // Books with varying heights and widths
+          let bx = left + 8;
+          for (let b = 0; b < 14; b++) {
+            const bw = 10 + (b * 3) % 8;
+            const bh = 14 + (b * 5) % 10;
             g.fillStyle(bookColors[b % bookColors.length], 1);
-            g.fillRect(left + 10 + b * 20, sy + 2, 14, 20);
+            g.fillRect(bx, sy + 24 - bh - 2, bw, bh);
+            // Spine detail
+            g.fillStyle(0xffffff, 0.15);
+            g.fillRect(bx + 1, sy + 24 - bh, bw - 2, 2);
+            bx += bw + 2;
+            if (bx > left + innerW - 18) break;
           }
           g.fillStyle(rgb(100, 70, 40), 1);
           g.fillRect(left + 5, sy + 24, innerW - 10, 3);
         }
-        // Reading nook (comfy chair)
+        // Reading nook (comfy armchair with cushion)
+        g.fillStyle(rgb(140, 80, 45), 1);
+        g.fillRect(left + 14, top + 98, 48, 34);
         g.fillStyle(rgb(160, 100, 60), 1);
-        g.fillRect(left + 20, top + 100, 40, 30);
+        g.fillRect(left + 18, top + 100, 40, 28);
         g.fillStyle(rgb(180, 120, 80), 1);
-        g.fillRect(left + 22, top + 95, 36, 10);
-        // Lamp
+        g.fillRect(left + 16, top + 93, 44, 10);
+        // Armrests
+        g.fillStyle(rgb(140, 80, 45), 1);
+        g.fillRect(left + 14, top + 98, 6, 28);
+        g.fillRect(left + 56, top + 98, 6, 28);
+        // Cushion
+        g.fillStyle(rgb(180, 140, 90), 0.5);
+        g.fillRect(left + 22, top + 104, 32, 18);
+        // Open book on chair
+        g.fillStyle(0xffffff, 0.8);
+        g.fillRect(left + 30, top + 108, 12, 8);
+        g.fillRect(left + 42, top + 108, 12, 8);
+        // Floor lamp (enhanced)
         g.fillStyle(rgb(60, 60, 60), 1);
-        g.fillRect(left + 70, top + 90, 3, 35);
-        g.fillStyle(0xffee88, 0.6);
-        g.fillCircle(left + 71, top + 88, 10);
-        g.fillStyle(0xffcc44, 1);
-        g.fillTriangle(left + 61, top + 88, left + 71, top + 78, left + 81, top + 88);
+        g.fillRect(left + 72, top + 92, 3, 38);
+        g.fillStyle(rgb(50, 50, 50), 1);
+        g.fillRect(left + 66, top + 128, 15, 4);
+        g.fillStyle(0xffee88, 0.5);
+        g.fillCircle(left + 73, top + 88, 12);
+        g.fillStyle(rgb(180, 140, 80), 1);
+        g.fillTriangle(left + 61, top + 90, left + 73, top + 78, left + 85, top + 90);
+        // Light glow on floor
+        g.fillStyle(0xffee88, 0.06);
+        g.fillCircle(left + 73, top + 115, 25);
+        // Coffee corner
+        g.fillStyle(rgb(140, 100, 60), 1);
+        g.fillRect(left + innerW - 55, top + 95, 40, 20);
+        // Coffee maker
+        g.fillStyle(rgb(40, 40, 50), 1);
+        g.fillRect(left + innerW - 50, top + 85, 18, 16);
+        g.fillStyle(rgb(80, 40, 20), 0.4);
+        g.fillRect(left + innerW - 48, top + 88, 14, 6);
+        // Coffee cup
+        g.fillStyle(0xffffff, 1);
+        g.fillRect(left + innerW - 28, top + 90, 8, 10);
+        g.fillStyle(rgb(80, 40, 20), 0.6);
+        g.fillRect(left + innerW - 27, top + 91, 6, 4);
+        // Stack of books on coffee table
+        g.fillStyle(0x3366cc, 1);
+        g.fillRect(left + innerW - 48, top + 98, 16, 3);
+        g.fillStyle(0xcc3333, 1);
+        g.fillRect(left + innerW - 46, top + 95, 14, 3);
+        // Cat sleeping on shelf
+        g.fillStyle(rgb(60, 60, 60), 1);
+        g.fillEllipse(left + innerW - 30, top + 18, 16, 8);
+        g.fillCircle(left + innerW - 22, top + 15, 5);
+        // Ears
+        g.fillTriangle(left + innerW - 25, top + 11, left + innerW - 23, top + 8, left + innerW - 21, top + 11);
+        g.fillTriangle(left + innerW - 20, top + 11, left + innerW - 18, top + 8, left + innerW - 16, top + 11);
+        // Staff picks sign
+        g.fillStyle(rgb(40, 50, 40), 1);
+        g.fillRect(left + 100, top + 95, 55, 24);
+        g.lineStyle(1, rgb(160, 120, 60), 0.8);
+        g.strokeRect(left + 100, top + 95, 55, 24);
+        this._addText('Staff', left + 127, top + 102, '#ffffff');
+        this._addText('Picks!', left + 127, top + 113, '#ffcc88');
         this._addText('Lost in a good book...', cx, top + 145, '#664422');
         break;
       }
       case 'Movie Theater': {
-        // Screen
-        g.fillStyle(rgb(40, 40, 50), 1);
-        g.fillRect(left + 20, top + 5, innerW - 40, 50);
-        g.fillStyle(rgb(180, 200, 220), 0.3);
-        g.fillRect(left + 24, top + 9, innerW - 48, 42);
-        // Projector beam
-        g.fillStyle(0xffffff, 0.05);
-        g.fillTriangle(cx, top + 100, left + 30, top + 10, left + innerW - 30, top + 10);
-        // Seats (rows)
-        for (let row = 0; row < 3; row++) {
-          for (let seat = 0; seat < 6; seat++) {
-            g.fillStyle(rgb(180, 40, 40), 1);
-            g.fillRect(left + 20 + seat * 38, top + 70 + row * 28, 28, 20);
-            g.fillStyle(rgb(160, 30, 30), 1);
-            g.fillRect(left + 20 + seat * 38, top + 68 + row * 28, 28, 4);
+        // Dark carpet floor
+        g.fillStyle(rgb(40, 20, 20), 0.2);
+        g.fillRect(left, top, innerW, innerH);
+        // Carpet pattern
+        g.fillStyle(rgb(120, 40, 40), 0.08);
+        for (let fx = 0; fx < innerW; fx += 12) {
+          for (let fy = 0; fy < innerH; fy += 12) {
+            if ((fx + fy) % 24 === 0) g.fillRect(left + fx, top + fy, 8, 8);
           }
         }
-        // Popcorn
-        g.fillStyle(rgb(255, 220, 100), 1);
-        g.fillRect(left + innerW - 40, top + 70, 24, 30);
-        g.fillStyle(0xffffff, 1);
-        for (let p = 0; p < 4; p++) {
-          g.fillCircle(left + innerW - 34 + p * 6, top + 68, 4);
+        // Screen with movie playing (scene)
+        g.fillStyle(rgb(30, 30, 40), 1);
+        g.fillRect(left + 15, top + 3, innerW - 30, 55);
+        // Screen border
+        g.lineStyle(2, rgb(60, 60, 70), 1);
+        g.strokeRect(left + 15, top + 3, innerW - 30, 55);
+        // Movie scene - sunset landscape
+        g.fillStyle(rgb(200, 120, 60), 0.5);
+        g.fillRect(left + 19, top + 7, innerW - 38, 20);
+        g.fillStyle(rgb(40, 80, 120), 0.5);
+        g.fillRect(left + 19, top + 27, innerW - 38, 25);
+        // Sun in movie
+        g.fillStyle(rgb(255, 200, 60), 0.6);
+        g.fillCircle(cx, top + 20, 8);
+        // Mountains
+        g.fillStyle(rgb(60, 60, 80), 0.5);
+        g.fillTriangle(left + 40, top + 30, left + 70, top + 15, left + 100, top + 30);
+        g.fillTriangle(left + 120, top + 30, left + 160, top + 12, left + 200, top + 30);
+        // Projector beam (more visible)
+        g.fillStyle(0xffffff, 0.04);
+        g.fillTriangle(cx, top + 130, left + 25, top + 7, left + innerW - 25, top + 7);
+        // Dust particles in beam
+        g.fillStyle(0xffffff, 0.15);
+        g.fillCircle(cx - 20, top + 50, 1);
+        g.fillCircle(cx + 15, top + 70, 1);
+        g.fillCircle(cx - 5, top + 90, 1);
+        g.fillCircle(cx + 25, top + 40, 1);
+        // Seats (rows with arm rests and numbering)
+        for (let row = 0; row < 3; row++) {
+          for (let seat = 0; seat < 6; seat++) {
+            // Seat cushion
+            g.fillStyle(rgb(180, 40, 40), 1);
+            g.fillRect(left + 18 + seat * 40, top + 72 + row * 28, 30, 20);
+            // Seat back
+            g.fillStyle(rgb(160, 30, 30), 1);
+            g.fillRect(left + 18 + seat * 40, top + 70 + row * 28, 30, 4);
+            // Armrests
+            g.fillStyle(rgb(60, 60, 70), 1);
+            g.fillRect(left + 17 + seat * 40, top + 72 + row * 28, 3, 18);
+            g.fillRect(left + 47 + seat * 40, top + 72 + row * 28, 3, 18);
+            // Cup holder
+            g.fillStyle(rgb(40, 40, 50), 1);
+            g.fillCircle(left + 48 + seat * 40, top + 85 + row * 28, 3);
+          }
         }
-        this._addText('Now Showing!', cx, top + 160, '#cc2222');
+        // Aisle lights
+        g.fillStyle(rgb(255, 200, 100), 0.2);
+        for (let l = 0; l < 3; l++) {
+          g.fillCircle(left + 8, top + 80 + l * 28, 2);
+          g.fillCircle(left + innerW - 8, top + 80 + l * 28, 2);
+        }
+        // Popcorn stand (enhanced)
+        g.fillStyle(rgb(255, 220, 100), 1);
+        g.fillRect(left + innerW - 45, top + 68, 28, 35);
+        g.fillStyle(rgb(220, 50, 50), 1);
+        g.fillRect(left + innerW - 45, top + 65, 28, 5);
+        // Popcorn overflowing
+        g.fillStyle(0xffffff, 1);
+        for (let p = 0; p < 5; p++) {
+          g.fillCircle(left + innerW - 40 + p * 5, top + 66, 4);
+        }
+        // Popcorn bucket stripe
+        g.fillStyle(rgb(220, 50, 50), 0.5);
+        g.fillRect(left + innerW - 45, top + 78, 28, 3);
+        g.fillRect(left + innerW - 45, top + 88, 28, 3);
+        // Drink next to popcorn
+        g.fillStyle(rgb(200, 40, 40), 1);
+        g.fillRect(left + innerW - 55, top + 80, 10, 18);
+        g.fillStyle(0xffffff, 1);
+        g.fillRect(left + innerW - 53, top + 76, 2, 10);
+        // Exit signs on walls
+        g.fillStyle(rgb(200, 40, 40), 0.6);
+        g.fillRect(left + 3, top + 3, 24, 10);
+        this._addText('EXIT', left + 15, top + 8, '#ffffff');
+        g.fillStyle(rgb(200, 40, 40), 0.6);
+        g.fillRect(left + innerW - 27, top + 3, 24, 10);
+        this._addText('EXIT', left + innerW - 15, top + 8, '#ffffff');
+        this._addText('Now Showing!', cx, top + 162, '#cc2222');
         break;
       }
       case 'Arcade': {
-        // Arcade cabinets
+        // Dark floor with neon reflection
+        g.fillStyle(rgb(20, 10, 30), 0.3);
+        g.fillRect(left, top, innerW, innerH);
+        // Neon strip on ceiling
+        g.fillStyle(0xff00ff, 0.1);
+        g.fillRect(left + 5, top, innerW - 10, 3);
+        g.fillStyle(0x00ffff, 0.1);
+        g.fillRect(left + 5, top + 3, innerW - 10, 2);
+        // Arcade cabinets with unique screens
         const cabinetColors = [0x2244aa, 0xaa2244, 0x22aa44, 0xaa8822];
+        const screenContents = [0x00ff00, 0xff00ff, 0x00ffff, 0xffff00];
         for (let i = 0; i < 4; i++) {
-          const cabX = left + 10 + i * 65;
+          const cabX = left + 8 + i * 67;
+          // Cabinet body
           g.fillStyle(cabinetColors[i], 1);
-          g.fillRect(cabX, top + 10, 50, 70);
-          g.fillStyle(rgb(30, 30, 40), 1);
-          g.fillRect(cabX + 5, top + 15, 40, 30);
-          // Screen glow
-          g.fillStyle(0x00ff00, 0.3);
-          g.fillRect(cabX + 7, top + 17, 36, 26);
-          // Joystick + buttons
+          g.fillRect(cabX, top + 8, 52, 74);
+          g.fillStyle(rgb(20, 20, 30), 1);
+          g.fillRect(cabX + 2, top + 6, 48, 4);
+          // Marquee with glow
+          g.fillStyle(screenContents[i], 0.3);
+          g.fillRect(cabX + 4, top + 8, 44, 6);
+          // Screen with game
+          g.fillStyle(rgb(10, 10, 15), 1);
+          g.fillRect(cabX + 5, top + 16, 42, 32);
+          // Game graphics on screen
+          g.fillStyle(screenContents[i], 0.4);
+          if (i === 0) {
+            // Space invaders
+            for (let a = 0; a < 4; a++) {
+              g.fillRect(cabX + 10 + a * 10, top + 22, 6, 4);
+              g.fillRect(cabX + 10 + a * 10, top + 28, 6, 4);
+            }
+            g.fillStyle(0x00ff00, 0.8);
+            g.fillRect(cabX + 22, top + 40, 8, 4);
+          } else if (i === 1) {
+            // Pac-man
+            g.fillStyle(0xffff00, 0.7);
+            g.fillCircle(cabX + 26, top + 32, 6);
+            g.fillStyle(rgb(10, 10, 15), 1);
+            g.fillTriangle(cabX + 26, top + 32, cabX + 34, top + 28, cabX + 34, top + 36);
+            g.fillStyle(0xff00ff, 0.5);
+            g.fillCircle(cabX + 38, top + 32, 4);
+          } else if (i === 2) {
+            // Tetris
+            g.fillStyle(0x00ffff, 0.5);
+            g.fillRect(cabX + 20, top + 36, 8, 8);
+            g.fillRect(cabX + 28, top + 36, 8, 8);
+            g.fillStyle(0xff8800, 0.5);
+            g.fillRect(cabX + 12, top + 28, 8, 8);
+            g.fillRect(cabX + 12, top + 36, 8, 8);
+            g.fillStyle(0xff00ff, 0.5);
+            g.fillRect(cabX + 28, top + 28, 16, 8);
+          } else {
+            // Racing
+            g.fillStyle(0xaaaaaa, 0.5);
+            g.fillRect(cabX + 18, top + 20, 16, 28);
+            g.fillStyle(0xff3333, 0.7);
+            g.fillRect(cabX + 22, top + 38, 8, 6);
+          }
+          // Control panel
+          g.fillStyle(rgb(40, 40, 50), 1);
+          g.fillRect(cabX + 4, top + 50, 44, 20);
+          // Joystick
+          g.fillStyle(0x222222, 1);
+          g.fillCircle(cabX + 16, top + 58, 5);
           g.fillStyle(0x333333, 1);
-          g.fillCircle(cabX + 15, top + 55, 4);
+          g.fillRect(cabX + 14, top + 52, 4, 8);
+          // Buttons
           g.fillStyle(0xff3333, 1);
-          g.fillCircle(cabX + 30, top + 52, 3);
+          g.fillCircle(cabX + 30, top + 55, 3);
           g.fillStyle(0x3333ff, 1);
-          g.fillCircle(cabX + 38, top + 55, 3);
+          g.fillCircle(cabX + 38, top + 58, 3);
+          g.fillStyle(0xffff00, 1);
+          g.fillCircle(cabX + 42, top + 53, 2.5);
+          // Coin slot
+          g.fillStyle(rgb(80, 80, 90), 1);
+          g.fillRect(cabX + 18, top + 72, 16, 3);
+          g.fillStyle(rgb(60, 60, 70), 1);
+          g.fillRect(cabX + 22, top + 72, 8, 6);
         }
-        // Claw machine
+        // Claw machine with stuffed animals
         g.fillStyle(rgb(220, 200, 100), 1);
-        g.fillRect(left + 30, top + 100, 50, 50);
-        g.fillStyle(rgb(200, 220, 255), 0.6);
-        g.fillRect(left + 34, top + 104, 42, 30);
-        // Neon sign
-        this._addText('GAME OVER?', cx, top + 90, '#00ff00');
-        this._addText('INSERT COIN', cx, top + 165, '#ff8800');
+        g.fillRect(left + 25, top + 98, 55, 55);
+        g.fillStyle(rgb(200, 230, 255), 0.5);
+        g.fillRect(left + 29, top + 102, 47, 32);
+        // Stuffed animals inside
+        g.fillStyle(0xff88aa, 0.8);
+        g.fillCircle(left + 40, top + 128, 5);
+        g.fillStyle(0x88ccff, 0.8);
+        g.fillCircle(left + 52, top + 130, 5);
+        g.fillStyle(0xffcc44, 0.8);
+        g.fillCircle(left + 64, top + 127, 5);
+        // Claw
+        g.fillStyle(rgb(180, 180, 190), 1);
+        g.fillRect(left + 50, top + 100, 4, 16);
+        g.lineBetween(left + 48, top + 116, left + 44, top + 122);
+        g.lineBetween(left + 56, top + 116, left + 60, top + 122);
+        // Prize counter
+        g.fillStyle(rgb(80, 60, 100), 1);
+        g.fillRect(left + 100, top + 110, 60, 18);
+        // Prizes on display
+        g.fillStyle(0xffcc00, 0.8);
+        g.fillCircle(left + 115, top + 106, 5);
+        g.fillStyle(0x44ff44, 0.8);
+        g.fillCircle(left + 135, top + 107, 4);
+        g.fillStyle(0xff4444, 0.8);
+        g.fillRect(left + 148, top + 104, 8, 8);
+        // Ticket counter
+        this._addText('TICKETS', left + 130, top + 119, '#ffcc00');
+        // Neon wall signs
+        this._addText('GAME OVER?', cx, top + 92, '#00ff00');
+        this._addText('INSERT COIN', cx, top + 168, '#ff8800');
+        // Score display
+        g.fillStyle(rgb(20, 20, 30), 1);
+        g.fillRect(left + innerW - 55, top + 95, 45, 14);
+        this._addText('HI: 99999', left + innerW - 33, top + 102, '#ff4444');
         break;
       }
       case 'Pizza Place': {
-        // Pizza oven
-        g.fillStyle(rgb(180, 80, 30), 1);
-        g.fillRect(left + innerW - 70, top + 5, 60, 45);
-        g.fillStyle(rgb(255, 120, 40), 0.4);
-        g.fillEllipse(left + innerW - 40, top + 25, 40, 24);
-        // Counter
-        g.fillStyle(rgb(200, 180, 140), 1);
-        g.fillRect(left + 10, top + 10, innerW - 90, 20);
-        // Pizzas
-        g.fillStyle(rgb(230, 190, 80), 1);
-        g.fillCircle(left + 40, top + 20, 12);
-        g.fillCircle(left + 80, top + 20, 12);
-        g.fillStyle(rgb(180, 40, 30), 1);
-        g.fillCircle(left + 36, top + 16, 3);
-        g.fillCircle(left + 44, top + 22, 3);
-        g.fillCircle(left + 76, top + 18, 3);
-        g.fillCircle(left + 84, top + 24, 3);
-        // Tables
-        for (let t = 0; t < 3; t++) {
-          g.fillStyle(rgb(160, 120, 80), 1);
-          g.fillRect(left + 20 + t * 80, top + 70, 50, 30);
-          g.fillStyle(rgb(140, 100, 60), 1);
-          g.fillRect(left + 38 + t * 80, top + 100, 14, 20);
-          // Checkered tablecloth
-          g.fillStyle(0xff4444, 0.2);
-          for (let cx2 = 0; cx2 < 50; cx2 += 10) {
-            for (let cy2 = 0; cy2 < 30; cy2 += 10) {
-              if ((cx2 + cy2) % 20 === 0) {
-                g.fillRect(left + 20 + t * 80 + cx2, top + 70 + cy2, 10, 10);
-              }
-            }
+        // Terracotta tile floor
+        g.fillStyle(rgb(180, 100, 50), 0.08);
+        for (let fx = 0; fx < innerW; fx += 20) {
+          for (let fy = 0; fy < innerH; fy += 20) {
+            g.fillRect(left + fx, top + fy, 18, 18);
           }
         }
-        this._addText('Mama mia!', cx, top + 135, '#cc3322');
+        // Brick pizza oven (enhanced)
+        g.fillStyle(rgb(160, 70, 30), 1);
+        g.fillRect(left + innerW - 75, top + 3, 65, 50);
+        // Brick pattern
+        g.fillStyle(rgb(180, 80, 30), 1);
+        for (let by = 0; by < 4; by++) {
+          for (let bx2 = 0; bx2 < 5; bx2++) {
+            const off = by % 2 === 0 ? 0 : 6;
+            g.fillRect(left + innerW - 73 + bx2 * 13 + off, top + 5 + by * 12, 11, 10);
+          }
+        }
+        // Oven opening with fire
+        g.fillStyle(rgb(40, 20, 10), 1);
+        g.fillEllipse(left + innerW - 43, top + 30, 36, 22);
+        g.fillStyle(rgb(255, 120, 30), 0.5);
+        g.fillEllipse(left + innerW - 43, top + 34, 28, 14);
+        g.fillStyle(rgb(255, 180, 50), 0.3);
+        g.fillEllipse(left + innerW - 43, top + 36, 18, 8);
+        // Pizza in oven
+        g.fillStyle(rgb(230, 190, 80), 0.7);
+        g.fillCircle(left + innerW - 43, top + 30, 8);
+        // Counter with pizza display
+        g.fillStyle(rgb(200, 180, 140), 1);
+        g.fillRect(left + 10, top + 8, innerW - 95, 24);
+        g.fillStyle(rgb(180, 160, 120), 1);
+        g.fillRect(left + 10, top + 32, innerW - 95, 3);
+        // Pizzas on counter (detailed)
+        // Pepperoni pizza
+        g.fillStyle(rgb(230, 190, 80), 1);
+        g.fillCircle(left + 35, top + 20, 12);
+        g.fillStyle(rgb(220, 60, 30), 0.6);
+        g.fillCircle(left + 35, top + 20, 10);
+        g.fillStyle(rgb(180, 40, 30), 1);
+        for (let p = 0; p < 5; p++) {
+          const a = p * Math.PI * 2 / 5;
+          g.fillCircle(left + 35 + Math.cos(a) * 6, top + 20 + Math.sin(a) * 6, 2.5);
+        }
+        // Margherita pizza
+        g.fillStyle(rgb(230, 190, 80), 1);
+        g.fillCircle(left + 75, top + 20, 12);
+        g.fillStyle(rgb(200, 60, 30), 0.5);
+        g.fillCircle(left + 75, top + 20, 10);
+        g.fillStyle(0xffffff, 0.6);
+        g.fillCircle(left + 72, top + 17, 3);
+        g.fillCircle(left + 78, top + 22, 3);
+        g.fillStyle(0x44aa33, 0.7);
+        g.fillRect(left + 73, top + 19, 4, 3);
+        // Pizza sliced lines
+        g.lineStyle(1, rgb(160, 120, 50), 0.3);
+        g.lineBetween(left + 35 - 10, top + 20, left + 35 + 10, top + 20);
+        g.lineBetween(left + 35, top + 10, left + 35, top + 30);
+        // Menu board on wall
+        g.fillStyle(rgb(40, 50, 40), 1);
+        g.fillRect(left + 5, top + 3, 55, 30);
+        g.lineStyle(1, rgb(140, 100, 50), 1);
+        g.strokeRect(left + 5, top + 3, 55, 30);
+        this._addText('MENU', left + 32, top + 10, '#ffffff');
+        this._addText('Marg $8', left + 32, top + 20, '#ffcc88');
+        this._addText('Pepp $9', left + 32, top + 28, '#ffcc88');
+        // Tables with chairs (enhanced)
+        for (let t = 0; t < 2; t++) {
+          const tx2 = left + 20 + t * 120;
+          // Table
+          g.fillStyle(rgb(160, 120, 80), 1);
+          g.fillRect(tx2, top + 70, 55, 30);
+          // Leg
+          g.fillStyle(rgb(120, 90, 50), 1);
+          g.fillRect(tx2 + 22, top + 100, 12, 16);
+          // Checkered tablecloth
+          g.fillStyle(0xff4444, 0.15);
+          for (let cx2 = 0; cx2 < 55; cx2 += 10) {
+            for (let cy2 = 0; cy2 < 30; cy2 += 10) {
+              if ((cx2 + cy2) % 20 === 0) g.fillRect(tx2 + cx2, top + 70 + cy2, 10, 10);
+            }
+          }
+          // Chairs
+          g.fillStyle(rgb(100, 70, 40), 1);
+          g.fillRect(tx2 - 8, top + 78, 8, 14);
+          g.fillRect(tx2 + 55, top + 78, 8, 14);
+          // Place settings
+          g.fillStyle(0xffffff, 0.5);
+          g.fillCircle(tx2 + 15, top + 80, 6);
+          g.fillCircle(tx2 + 40, top + 80, 6);
+          // Napkin
+          g.fillStyle(0xffffff, 0.7);
+          g.fillTriangle(tx2 + 15, top + 88, tx2 + 11, top + 95, tx2 + 19, top + 95);
+        }
+        // Wine bottle on shelf
+        g.fillStyle(rgb(60, 40, 30), 1);
+        g.fillRect(left + innerW - 12, top + 20, 8, 24);
+        g.fillRect(left + innerW - 10, top + 16, 4, 6);
+        // Italian flag
+        g.fillStyle(0x44aa44, 1);
+        g.fillRect(left + 110, top + 3, 8, 16);
+        g.fillStyle(0xffffff, 1);
+        g.fillRect(left + 118, top + 3, 8, 16);
+        g.fillStyle(0xff4444, 1);
+        g.fillRect(left + 126, top + 3, 8, 16);
+        this._addText('Mama mia!', cx, top + 140, '#cc3322');
         break;
       }
       case 'Gym': {
-        // Weight rack
-        g.fillStyle(rgb(60, 60, 70), 1);
-        g.fillRect(left + 10, top + 5, 60, 50);
-        // Dumbbells on rack
-        for (let w = 0; w < 3; w++) {
-          g.fillStyle(rgb(100, 100, 110), 1);
-          g.fillRect(left + 18, top + 12 + w * 15, 44, 4);
-          g.fillStyle(rgb(40, 40, 50), 1);
-          g.fillRect(left + 15, top + 10 + w * 15, 6, 8);
-          g.fillRect(left + 59, top + 10 + w * 15, 6, 8);
+        // Rubber mat floor
+        g.fillStyle(rgb(50, 50, 60), 0.15);
+        for (let fx = 0; fx < innerW; fx += 16) {
+          for (let fy = 0; fy < innerH; fy += 16) {
+            if ((fx + fy) % 32 === 0) g.fillRect(left + fx, top + fy, 15, 15);
+          }
         }
-        // Treadmill
+        // Weight rack (enhanced with labeled weights)
         g.fillStyle(rgb(50, 50, 60), 1);
-        g.fillRect(left + 90, top + 10, 50, 40);
-        g.fillStyle(rgb(80, 80, 90), 1);
-        g.fillRect(left + 92, top + 30, 46, 18);
-        // Bench press
+        g.fillRect(left + 8, top + 3, 65, 55);
+        g.fillStyle(rgb(40, 40, 50), 1);
+        g.fillRect(left + 8, top + 3, 65, 3);
+        // Dumbbells with weight labels
+        const weights = ['10', '20', '35'];
+        for (let w = 0; w < 3; w++) {
+          // Bar
+          g.fillStyle(rgb(120, 120, 130), 1);
+          g.fillRect(left + 18, top + 12 + w * 16, 46, 3);
+          // Weight plates
+          g.fillStyle(rgb(40, 40, 50), 1);
+          g.fillRect(left + 14, top + 9 + w * 16, 8, 9);
+          g.fillRect(left + 60, top + 9 + w * 16, 8, 9);
+          // Second plates (bigger weights)
+          if (w > 0) {
+            g.fillStyle(rgb(50, 50, 60), 1);
+            g.fillRect(left + 12, top + 10 + w * 16, 4, 7);
+            g.fillRect(left + 66, top + 10 + w * 16, 4, 7);
+          }
+          this._addText(weights[w], left + 42, top + 14 + w * 16, '#888888');
+        }
+        // Treadmill (enhanced with display)
+        g.fillStyle(rgb(40, 40, 50), 1);
+        g.fillRect(left + 88, top + 8, 55, 48);
+        // Display panel
+        g.fillStyle(rgb(30, 30, 40), 1);
+        g.fillRect(left + 93, top + 10, 44, 14);
+        g.fillStyle(0x00ff00, 0.5);
+        g.fillRect(left + 95, top + 12, 40, 10);
+        this._addText('3.2mi', left + 115, top + 17, '#00ff00');
+        // Belt
+        g.fillStyle(rgb(70, 70, 80), 1);
+        g.fillRect(left + 90, top + 30, 50, 22);
+        // Belt texture
         g.fillStyle(rgb(60, 60, 70), 1);
-        g.fillRect(left + 160, top + 20, 60, 10);
-        g.fillRect(left + 180, top + 10, 20, 30);
-        // Mirror
-        g.fillStyle(rgb(200, 220, 240), 0.5);
-        g.fillRect(left + innerW - 50, top + 5, 40, 60);
-        g.lineStyle(1, rgb(180, 180, 190), 0.8);
-        g.strokeRect(left + innerW - 50, top + 5, 40, 60);
-        this._addText('No pain no gain!', cx, top + 100, '#555555');
+        for (let b = 0; b < 5; b++) {
+          g.fillRect(left + 93 + b * 10, top + 32, 6, 18);
+        }
+        // Handles
+        g.fillStyle(rgb(100, 100, 110), 1);
+        g.fillRect(left + 88, top + 8, 3, 30);
+        g.fillRect(left + 140, top + 8, 3, 30);
+        // Bench press (enhanced)
+        g.fillStyle(rgb(50, 50, 60), 1);
+        g.fillRect(left + 158, top + 22, 65, 10);
+        // Upright posts
+        g.fillStyle(rgb(60, 60, 70), 1);
+        g.fillRect(left + 162, top + 8, 6, 30);
+        g.fillRect(left + 212, top + 8, 6, 30);
+        // Barbell on rack
+        g.fillStyle(rgb(140, 140, 150), 1);
+        g.fillRect(left + 160, top + 14, 62, 3);
+        g.fillStyle(rgb(40, 40, 50), 1);
+        g.fillRect(left + 156, top + 11, 8, 9);
+        g.fillRect(left + 218, top + 11, 8, 9);
+        // Bench pad
+        g.fillStyle(rgb(30, 30, 35), 1);
+        g.fillRect(left + 175, top + 24, 30, 6);
+        // Mirror (full wall, enhanced)
+        g.fillStyle(rgb(200, 220, 240), 0.4);
+        g.fillRect(left + innerW - 55, top + 3, 48, 65);
+        g.lineStyle(1, rgb(180, 190, 200), 0.8);
+        g.strokeRect(left + innerW - 55, top + 3, 48, 65);
+        // Mirror reflection (faint player silhouette)
+        g.fillStyle(rgb(150, 170, 200), 0.15);
+        g.fillRect(left + innerW - 35, top + 30, 10, 20);
+        g.fillCircle(left + innerW - 30, top + 26, 5);
+        // Exercise ball
+        g.fillStyle(rgb(80, 140, 200), 0.8);
+        g.fillCircle(left + 30, top + 85, 12);
+        g.fillStyle(0xffffff, 0.15);
+        g.fillCircle(left + 27, top + 81, 5);
+        // Yoga mat rolled up
+        g.fillStyle(rgb(160, 80, 160), 0.7);
+        g.fillEllipse(left + 70, top + 90, 8, 20);
+        g.fillStyle(rgb(140, 60, 140), 0.8);
+        g.fillCircle(left + 70, top + 80, 4);
+        g.fillCircle(left + 70, top + 100, 4);
+        // Water cooler
+        g.fillStyle(rgb(180, 200, 220), 0.8);
+        g.fillRect(left + innerW - 50, top + 78, 18, 30);
+        g.fillStyle(rgb(100, 160, 220), 0.4);
+        g.fillRect(left + innerW - 48, top + 72, 14, 10);
+        // Cup
+        g.fillStyle(0xffffff, 0.6);
+        g.fillRect(left + innerW - 42, top + 94, 4, 6);
+        // Motivational poster
+        g.fillStyle(rgb(40, 40, 50), 1);
+        g.fillRect(left + 90, top + 70, 50, 22);
+        g.lineStyle(1, rgb(80, 80, 90), 1);
+        g.strokeRect(left + 90, top + 70, 50, 22);
+        this._addText('PUSH', left + 115, top + 76, '#ff4444');
+        this._addText('HARDER', left + 115, top + 86, '#ff4444');
+        // Towel rack
+        g.fillStyle(rgb(100, 100, 110), 1);
+        g.fillRect(left + 5, top + 70, 25, 3);
+        g.fillStyle(0xffffff, 0.6);
+        g.fillRect(left + 8, top + 73, 12, 14);
+        g.fillStyle(rgb(100, 160, 220), 0.6);
+        g.fillRect(left + 20, top + 73, 8, 14);
+        this._addText('No pain no gain!', cx, top + 115, '#555555');
         break;
       }
       case 'Hospital': {
-        // Reception desk
+        // Clean white floor with subtle grid
+        g.fillStyle(rgb(220, 225, 230), 0.15);
+        g.fillRect(left, top, innerW, innerH);
+        g.lineStyle(1, rgb(200, 210, 220), 0.1);
+        for (let fx = 0; fx < innerW; fx += 24) {
+          g.lineBetween(left + fx, top, left + fx, top + innerH);
+        }
+        for (let fy = 0; fy < innerH; fy += 24) {
+          g.lineBetween(left, top + fy, left + innerW, top + fy);
+        }
+        // Reception desk (enhanced)
         g.fillStyle(rgb(220, 220, 230), 1);
-        g.fillRect(left + 10, top + 5, innerW - 20, 20);
-        // Red cross
+        g.fillRect(left + 10, top + 5, innerW - 20, 24);
+        g.fillStyle(rgb(200, 200, 210), 1);
+        g.fillRect(left + 10, top + 29, innerW - 20, 3);
+        // Desk front panel
+        g.fillStyle(rgb(180, 190, 210), 1);
+        g.fillRect(left + 12, top + 7, innerW - 24, 3);
+        // Computer on desk
+        g.fillStyle(rgb(50, 50, 60), 1);
+        g.fillRect(left + 20, top + 3, 28, 18);
+        g.fillStyle(rgb(80, 140, 200), 0.4);
+        g.fillRect(left + 22, top + 5, 24, 12);
+        g.fillStyle(rgb(60, 60, 70), 1);
+        g.fillRect(left + 30, top + 21, 12, 3);
+        g.fillRect(left + 26, top + 24, 20, 2);
+        // Red cross on wall
         g.fillStyle(0xdd3333, 1);
-        g.fillRect(cx - 3, top + 8, 6, 14);
-        g.fillRect(cx - 7, top + 12, 14, 6);
-        // Hospital beds
+        g.fillRect(cx - 3, top + 5, 6, 16);
+        g.fillRect(cx - 8, top + 10, 16, 6);
+        // White circle behind cross
+        g.fillStyle(0xffffff, 0.3);
+        g.fillCircle(cx, top + 13, 12);
+        g.fillStyle(0xdd3333, 1);
+        g.fillRect(cx - 3, top + 5, 6, 16);
+        g.fillRect(cx - 8, top + 10, 16, 6);
+        // Hospital beds with curtains
         for (let b = 0; b < 2; b++) {
+          const bx = left + 15 + b * 135;
+          // Curtain rail
+          g.fillStyle(rgb(160, 160, 170), 1);
+          g.fillRect(bx - 2, top + 40, 88, 2);
+          // Curtain (partially drawn)
+          g.fillStyle(rgb(180, 210, 200), 0.4);
+          g.fillRect(bx + 70, top + 42, 16, 52);
+          // Bed frame
+          g.fillStyle(rgb(200, 200, 210), 1);
+          g.fillRect(bx + 2, top + 48, 72, 4);
+          // Mattress
           g.fillStyle(rgb(230, 230, 240), 1);
-          g.fillRect(left + 20 + b * 130, top + 50, 80, 40);
-          g.fillStyle(rgb(200, 210, 220), 1);
-          g.fillRect(left + 20 + b * 130, top + 48, 80, 4);
+          g.fillRect(bx + 4, top + 52, 68, 36);
           // Pillow
           g.fillStyle(0xffffff, 1);
-          g.fillRect(left + 22 + b * 130, top + 52, 20, 14);
-          // Monitor
+          g.fillRect(bx + 6, top + 54, 22, 14);
+          g.fillStyle(rgb(240, 240, 250), 1);
+          g.fillRect(bx + 8, top + 56, 18, 10);
+          // Blanket
+          g.fillStyle(rgb(180, 210, 230), 0.5);
+          g.fillRect(bx + 4, top + 68, 68, 18);
+          // Bed rails
+          g.fillStyle(rgb(180, 180, 190), 1);
+          g.fillRect(bx, top + 52, 2, 38);
+          g.fillRect(bx + 74, top + 52, 2, 38);
+          // Heart monitor
           g.fillStyle(rgb(40, 40, 50), 1);
-          g.fillRect(left + 95 + b * 130 - (b * 130), top + 45, 20, 16);
-          g.fillStyle(0x00ff00, 0.6);
+          g.fillRect(bx + 78, top + 45, 22, 18);
+          g.fillStyle(rgb(10, 10, 15), 1);
+          g.fillRect(bx + 80, top + 47, 18, 12);
+          // EKG line
           g.lineStyle(1, 0x00ff00, 0.8);
-          g.lineBetween(left + 97 + b * 130 - (b * 130), top + 53, left + 102 + b * 130 - (b * 130), top + 48);
-          g.lineBetween(left + 102 + b * 130 - (b * 130), top + 48, left + 107 + b * 130 - (b * 130), top + 56);
-          g.lineBetween(left + 107 + b * 130 - (b * 130), top + 56, left + 112 + b * 130 - (b * 130), top + 53);
+          g.lineBetween(bx + 82, top + 54, bx + 85, top + 54);
+          g.lineBetween(bx + 85, top + 54, bx + 87, top + 50);
+          g.lineBetween(bx + 87, top + 50, bx + 89, top + 56);
+          g.lineBetween(bx + 89, top + 56, bx + 91, top + 52);
+          g.lineBetween(bx + 91, top + 52, bx + 96, top + 54);
+          // IV stand
+          g.fillStyle(rgb(160, 160, 170), 1);
+          g.fillRect(bx + 62, top + 38, 2, 50);
+          g.fillRect(bx + 56, top + 36, 14, 3);
+          // IV bag
+          g.fillStyle(rgb(200, 230, 255), 0.5);
+          g.fillRect(bx + 58, top + 38, 8, 12);
+          // IV tube
+          g.lineStyle(1, rgb(200, 230, 255), 0.4);
+          g.lineBetween(bx + 62, top + 50, bx + 50, top + 60);
         }
-        this._addText('Get well soon!', cx, top + 110, '#3366cc');
+        // Medicine cabinet
+        g.fillStyle(rgb(220, 220, 230), 1);
+        g.fillRect(left + innerW - 45, top + 35, 35, 30);
+        g.lineStyle(1, rgb(180, 180, 190), 0.8);
+        g.strokeRect(left + innerW - 45, top + 35, 35, 30);
+        g.lineBetween(left + innerW - 28, top + 35, left + innerW - 28, top + 65);
+        // Medicine bottles
+        g.fillStyle(rgb(255, 140, 60), 0.7);
+        g.fillRect(left + innerW - 42, top + 40, 8, 12);
+        g.fillStyle(rgb(100, 160, 220), 0.7);
+        g.fillRect(left + innerW - 32, top + 42, 8, 10);
+        g.fillStyle(rgb(220, 60, 60), 0.7);
+        g.fillRect(left + innerW - 24, top + 38, 8, 14);
+        // Hand sanitizer dispenser
+        g.fillStyle(rgb(200, 200, 210), 1);
+        g.fillRect(left + 5, top + 45, 10, 18);
+        g.fillStyle(rgb(100, 180, 100), 0.6);
+        g.fillRect(left + 7, top + 48, 6, 10);
+        // Wheelchair
+        g.fillStyle(rgb(40, 40, 50), 1);
+        g.fillCircle(left + innerW - 30, top + 100, 8);
+        g.fillCircle(left + innerW - 14, top + 100, 8);
+        g.fillStyle(rgb(60, 60, 70), 1);
+        g.fillCircle(left + innerW - 30, top + 100, 5);
+        g.fillCircle(left + innerW - 14, top + 100, 5);
+        g.fillStyle(rgb(80, 80, 100), 1);
+        g.fillRect(left + innerW - 30, top + 88, 18, 12);
+        this._addText('Get well soon!', cx, top + 120, '#3366cc');
         break;
       }
       case 'Water Park': {
