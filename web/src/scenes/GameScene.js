@@ -275,7 +275,7 @@ export class GameScene extends Phaser.Scene {
     const px = this.player.x;
     const py = this.player.y;
     const cam = this.cameras.main;
-    const lerp = 0.12;
+    const lerp = 0.5;
     const viewH = HEIGHT - TOWN_Y - 15;
     const targetX = px - TOWN_X - TOWN_VIEW_W / 2;
     const targetY = py - TOWN_Y - viewH / 2;
