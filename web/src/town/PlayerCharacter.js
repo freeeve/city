@@ -2,7 +2,7 @@ import { TOWN_WORLD_W, ROW_HEIGHT, PLOT_COLS, PLOT_W, PLOT_H, PX_FONT, NEIGHBOUR
 
 // Pixel-art pedestrian character matching the Python client's draw_pedestrian
 export class PlayerCharacter {
-  constructor(scene, name) {
+  constructor(scene, name, appearance) {
     this.scene = scene;
     this.name = name;
     this.x = 80;
@@ -13,11 +13,11 @@ export class PlayerCharacter {
     this.tick = 0;
     this.insideBuilding = false;
 
-    // Deterministic colors from seed (matching Python's color_seed=12345)
-    this.skin = 0xf0d2b4;   // (240, 210, 180)
-    this.shirt = 0x4488cc;   // blueish shirt
-    this.pants = 0x323278;   // (50, 50, 120)
-    this.hair = 0x281e14;    // (40, 30, 20)
+    // Appearance colors (customizable via connect screen, with defaults)
+    this.skin = appearance?.skin ?? 0xf0d2b4;
+    this.shirt = appearance?.shirt ?? 0x4488cc;
+    this.pants = appearance?.pants ?? 0x323278;
+    this.hair = appearance?.hair ?? 0x281e14;
 
     // Graphics objects
     this.graphics = scene.add.graphics();

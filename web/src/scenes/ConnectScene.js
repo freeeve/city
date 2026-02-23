@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { WIDTH, HEIGHT, PX_FONT } from '../constants.js';
 import { GRADE_LABELS } from '../shared.js';
+import { SKIN_PALETTE, SHIRT_PALETTE, PANTS_PALETTE, HAIR_PALETTE } from '../town/NPCSystem.js';
 
 export class ConnectScene extends Phaser.Scene {
   constructor() {
@@ -95,6 +96,22 @@ export class ConnectScene extends Phaser.Scene {
       margin-top: 80px;
     `;
 
+    // Build color swatch rows HTML
+    const hex = (c) => '#' + c.toString(16).padStart(6, '0');
+    const swatchRow = (label, palette, name) => {
+      const swatches = palette.map((c, i) =>
+        `<div class="swatch" data-group="${name}" data-index="${i}" style="
+          width: 20px; height: 20px; border-radius: 4px; cursor: pointer;
+          background: ${hex(c)}; border: 2px solid transparent;
+          box-sizing: border-box; flex-shrink: 0;
+        "></div>`
+      ).join('');
+      return `<div style="margin-bottom: 6px;">
+        <span style="font-size: 7px; color: #8899bb; margin-right: 6px; display: inline-block; width: 36px;">${label}</span>
+        <div style="display: inline-flex; gap: 4px; vertical-align: middle; flex-wrap: wrap;">${swatches}</div>
+      </div>`;
+    };
+
     formPanel.innerHTML = `
       <div style="margin-bottom: 14px;">
         <label style="font-size: 8px; color: #8899bb; display: block; margin-bottom: 6px;">Player Name</label>
@@ -116,7 +133,7 @@ export class ConnectScene extends Phaser.Scene {
           box-sizing: border-box;
         " value="localhost" />
       </div>
-      <div style="margin-bottom: 20px;">
+      <div style="margin-bottom: 14px;">
         <label style="font-size: 8px; color: #8899bb; display: block; margin-bottom: 6px;">Math Grade</label>
         <select id="connect-grade" style="
           width: 100%; padding: 8px 10px; font-size: 9px;
@@ -125,6 +142,21 @@ export class ConnectScene extends Phaser.Scene {
           background: #fafaff; color: #333; outline: none;
           box-sizing: border-box;
         ">${gradeOptions}</select>
+      </div>
+      <div style="margin-bottom: 14px;">
+        <label style="font-size: 8px; color: #8899bb; display: block; margin-bottom: 8px;">Character</label>
+        <div style="display: flex; align-items: flex-start; gap: 14px;">
+          <canvas id="connect-preview" width="48" height="60" style="
+            border-radius: 6px; background: rgba(0,0,0,0.3);
+            image-rendering: pixelated; flex-shrink: 0;
+          "></canvas>
+          <div id="connect-palettes" style="flex: 1; min-width: 0;">
+            ${swatchRow('Skin', SKIN_PALETTE, 'skin')}
+            ${swatchRow('Hair', HAIR_PALETTE, 'hair')}
+            ${swatchRow('Shirt', SHIRT_PALETTE, 'shirt')}
+            ${swatchRow('Pants', PANTS_PALETTE, 'pants')}
+          </div>
+        </div>
       </div>
       <button id="connect-play" style="
         width: 100%; padding: 12px; font-size: 11px;
@@ -150,6 +182,85 @@ export class ConnectScene extends Phaser.Scene {
     const playBtn = overlay.querySelector('#connect-play');
     const errorMsg = overlay.querySelector('#connect-error');
 
+    // Character appearance state (default: first color in each palette)
+    const appearance = {
+      skin: SKIN_PALETTE[0],
+      hair: HAIR_PALETTE[0],
+      shirt: SHIRT_PALETTE[0],
+      pants: PANTS_PALETTE[0],
+    };
+    const palettes = { skin: SKIN_PALETTE, hair: HAIR_PALETTE, shirt: SHIRT_PALETTE, pants: PANTS_PALETTE };
+
+    // Preview canvas drawing
+    const previewCanvas = overlay.querySelector('#connect-preview');
+    const ctx = previewCanvas.getContext('2d');
+
+    const drawPreview = () => {
+      const w = previewCanvas.width;
+      const h = previewCanvas.height;
+      ctx.clearRect(0, 0, w, h);
+      const cx = w / 2;
+      const cy = h / 2 + 6;
+      const s = 2; // scale factor
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 5 * s, 10 * s, 4 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Head
+      ctx.fillStyle = hex(appearance.skin);
+      ctx.beginPath();
+      ctx.arc(cx, cy - 13 * s, 5 * s, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Hair
+      ctx.fillStyle = hex(appearance.hair);
+      ctx.fillRect(cx - 5 * s, cy - 18 * s, 10 * s, 4 * s);
+
+      // Body / shirt
+      ctx.fillStyle = hex(appearance.shirt);
+      ctx.fillRect(cx - 4 * s, cy - 8 * s, 8 * s, 9 * s);
+
+      // Arms
+      ctx.fillRect(cx - 6 * s, cy - 7 * s, 2 * s, 6 * s);
+      ctx.fillRect(cx + 4 * s, cy - 5 * s, 2 * s, 6 * s);
+
+      // Legs
+      ctx.fillStyle = hex(appearance.pants);
+      ctx.fillRect(cx - 4 * s, cy + 1 * s, 3 * s, 7 * s);
+      ctx.fillRect(cx + 1 * s, cy + 1 * s, 3 * s, 6 * s);
+
+      // Eyes
+      ctx.fillStyle = '#222222';
+      ctx.fillRect(cx + 1 * s, cy - 14 * s, 2 * s, 2 * s);
+    };
+
+    drawPreview();
+
+    // Highlight selected swatches
+    const updateSwatchBorders = () => {
+      overlay.querySelectorAll('.swatch').forEach((el) => {
+        const group = el.dataset.group;
+        const idx = parseInt(el.dataset.index);
+        const isSelected = appearance[group] === palettes[group][idx];
+        el.style.border = isSelected ? '2px solid #fff' : '2px solid transparent';
+      });
+    };
+    updateSwatchBorders();
+
+    // Swatch click handler
+    overlay.querySelector('#connect-palettes').addEventListener('click', (e) => {
+      const swatch = e.target.closest('.swatch');
+      if (!swatch) return;
+      const group = swatch.dataset.group;
+      const idx = parseInt(swatch.dataset.index);
+      appearance[group] = palettes[group][idx];
+      updateSwatchBorders();
+      drawPreview();
+    });
+
     setTimeout(() => nameInput.focus(), 100);
 
     const doConnect = () => {
@@ -174,7 +285,7 @@ export class ConnectScene extends Phaser.Scene {
 
       // Remove overlay before switching scenes
       overlay.remove();
-      this.scene.start('GameScene', { name, wsUrl, grade });
+      this.scene.start('GameScene', { name, wsUrl, grade, appearance });
     };
 
     playBtn.addEventListener('click', doConnect);
